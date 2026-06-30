@@ -10,8 +10,15 @@ type blockParser interface {
 	parse(ctx *blockContext) (parsedBlockNode, bool, error)
 }
 
-// TODO: func newSpec() *Spec {}
-// TODO: func coreSpec() *Spec {}
+func newSpec() *Spec {
+	return &Spec{}
+}
+
+func coreSpec() *Spec {
+	s := newSpec()
+	s.addBlockParser(&blockDirectiveParser{})
+	return s
+}
 
 func (s *Spec) addBlockParser(b blockParser) {
 	s.blockParsers = append(s.blockParsers, b)
