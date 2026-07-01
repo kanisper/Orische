@@ -11,7 +11,11 @@ type blockParser interface {
 }
 
 func newSpec() *Spec {
-	return &Spec{}
+	return &Spec{
+		blockParsers: []blockParser{},
+		fallback:     &paragraphParser{},
+		builders:     map[string]blockBuilder{},
+	}
 }
 
 func coreSpec() *Spec {
