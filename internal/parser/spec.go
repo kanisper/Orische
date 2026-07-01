@@ -17,6 +17,7 @@ func newSpec() *Spec {
 func coreSpec() *Spec {
 	s := newSpec()
 	s.addBlockParser(&blockDirectiveParser{})
+	s.addBlockParser(&headingParser{})
 	return s
 }
 
