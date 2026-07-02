@@ -14,9 +14,7 @@ func TestParseBlockDirective(t *testing.T) {
 			"fmt.Println(\"Hello, world!\")",
 			":::",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	output, ok, err := (&blockDirectiveParser{}).parse(input)
@@ -46,9 +44,7 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 			"fmt.Println(\"Hello, world!\")",
 			":::",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	output, ok, err := (&blockDirectiveParser{}).parse(input)
@@ -77,9 +73,7 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 			":::[code:go]",
 			"fmt.Println(\"Hello, world!\")",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	output, ok, _ := (&blockDirectiveParser{}).parse(input)
@@ -98,9 +92,7 @@ func TestParseBlockDirective_NoType(t *testing.T) {
 			"fmt.Println(\"Hello, world!\")",
 			":::",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	output, ok, _ := (&blockDirectiveParser{}).parse(input)

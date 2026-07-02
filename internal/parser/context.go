@@ -1,18 +1,14 @@
 package parser
 
 type blockContext struct {
-	lines  []string
-	pos    int
-	nested bool
-	parser *Parser
+	lines []string
+	pos   int
 }
 
-func newBlockContext(lines []string, start int, nested bool, parser *Parser) *blockContext {
+func newBlockContext(lines []string, start int, parser *Parser) *blockContext {
 	return &blockContext{
-		lines:  lines,
-		pos:    start,
-		nested: nested,
-		parser: parser,
+		lines: lines,
+		pos:   start,
 	}
 }
 

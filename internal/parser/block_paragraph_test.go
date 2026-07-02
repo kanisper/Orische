@@ -14,9 +14,7 @@ func TestParseParagraph(t *testing.T) {
 			"paragraph line 2",
 			":::[code:go]",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	want := &parsedBlock{
@@ -48,9 +46,7 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 			"",
 			":::[code:go]",
 		},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		pos: 0,
 	}
 
 	want := &parsedBlock{

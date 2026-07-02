@@ -9,10 +9,8 @@ import (
 
 func TestParseHeading(t *testing.T) {
 	input := &blockContext{
-		lines:  []string{"= Heading1"},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		lines: []string{"= Heading1"},
+		pos:   0,
 	}
 	output, ok, err := (&headingParser{}).parse(input)
 	want := &parsedBlock{
@@ -34,10 +32,8 @@ func TestParseHeading(t *testing.T) {
 
 func TestParseHeading_Level2(t *testing.T) {
 	input := &blockContext{
-		lines:  []string{"== Heading2"},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		lines: []string{"== Heading2"},
+		pos:   0,
 	}
 	output, ok, err := (&headingParser{}).parse(input)
 	want := &parsedBlock{
@@ -59,10 +55,8 @@ func TestParseHeading_Level2(t *testing.T) {
 
 func TestParseHeading_NoSpace(t *testing.T) {
 	input := &blockContext{
-		lines:  []string{"=Heading"},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		lines: []string{"=Heading"},
+		pos:   0,
 	}
 	output, ok, _ := (&headingParser{}).parse(input)
 	want := &parsedBlock{}
@@ -73,10 +67,8 @@ func TestParseHeading_NoSpace(t *testing.T) {
 
 func TestParseHeading_NoText(t *testing.T) {
 	input := &blockContext{
-		lines:  []string{"="},
-		pos:    0,
-		nested: false,
-		parser: nil,
+		lines: []string{"="},
+		pos:   0,
 	}
 	output, ok, _ := (&headingParser{}).parse(input)
 	want := &parsedBlock{}
