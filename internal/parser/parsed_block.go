@@ -9,7 +9,6 @@ type parsedDocument struct {
 
 type parsedBlockNode interface {
 	isParsedBlockNode()
-	blockRange() ast.Range
 }
 
 type parsedBlock struct {
@@ -20,9 +19,6 @@ type parsedBlock struct {
 }
 
 func (*parsedBlock) isParsedBlockNode() {}
-func (b *parsedBlock) blockRange() ast.Range {
-	return b.Range
-}
 
 // TODO: Define parsedList struct as parsedBlockNode
 

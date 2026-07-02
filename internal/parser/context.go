@@ -5,7 +5,7 @@ type blockContext struct {
 	pos   int
 }
 
-func newBlockContext(lines []string, start int, parser *Parser) *blockContext {
+func newBlockContext(lines []string, start int) *blockContext {
 	return &blockContext{
 		lines: lines,
 		pos:   start,

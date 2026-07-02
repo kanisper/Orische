@@ -33,8 +33,12 @@ func (s *Spec) addBlockBuilder(dirtype string, b blockBuilder) {
 }
 
 func (s *Spec) getParsers() []blockParser {
-	return s.blockParsers
+	parsers := make([]blockParser, 0, len(s.blockParsers)+1)
+	parsers = append(parsers, s.blockParsers...)
+	parsers = append(parsers, s.fallback)
+	return parsers
 }
+
 func (s *Spec) getBuilder(dirtype string) blockBuilder {
 	return s.builders[dirtype]
 }
