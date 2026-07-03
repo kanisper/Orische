@@ -18,8 +18,16 @@ type parsedBlock struct {
 	Range ast.Range
 }
 
+type parsedList struct {
+	Ordered bool
+	Items   []parsedListItem
+	Range   ast.Range
+}
+
+type parsedListItem struct {
+	Blocks []parsedBlockNode
+	Range  ast.Range
+}
+
 func (*parsedBlock) isParsedBlockNode() {}
-
-// TODO: Define parsedList struct as parsedBlockNode
-
-// TODO: Define parsedListItem struct, which have Blocks as parsedBlockNode
+func (*parsedList) isParsedBlockNode()  {}

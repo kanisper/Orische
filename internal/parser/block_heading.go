@@ -10,7 +10,7 @@ import (
 type headingParser struct{}
 
 func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
-	level, content := isHeadingLine(ctx.getLine())
+	level, content := parseHeadingLine(ctx.getLine())
 	if level <= 0 {
 		return &parsedBlock{}, false, nil
 	} else {
@@ -26,7 +26,7 @@ func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 	}
 }
 
-func isHeadingLine(line string) (int, string) {
+func parseHeadingLine(line string) (int, string) {
 	idx := strings.Index(line, " ")
 	if idx <= 0 {
 		return 0, ""

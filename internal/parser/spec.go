@@ -22,6 +22,7 @@ func coreSpec() *Spec {
 	s := newSpec()
 	s.addBlockParser(&blockDirectiveParser{})
 	s.addBlockParser(&headingParser{})
+	s.addBlockParser(&listParser{})
 	return s
 }
 
