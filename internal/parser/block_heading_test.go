@@ -18,15 +18,15 @@ func TestParseHeading(t *testing.T) {
 		Attr: "level1",
 		Text: "Heading1",
 		Range: ast.Range{
-			StartLine: 0,
-			EndLine:   0,
+			StartLine: 1,
+			EndLine:   1,
 		},
 	}
 	if !ok || err != nil {
 		t.Errorf("parse failed.")
 	}
 	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }
 
@@ -41,15 +41,15 @@ func TestParseHeading_Level2(t *testing.T) {
 		Attr: "level2",
 		Text: "Heading2",
 		Range: ast.Range{
-			StartLine: 0,
-			EndLine:   0,
+			StartLine: 1,
+			EndLine:   1,
 		},
 	}
 	if !ok || err != nil {
 		t.Errorf("parse failed.")
 	}
 	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }
 
@@ -61,7 +61,7 @@ func TestParseHeading_NoSpace(t *testing.T) {
 	output, ok, _ := (&headingParser{}).parse(input)
 	want := &parsedBlock{}
 	if ok || !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }
 
@@ -73,6 +73,6 @@ func TestParseHeading_NoText(t *testing.T) {
 	output, ok, _ := (&headingParser{}).parse(input)
 	want := &parsedBlock{}
 	if ok || !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }

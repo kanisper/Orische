@@ -22,19 +22,23 @@ func TestParseParagraph(t *testing.T) {
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2\n:::[code:go]",
 		Range: ast.Range{
-			StartLine: 0,
+			StartLine: 1,
 			EndLine:   3,
 		},
 	}
+
+	ctx_pos_want := 2
 
 	output, ok, err := (&paragraphParser{}).parse(input)
 
 	if !ok || err != nil {
 		t.Errorf("parse failed.")
 	}
-
 	if !reflect.DeepEqual(output, want) {
 		t.Errorf("parse incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	}
+	if input.pos != ctx_pos_want {
+		t.Errorf("position in context is not updated correctly. want: %d, got: %d", ctx_pos_want, input.pos)
 	}
 }
 

@@ -18,7 +18,7 @@ func (*blockDirectiveParser) parse(ctx *blockContext) (parsedBlockNode, bool, er
 		return &parsedBlock{}, false, nil
 	}
 
-	startLine := ctx.getPos()
+	startLine := ctx.getPos() + 1
 	ctx.advance(1)
 
 	content := []string{}
@@ -31,7 +31,7 @@ func (*blockDirectiveParser) parse(ctx *blockContext) (parsedBlockNode, bool, er
 				Text: strings.Join(content, "\n"),
 				Range: ast.Range{
 					StartLine: startLine,
-					EndLine:   ctx.getPos(),
+					EndLine:   ctx.getPos() + 1,
 				},
 			}, true, nil
 		}

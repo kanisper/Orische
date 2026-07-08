@@ -24,16 +24,21 @@ func TestParseBlockDirective(t *testing.T) {
 		Attr: "go",
 		Text: "fmt.Println(\"Hello, world!\")",
 		Range: ast.Range{
-			StartLine: 0,
-			EndLine:   2,
+			StartLine: 1,
+			EndLine:   3,
 		},
 	}
+
+	ctx_pos_want := 2
 
 	if !ok || err != nil {
 		t.Errorf("parse failed.")
 	}
 	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	}
+	if input.pos != ctx_pos_want {
+		t.Errorf("position in context is not updated correctly. want: %d, got: %d", ctx_pos_want, input.pos)
 	}
 }
 
@@ -54,8 +59,8 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 		Attr: "",
 		Text: "fmt.Println(\"Hello, world!\")",
 		Range: ast.Range{
-			StartLine: 0,
-			EndLine:   2,
+			StartLine: 1,
+			EndLine:   3,
 		},
 	}
 
@@ -63,7 +68,7 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 		t.Errorf("parse failed.")
 	}
 	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }
 
@@ -81,7 +86,7 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 	want := &parsedBlock{}
 
 	if ok && !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }
 
@@ -100,6 +105,6 @@ func TestParseBlockDirective_NoType(t *testing.T) {
 	want := &parsedBlock{}
 
 	if ok && !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly. want: %v, got: %v", want, output)
+		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
 	}
 }

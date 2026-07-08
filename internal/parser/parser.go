@@ -46,8 +46,8 @@ func (p *Parser) parseDocument(lines []string) (*parsedDocument, error) {
 	doc := &parsedDocument{
 		Blocks: blocks,
 		Range: ast.Range{
-			StartLine: 0,
-			EndLine:   ctx.getPos() - 1,
+			StartLine: 1,
+			EndLine:   ctx.getPos(),
 		},
 	}
 
@@ -94,12 +94,11 @@ func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, bool, error)
 // TODO: func (*Parser) buildDocument(parsed *parsedDocument) (*ast.Document, error)
 
 func splitLines(input string) []string {
-	if input == "" {
-		return nil
-	}
 	lines := strings.Split(input, "\n")
-	if lines[len(lines)-1] == "" {
-		return lines[:len(lines)-1]
+	for i := len(lines) - 1; i >= 0; i-- {
+		if lines[i] != "" {
+			return lines[:i+1]
+		}
 	}
-	return lines
+	return nil
 }

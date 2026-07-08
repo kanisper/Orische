@@ -10,7 +10,7 @@ type paragraphParser struct{}
 
 func (*paragraphParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 	var line string
-	startPos := ctx.getPos()
+	startPos := ctx.getPos() + 1
 	content := []string{}
 
 	for !ctx.isEOF() {
@@ -22,13 +22,15 @@ func (*paragraphParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) 
 		ctx.advance(1)
 	}
 
+	ctx.advance(-1)
+
 	return &parsedBlock{
 		Type: "Paragraph",
 		Attr: "",
 		Text: strings.Join(content, "\n"),
 		Range: ast.Range{
 			StartLine: startPos,
-			EndLine:   ctx.getPos(),
+			EndLine:   ctx.getPos() + 1,
 		},
 	}, true, nil
 }
