@@ -1,5 +1,7 @@
 package parser
 
+import "medoc/internal/ast"
+
 type Spec struct {
 	blockParsers []blockParser
 	fallback     blockParser
@@ -8,6 +10,10 @@ type Spec struct {
 
 type blockParser interface {
 	parse(ctx *blockContext) (parsedBlockNode, bool, error)
+}
+
+type blockBuilder interface {
+	build(block parsedBlockNode) (ast.Block, error)
 }
 
 func newSpec() *Spec {
@@ -23,6 +29,7 @@ func coreSpec() *Spec {
 	s.addBlockParser(&blockDirectiveParser{})
 	s.addBlockParser(&headingParser{})
 	s.addBlockParser(&listParser{})
+	s.addBlockBuilder("heading", &headingBuilder{})
 	return s
 }
 
