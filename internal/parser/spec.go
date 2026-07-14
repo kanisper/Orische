@@ -31,6 +31,7 @@ func coreSpec() *Spec {
 	s.addBlockParser(&listParser{})
 	s.addBlockBuilder("heading", &headingBuilder{})
 	s.addBlockBuilder("code", &codeBlockBuilder{})
+	s.addBlockBuilder("paragraph", &paragraphBuilder{})
 	return s
 }
 
