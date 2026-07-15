@@ -50,14 +50,6 @@ func TestParseList(t *testing.T) {
 							EndLine:   2,
 						},
 					},
-				},
-				Range: ast.Range{
-					StartLine: 2,
-					EndLine:   2,
-				},
-			},
-			{
-				Blocks: []parsedBlockNode{
 					&parsedList{
 						Ordered: false,
 						Items: []parsedListItem{
@@ -86,7 +78,7 @@ func TestParseList(t *testing.T) {
 					},
 				},
 				Range: ast.Range{
-					StartLine: 3,
+					StartLine: 2,
 					EndLine:   3,
 				},
 			},
