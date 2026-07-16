@@ -26,12 +26,16 @@ func newSpec() *Spec {
 
 func coreSpec() *Spec {
 	s := newSpec()
+
 	s.addBlockParser(&blockDirectiveParser{})
 	s.addBlockParser(&headingParser{})
 	s.addBlockParser(&listParser{})
+
 	s.addBlockBuilder("heading", &headingBuilder{})
 	s.addBlockBuilder("code", &codeBlockBuilder{})
 	s.addBlockBuilder("paragraph", &paragraphBuilder{})
+	s.addBlockBuilder("list", &listBuilder{})
+
 	return s
 }
 
@@ -49,6 +53,7 @@ func (s *Spec) getParsers() []blockParser {
 	return parsers
 }
 
-func (s *Spec) getBuilder(dirtype string) blockBuilder {
-	return s.builders[dirtype]
+func (s *Spec) getBuilder(dirtype string) (blockBuilder, bool) {
+	builder, ok := s.builders[dirtype]
+	return builder, ok
 }

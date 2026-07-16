@@ -1,8 +1,10 @@
 package parser
 
 import (
-	"medoc/internal/ast"
+	"fmt"
 	"strings"
+
+	"medoc/internal/ast"
 )
 
 type Parser struct {
@@ -25,14 +27,12 @@ func Parse(input string) (*ast.Document, error) {
 func (p *Parser) Parse(input string) (*ast.Document, error) {
 	lines := splitLines(input)
 
-	_, err := p.parseDocument(lines)
-	//parsed, err := p.parseDocument(lines)
+	parsed, err := p.parseDocument(lines)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ast.Document{}, err
-	// return p.buildDocument(parsed)
+	return p.buildDocument(parsed)
 }
 
 func (p *Parser) parseDocument(lines []string) (*parsedDocument, error) {
@@ -91,7 +91,38 @@ func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, bool, error)
 	return nil, false, nil
 }
 
-// TODO: func (*Parser) buildDocument(parsed *parsedDocument) (*ast.Document, error)
+func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error) {
+	doc := &ast.Document{
+		Blocks: make([]ast.Block, 0),
+		Range:  parsedDoc.Range,
+	}
+
+	for _, node := range parsedDoc.Blocks {
+		builder, ok := p.spec.getBuilder(node.getBuilderKey())
+		if !ok {
+			return nil, fmt.Errorf(
+				"build document: builder not found for parsed block %T with key %q",
+				node,
+				node.getBuilderKey(),
+			)
+		}
+
+		buildedBlock, err := builder.build(node)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"build document: build failed %q block at lines %d-%d: %w",
+				node.getBuilderKey(),
+				node.getBlockRange().StartLine,
+				node.getBlockRange().EndLine,
+				err,
+			)
+		}
+
+		doc.Blocks = append(doc.Blocks, buildedBlock)
+	}
+
+	return doc, nil
+}
 
 func splitLines(input string) []string {
 	lines := strings.Split(input, "\n")

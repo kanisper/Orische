@@ -1,6 +1,9 @@
 package parser
 
-import "medoc/internal/ast"
+import (
+	"medoc/internal/ast"
+	"strings"
+)
 
 type parsedDocument struct {
 	Blocks []parsedBlockNode
@@ -9,6 +12,8 @@ type parsedDocument struct {
 
 type parsedBlockNode interface {
 	isParsedBlockNode()
+	getBuilderKey() string
+	getBlockRange() ast.Range
 }
 
 type parsedBlock struct {
@@ -18,10 +23,26 @@ type parsedBlock struct {
 	Range ast.Range
 }
 
+func (pb *parsedBlock) getBuilderKey() string {
+	return strings.ToLower(pb.Type)
+}
+
+func (pb *parsedBlock) getBlockRange() ast.Range {
+	return pb.Range
+}
+
 type parsedList struct {
 	Ordered bool
 	Items   []parsedListItem
 	Range   ast.Range
+}
+
+func (pl *parsedList) getBuilderKey() string {
+	return "list"
+}
+
+func (pl *parsedList) getBlockRange() ast.Range {
+	return pl.Range
 }
 
 type parsedListItem struct {
