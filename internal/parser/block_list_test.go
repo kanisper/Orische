@@ -120,3 +120,80 @@ func TestParseList(t *testing.T) {
 		t.Errorf("position in context is not updated correctly. want %d, got %d", ctx_pos_want, input.pos)
 	}
 }
+
+func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
+	input := &blockContext{
+		lines: []string{
+			"* parent",
+			"*** child",
+		},
+		pos: 0,
+	}
+
+	want := &parsedList{
+		Ordered: false,
+		Items: []parsedListItem{
+			{
+				Blocks: []parsedBlockNode{
+					&parsedBlock{
+						Type: "Paragraph",
+						Attr: "",
+						Text: "parent",
+						Range: ast.Range{
+							StartLine: 1,
+							EndLine:   1,
+						},
+					},
+					&parsedList{
+						Ordered: false,
+						Items: []parsedListItem{
+							{
+								Blocks: []parsedBlockNode{
+									&parsedBlock{
+										Type: "Paragraph",
+										Attr: "",
+										Text: "child",
+										Range: ast.Range{
+											StartLine: 2,
+											EndLine:   2,
+										},
+									},
+								},
+								Range: ast.Range{
+									StartLine: 2,
+									EndLine:   2,
+								},
+							},
+						},
+						Range: ast.Range{
+							StartLine: 2,
+							EndLine:   2,
+						},
+					},
+				},
+				Range: ast.Range{
+					StartLine: 1,
+					EndLine:   2,
+				},
+			},
+		},
+		Range: ast.Range{
+			StartLine: 1,
+			EndLine:   2,
+		},
+	}
+
+	output, ok, err := (&listParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("list with a raw nesting level jump was not parsed")
+	}
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
+	}
+	if input.pos != 1 {
+		t.Errorf("position in context is not updated correctly. want 1, got %d", input.pos)
+	}
+}
