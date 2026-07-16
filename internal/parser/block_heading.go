@@ -11,8 +11,8 @@ type headingParser struct{}
 
 func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 	level, content := parseHeadingLine(ctx.getLine())
-	if level <= 0 {
-		return &parsedBlock{}, false, nil
+	if level < 1 || level > 6 {
+		return nil, false, nil
 	} else {
 		return &parsedBlock{
 			Type: "Heading",

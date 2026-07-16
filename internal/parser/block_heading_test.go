@@ -53,15 +53,41 @@ func TestParseHeading_Level2(t *testing.T) {
 	}
 }
 
+func TestParseHeading_LevelOutOfRange(t *testing.T) {
+	input := &blockContext{
+		lines: []string{"======= Heading7"},
+		pos:   0,
+	}
+
+	output, ok, err := (&headingParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if ok {
+		t.Error("heading above level 6 was parsed successfully")
+	}
+	if output != nil {
+		t.Errorf("heading above level 6 returned a node: %v", output)
+	}
+	if input.pos != 0 {
+		t.Errorf("position in context changed. want 0, got %d", input.pos)
+	}
+}
+
 func TestParseHeading_NoSpace(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"=Heading"},
 		pos:   0,
 	}
-	output, ok, _ := (&headingParser{}).parse(input)
-	want := &parsedBlock{}
-	if ok || !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	output, ok, err := (&headingParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if ok {
+		t.Error("heading without a separator space was parsed successfully")
+	}
+	if output != nil {
+		t.Errorf("heading without a separator space returned a node: %v", output)
 	}
 }
 
@@ -70,9 +96,14 @@ func TestParseHeading_NoText(t *testing.T) {
 		lines: []string{"="},
 		pos:   0,
 	}
-	output, ok, _ := (&headingParser{}).parse(input)
-	want := &parsedBlock{}
-	if ok || !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	output, ok, err := (&headingParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if ok {
+		t.Error("heading without a separator or content was parsed successfully")
+	}
+	if output != nil {
+		t.Errorf("heading without a separator or content returned a node: %v", output)
 	}
 }
