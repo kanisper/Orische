@@ -53,6 +53,9 @@ func parseBlockDirective(line string) (string, string, bool) {
 	trimmed = strings.TrimSuffix(trimmed, "]")
 	idx := strings.Index(trimmed, ":")
 	if idx < 0 {
+		if trimmed == "" {
+			return "", "", false
+		}
 		return trimmed, "", true
 	} else if idx == 0 {
 		return "", "", false

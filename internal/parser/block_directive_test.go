@@ -124,24 +124,35 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 }
 
 func TestParseBlockDirective_NoType(t *testing.T) {
-	input := &blockContext{
-		lines: []string{
-			":::[:go]",
-			"fmt.Println(\"Hello, world!\")",
-			":::",
-		},
-		pos: 0,
+	tests := []string{
+		":::[:go]",
+		":::[]",
 	}
 
-	output, ok, err := (&blockDirectiveParser{}).parse(input)
+	for _, opener := range tests {
+		t.Run(opener, func(t *testing.T) {
+			input := &blockContext{
+				lines: []string{
+					opener,
+					"fmt.Println(\"Hello, world!\")",
+					":::",
+				},
+				pos: 0,
+			}
 
-	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
-	}
-	if ok {
-		t.Error("directive without a type was parsed successfully")
-	}
-	if output != nil {
-		t.Errorf("directive without a type returned a node: %v", output)
+			output, ok, err := (&blockDirectiveParser{}).parse(input)
+			if err != nil {
+				t.Fatalf("parse returned an error: %v", err)
+			}
+			if ok {
+				t.Error("directive without a type was parsed successfully")
+			}
+			if output != nil {
+				t.Errorf("directive without a type returned a node: %v", output)
+			}
+			if input.pos != 0 {
+				t.Errorf("position in context changed. want 0, got %d", input.pos)
+			}
+		})
 	}
 }
