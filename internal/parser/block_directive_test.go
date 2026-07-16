@@ -81,12 +81,45 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 		pos: 0,
 	}
 
-	output, ok, _ := (&blockDirectiveParser{}).parse(input)
+	output, ok, err := (&blockDirectiveParser{}).parse(input)
 
-	want := &parsedBlock{}
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if ok {
+		t.Error("unterminated directive was parsed successfully")
+	}
+	if output != nil {
+		t.Errorf("unterminated directive returned a node: %v", output)
+	}
+	if input.pos != 0 {
+		t.Errorf("position in context was not restored. want: 0, got: %d", input.pos)
+	}
 
-	if ok && !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	doc, err := NewParser(nil).parseDocument(input.lines)
+	if err != nil {
+		t.Fatalf("parse document returned an error: %v", err)
+	}
+
+	wantDoc := &parsedDocument{
+		Blocks: []parsedBlockNode{
+			&parsedBlock{
+				Type: "Paragraph",
+				Attr: "",
+				Text: ":::[code:go]\nfmt.Println(\"Hello, world!\")",
+				Range: ast.Range{
+					StartLine: 1,
+					EndLine:   2,
+				},
+			},
+		},
+		Range: ast.Range{
+			StartLine: 1,
+			EndLine:   2,
+		},
+	}
+	if !reflect.DeepEqual(doc, wantDoc) {
+		t.Errorf("document parsed incorrectly.\nwant:\n%v\ngot:\n%v", wantDoc, doc)
 	}
 }
 
@@ -100,11 +133,15 @@ func TestParseBlockDirective_NoType(t *testing.T) {
 		pos: 0,
 	}
 
-	output, ok, _ := (&blockDirectiveParser{}).parse(input)
+	output, ok, err := (&blockDirectiveParser{}).parse(input)
 
-	want := &parsedBlock{}
-
-	if ok && !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if ok {
+		t.Error("directive without a type was parsed successfully")
+	}
+	if output != nil {
+		t.Errorf("directive without a type returned a node: %v", output)
 	}
 }

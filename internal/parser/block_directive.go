@@ -10,15 +10,16 @@ type blockDirectiveParser struct{}
 
 func (*blockDirectiveParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 	if !isBlockDirective(ctx.getLine()) {
-		return &parsedBlock{}, false, nil
+		return nil, false, nil
 	}
 
 	dirtype, attr, ok := parseBlockDirective(ctx.getLine())
 	if !ok {
-		return &parsedBlock{}, false, nil
+		return nil, false, nil
 	}
 
-	startLine := ctx.getPos() + 1
+	startPos := ctx.getPos()
+	startLine := startPos + 1
 	ctx.advance(1)
 
 	content := []string{}
@@ -38,7 +39,9 @@ func (*blockDirectiveParser) parse(ctx *blockContext) (parsedBlockNode, bool, er
 		content = append(content, line)
 		ctx.advance(1)
 	}
-	return &parsedBlock{}, false, nil
+
+	ctx.setPos(startPos)
+	return nil, false, nil
 }
 
 func isBlockDirective(line string) bool {
