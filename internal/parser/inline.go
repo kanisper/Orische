@@ -79,7 +79,7 @@ func parseInline(text string, start int) (ast.Inline, int, bool, error) {
 	}
 
 	contentStart := headerEnd + 2
-	if contentStart+1 >= len(text) {
+	if contentStart >= len(text) {
 		return nil, start, false, nil
 	}
 

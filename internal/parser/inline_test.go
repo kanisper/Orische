@@ -91,6 +91,23 @@ func TestParseNestedCodespan(t *testing.T) {
 	}
 }
 
+func TestParseEmptyInlineContent(t *testing.T) {
+	input := ":[em]{}:[code]{}:[link:https://example.com]{}"
+	want := []ast.Inline{
+		&ast.Emphasis{Content: nil},
+		&ast.CodeSpan{Value: ""},
+		&ast.Link{URI: "https://example.com", Content: nil},
+	}
+
+	output, err := parseInlines(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parsed incorrectly.\n(-want +got)\n%s\n", diff)
+	}
+}
+
 func TestParseInvalidInlines(t *testing.T) {
 	input := ":[em]{There is no end brace."
 
