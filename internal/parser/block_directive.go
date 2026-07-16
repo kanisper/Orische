@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 type blockDirectiveParser struct{}

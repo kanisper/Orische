@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 type codeBlockBuilder struct{}

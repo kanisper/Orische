@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 type headingParser struct{}

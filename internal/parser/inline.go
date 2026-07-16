@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 func parseInlines(text string) ([]ast.Inline, error) {

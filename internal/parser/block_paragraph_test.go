@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 func TestParseParagraph(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 func TestParseBlockDirective(t *testing.T) {

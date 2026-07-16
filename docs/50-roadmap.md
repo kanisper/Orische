@@ -6,7 +6,7 @@
 - Inline syntax
 - HTML renderer
 - Single-level nested lists
-- Minimal CLI (`medoc [file]`)
+- Minimal CLI (`orische [file]`)
 
 ---
 

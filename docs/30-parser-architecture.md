@@ -61,7 +61,7 @@ The block parser context does not need a generic `nested` flag.
 
 The block parser produces an intermediate representation that is close to the AST shape, but still stores raw text for inline-capable content.
 
-These are defined at `medoc/internal/parser/parsed_block.go` file.
+These are defined at `internal/parser/parsed_block.go` file.
 
 ### Pointer Policy
 

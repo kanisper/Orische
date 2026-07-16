@@ -1,6 +1,6 @@
 package parser
 
-import "medoc/internal/ast"
+import "orische/internal/ast"
 
 type Spec struct {
 	blockParsers []blockParser

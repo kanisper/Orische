@@ -13,7 +13,7 @@
 
 ```text
 /cmd
-  /medoc
+  /orische
 /internal
   /ast
   /parser
@@ -44,7 +44,7 @@
 
 - Converts AST → HTML
 
-### cmd/medoc
+### cmd/orische
 
 - CLI entrypoint
 - Reads from stdin or a file path

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 type Parser struct {

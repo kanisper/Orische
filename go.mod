@@ -1,4 +1,4 @@
-module medoc
+module orische
 
 go 1.22
 

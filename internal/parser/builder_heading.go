@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 type headingBuilder struct{}

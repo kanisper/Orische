@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 func TestParseInline(t *testing.T) {

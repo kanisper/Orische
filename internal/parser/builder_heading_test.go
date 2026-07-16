@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 
 	"github.com/google/go-cmp/cmp"
 )

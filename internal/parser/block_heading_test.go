@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"medoc/internal/ast"
+	"orische/internal/ast"
 )
 
 func TestParseHeading(t *testing.T) {

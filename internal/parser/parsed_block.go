@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"medoc/internal/ast"
+	"orische/internal/ast"
 	"strings"
 )
 
