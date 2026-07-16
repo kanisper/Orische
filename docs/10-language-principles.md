@@ -1,37 +1,37 @@
 # Language Principles
 
-## 1. Strict Parsing
+## Predictable Parsing
 
-- Invalid syntax is NOT tolerated
-- Invalid constructs are treated as plain text
+Syntax is explicit and parsing is deterministic. The parser does not auto-correct malformed input.
 
-## 2. Explicit Structure
+Malformed block candidates normally fall through to paragraph parsing. Malformed or unsupported inline candidates remain literal text. Syntactically valid block directives require a registered builder and may return an error if unsupported.
 
-- No implicit parsing magic
-- All constructs must be clearly delimited
+## Explicit Structure
 
-## 3. Syntax Strategy
+Common document structures use marker-based syntax:
 
-This language uses a **mixed syntax model**:
+- headings use `=`;
+- lists use `*` and `#`.
 
-- Simple marker-based syntax for common structures
-  - Headings (`=`)
-  - Lists (`*`, `#`)
+Extensible block and inline forms use explicit delimiters:
 
-- Directive-based syntax for extensible blocks
-  - :::[type:attr] ... :::
+```text
+:::[type:attribute]
+content
+:::
 
-This design prioritizes readability for common cases and extensibility for advanced features.
+:[type:attribute]{content}
+```
 
-- Inline syntax:
-  :[type:attr]{content}
+Attributes are optional opaque strings. The first colon separates the type from the attribute.
 
-## 4. Minimal Ambiguity
+## Separation of Concerns
 
-- No Markdown-style loose parsing
-- No auto-correction
+The implementation separates:
 
-## 5. Extensibility
+1. document block parsing;
+2. parsed-block IR;
+3. AST building and inline parsing;
+4. rendering.
 
-- Syntax can be extended later through explicit parser and builder registration
-- Future expansion without breaking core
+Syntax registration exists internally. A stable public extension API is not currently provided.

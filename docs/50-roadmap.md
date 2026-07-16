@@ -1,24 +1,41 @@
-# Roadmap
+# Project Status
 
-## Phase 1
+This file records current repository status. It is not a versioned language specification.
 
-- Basic blocks
-- Inline syntax
-- HTML renderer
-- Single-level nested lists
-- Minimal CLI (`orische [file]`)
+## Implemented and Tested
 
----
+- AST definitions
+- Document block parser chain
+- Headings with levels 1–6
+- Paragraphs
+- Ordered and unordered lists
+- Recursive list nesting with raw-to-logical level normalization
+- `code` block directives
+- Inline emphasis, code spans, and links
+- Parsed-block IR and AST builders
 
-## Phase 2
+Parser validation:
 
-- Multi-level nested lists
-- Complex list items (multiple blocks inside list items)
-- Extended attributes (key=value)
+```sh
+go test ./internal/parser
+```
 
----
+## Under Development
 
-## Phase 3
-- Plugin system
-- Multiple output formats
-- Performance improvements
+- HTML rendering
+- Broader parser edge-case coverage
+- Documentation maintenance
+
+## Not Implemented
+
+- Command-line interface
+- Stable public extension API
+- Structured attributes such as `key=value`
+- Additional output formats
+
+## Possible Future Work
+
+- Additional block and inline directive types
+- Escaping rules
+- Performance measurement and optimization
+- Plugin or registration APIs after package boundaries stabilize

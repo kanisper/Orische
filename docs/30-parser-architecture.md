@@ -1,235 +1,117 @@
 # Parser Architecture
 
-## Overview
-
-Parsing is performed in three internal stages:
-
-1. Block parsing
-2. AST building + inline parsing
-3. Rendering, outside the parser package
-
-The parser does not build final AST block nodes directly during block parsing.
-Instead, it first builds a parsed block IR, then converts that IR into AST.
-parsed block node in IR is implemented as a common interface of any parsed block. This can help the AST builder simple and consistent.
-
-## Flow
+## Pipeline
 
 ```text
-Text
-  ↓ splitLines
-[]string
-  ↓ block parser
-ParsedDocument
-  ↓ builder + inline parser
-ast.Document
+input string
+  → splitLines
+  → document block parsers
+  → private parsed-block IR
+  → AST builders and inline parser
+  → ast.Document
 ```
 
-Block parser reads structure only.
-inline parser is called by the builder for nodes that need inline content.
+Rendering is outside the parser package.
 
----
+## Block Parser Chain
 
-## Block Parsing
+`parseBlocks` processes nonblank lines. `parseOneBlock` tries parsers in this order:
 
-- Operates line-by-line
-- Uses a parser chain for document-level blocks
-- Produces parsed block IR
-- Does not call the inline parser
-- Does not produce final AST nodes directly
+1. `blockDirectiveParser`
+2. `headingParser`
+3. `listParser`
+4. `paragraphParser` fallback
 
-Order:
+The fallback is stored separately in `Spec` and appended last by `getParsers`. It must remain last.
 
-1. Directive block
-2. Heading
-3. List
-4. Paragraph
+Block parsing records structure and raw inline-capable text. It does not create final AST blocks or call the inline parser.
 
-The paragraph parser is the fallback parser.
-It must remain last and should always parse when reached.
+## Context Cursor Contract
 
-### Document-level only
+`blockContext.pos` is zero-based. Parsed and AST line ranges are one-based and inclusive.
 
-`parsedBlock` reads document-level blocks only.
-It must not be reused as a generic nested block parser.
+On successful parsing, a block parser leaves `pos` on the last consumed line. `parseBlocks` then calls `ctx.advance(1)`.
 
-List parser is handled by dedicated list logic.
-The block parser context does not need a generic `nested` flag.
+A parser returning `ok=false` must not consume input. A parser that scans ahead must restore its starting position before returning false. This is required for paragraph fallback.
 
----
+`getLine` assumes the context is not at EOF; callers enforce this precondition.
 
-## Parsed Block IR
+## Parsed-Block IR
 
-The block parser produces an intermediate representation that is close to the AST shape, but still stores raw text for inline-capable content.
+`parsedBlockNode` is the common private IR interface. Its current implementations are pointer types:
 
-These are defined at `internal/parser/parsed_block.go` file.
+- `*parsedBlock` for headings, paragraphs, and directives;
+- `*parsedList` for lists.
 
-### Pointer Policy
-
-Parsed block nodes should usually satisfy `ParsedBlock` through pointer receivers.
-This keeps IR node handling consistent with AST node handling and avoids accidental value use.
-
----
+The IR keeps raw text until AST building. `getBuilderKey` selects the AST builder.
 
 ## List Parsing
 
-Lists are parsed by the list parser itself, not by recursively calling the document block parser.
+Lists use dedicated recursive parsing and do not invoke the document block parser for item content.
 
-list items may contain only:
-
-- paragraph-like item text
-- a single nested list
-
-Not allowed:
-
-- skipped nesting levels
-
-The list parser is rsponsible for:
-
-- read list markers
-- read item text
-- convert item text to `ParsedParagraph`
-- attach a nested ParsedList when present
-- stop at blank line or non-list block
-
----
-
-## Builder
-
-The builder converts parsed blocks into AST blocks.
-
----
-
-## Inline Parsing
-
-- Character-based scanning
-- Unified inline parser
-- Called only during AST building
-
-Pattern:
-
-:[type:attr]{content}
-
----
-
-## Error Handling
-
-The language uses strict parsing with minimal failure scope.
-
-### Rules
-
-- Invalid inline syntax is treated as text.
-- Only the smallest invalid inline construct becomes text.
-- Surrounding valid inline constructs are preserved.
-- Invalid block structure is treated as paragraph text.
-- The parser does not auto-correct malformed syntax.
-
-### Examples
-
-Input:
+`collectListLines` records each line's raw marker level. `normalizeListLevel` converts raw changes into logical levels:
 
 ```text
-:[em]{valid} :[em]{invalid
+first line: logical = 1
+raw increase: logical = previous logical + 1
+same raw level: logical = previous logical
+raw decrease: logical = max(1, previous logical - raw difference)
 ```
 
-Result:
+Any raw increase creates exactly one deeper logical level. `buildParsedList` recursively constructs nested lists, with no explicit depth limit.
 
-- First inline → parsed
-- Second inline → treated as text
+Each list item initially contains a paragraph-like `*parsedBlock`. A nested `*parsedList` is appended to its parent item's blocks.
 
-Input:
+## AST Building and Inline Parsing
 
-```text
-:::[code]
-missing terminator
-```
+Builders convert private IR into pointer-based AST nodes.
 
-Result:
+- Heading and paragraph builders parse inline content.
+- List builders recursively build item blocks.
+- Code builders preserve text literally and do not parse inline syntax.
+- Parsed source ranges are copied to AST nodes.
 
-- Entire block candidate → paragraph text
+The core builder keys are `heading`, `paragraph`, `list`, and `code`.
 
-Input:
+## Inline Parser
 
-```text
-* item
-# mixed
-```
+The inline parser scans character by character. It recognizes:
 
-Result:
+- emphasis with recursively parsed content;
+- links with recursively parsed content;
+- code spans with literal content.
 
-- Parsed as one unordered list, because style is determined by the first marker at that level
+Malformed and unsupported candidates remain text. Empty content is valid. Code spans end at the first `}` and do not support nesting or escaping.
 
-Input:
+## Error Model
 
-```text
-* item
-**# mixed nested
-```
+Malformed block candidates normally return `ok=false` and fall through to paragraph parsing. Malformed inline candidates remain text.
 
-Result:
+Errors are reserved for unsupported or inconsistent internal states, including:
 
-- Nested list style is determined by the first marker character: `*`
+- no builder registered for a parsed block type;
+- a builder receiving the wrong parsed-node type;
+- an unsupported block inside a list item;
+- unconsumed list lines.
 
----
+A syntactically valid block directive with an unregistered type is a user-reachable AST build error.
 
-## AST Contract (Phase 1)
+## AST Contract
+
+AST interfaces use pointer implementations.
 
 ### Blocks
 
-- Document
-- Heading
-- Paragraph
-- List
-- ListItem
-- CodeBlock
+- `*ast.Heading`
+- `*ast.Paragraph`
+- `*ast.List`
+- `*ast.CodeBlock`
 
-### Heading
+`ast.List.Items` is `[]*ast.ListItem`. List-item blocks currently contain paragraph and nested-list nodes produced by the list parser.
 
-- `Level int`
-- `Content []Inline`
-- `Range ast.Range`
+### Inline nodes
 
-### Paragraph
-
-- `Content []Inline`
-- `Range ast.Range`
-
-### List
-
-- `Ordered bool`
-- `Items []ListItem`
-- `Range ast.Range`
-
-### ListItem
-
-- `Blocks []Block`
-  - Phase 1 parser allows only:
-    - Paragraph
-    - List, single-level nesting only
-- `Range ast.Range`
-
-### CodeBlock
-
-- `Language string`
-  - Taken directly from the block directive attribute
-  - Example: `:::[code:go]` → `Language = "go"`
-- `Text string`
-- `Range ast.Range`
-
-### Inline Nodes
-
-Text:
-
-- `Value string`
-
-Emphasis:
-
-- `Content []Inline`
-
-CodeSpan:
-
-- `Value string`
-
-Link:
-
-- `URI string`
-- `Content []Inline`
+- `*ast.Text`
+- `*ast.Emphasis`
+- `*ast.CodeSpan`
+- `*ast.Link`

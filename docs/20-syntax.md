@@ -1,195 +1,144 @@
-# Syntax Specification (v0.1)
+# Syntax Specification
 
-## Blocks
+This document describes current parser behavior. Tests and implementation take precedence if this document becomes stale.
 
-### Heading
+## General Block Rules
 
-```text
-= Heading1
-== Heading2
-```
+Input is parsed line by line. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
 
-### Paragraph
+Block parsers run in this order:
 
-- Separated by blank lines
+1. block directive;
+2. heading;
+3. list;
+4. paragraph fallback.
 
-### Unordered List
+Once a paragraph starts, it consumes every consecutive nonblank line. A heading, list marker, or directive opener on a later paragraph line remains paragraph text. Use a blank line before such a block when the preceding block is a paragraph.
 
-```text
-* item
-** nested
-```
+Source ranges are one-based and inclusive.
 
-### Ordered List
+## Headings
 
-```text
-# item
-## nested
-```
-
-### List Marker Style
-
-List style is determined by the first marker at the same level.
+A heading consists of 1–6 `=` characters, one literal space, and content:
 
 ```text
-* unordered
-# still unordered
+= Level 1
+====== Level 6
 ```
 
-If a marker run mixes `*` and `#`, the first character determines the style.
+The number of `=` characters is the heading level. These are not headings and fall through to paragraph parsing:
+`=Missing space` and `=` are not headings. A line with seven or more leading `=` markers is also not a heading. These forms fall through to paragraph parsing.
+
+Heading content is inline-parsed during AST building.
+
+## Paragraphs
+
+A paragraph is one or more consecutive nonblank lines that are not consumed by another block parser at the start of the block.
 
 ```text
-**# nested unordered
+First line
+Second line
 ```
 
-### Code Block
+Lines are joined with `\n`, and their other whitespace is preserved. A blank or whitespace-only line ends the paragraph.
+
+## Lists
+
+### List lines
+
+A list line consists of:
+
+1. one or more marker characters;
+2. one literal space;
+3. item text.
+
+Each marker must be `*` or `#`.
 
 ```text
-:::[code]
-code here
-:::
-
-:::[code:go]
-fmt.Println("hello")
-:::
+* unordered item
+# ordered item
+** nested item
+*# mixed-marker item
 ```
 
----
+Leading indentation is not accepted. Item text may be empty.
 
-## Inline Elements
+The first marker character determines the candidate style for that line:
 
-### General Form
+- `*` means unordered;
+- `#` means ordered.
+
+The first item in each constructed logical list determines that list's style. A later style change at the same logical level does not split the list.
 
 ```text
-:[type]{content}
-:[type:attr]{content}
+* unordered list
+# still part of the same unordered list
 ```
 
-### Supported Types
+### Raw and logical levels
 
-#### Emphasis
+The number of marker characters is the raw level. Raw levels are normalized into logical nesting levels.
+
+- The first list line always has logical level 1.
+- A raw-level increase adds exactly one logical level, regardless of the increase size.
+- An unchanged raw level keeps the same logical level.
+- A raw-level decrease subtracts the raw-level difference from the previous logical level, with a minimum of 1.
+
+Therefore both examples create one nested level:
 
 ```text
-:[em]{text}
+* parent
+** child
 ```
-
-#### Code
 
 ```text
-:[code]{x := 1}
+* parent
+*** child
 ```
 
-#### Link
+The second example normalizes raw levels `1 → 3` to logical levels `1 → 2`.
 
-```text
-:[link:https://example.com]{Example}
-```
+List nesting has no explicit depth limit. Each item contains its paragraph-like item text and may contain a recursively nested list.
 
----
+A blank or non-list line ends the current consecutive list run. Blank lines cannot separate items within one list.
 
-## Strict Rules
+## Block Directives
 
-Invalid patterns are NOT parsed:
-
-- Missing closing `}`
-- Missing `]`
-- Invalid attribute structure
-- Unknown inline types
-
-All such cases are treated as plain text.
-
----
-
-## Attribute Grammar (Phase 1)
-
-Attributes are treated as a **single opaque string**.
-
-### Syntax
-
-:[type:attr]{content}
-
-### Parsing Rule
-
-- The **first colon** separates `type` and `attr`
-- Everything after the first colon is part of the attribute string
-- Additional colons are allowed inside the attribute
-
-### Examples
-
-:[link:https://example.com]{Example}
-:[code:go]{fmt.Println("hello")}
-:[custom:a:b:c]{value}
-
-### Invalid Cases
-
-- Missing type: :[:attr]{x}
-- Missing closing `]` or `}`
-- Empty type name
-
-### Notes
-
-The parser does NOT interpret attribute structure in Phase 1.
-
----
-
-## List Rules (Phase 1)
-
-### Allowed
-
-- Single-line list item text
-- Single-level nested lists
-- Continuous list blocks without blank lines
-
-### Not Allowed (Phase 1)
-
-- Blank lines inside lists
-- Multi-paragraph list items
-- Nested blocks inside list items, **except for a single nested list**
-- Skipping nesting levels
-- any blocks excluding paragraph blocks inside list items
-
-Invalid list candidates are treated as paragraph text.
-
-### Termination
-
-A list ends when:
-
-- A blank line is encountered
-- A non-list block starts
-
----
-
-## Block Directive Grammar (Phase 1)
-
-### General Form
+### Form
 
 ```text
 :::[type]
 content
 :::
 
-:::[type:attr]
+:::[type:attribute]
 content
 :::
 ```
 
-### Parsing Rule
+The opener and terminator must start at column 1. The terminator must be exactly `:::`.
 
-- The first colon separates `type` and `attr`
-- Everything after the first colon is part of the attribute string
-- Additional colons are allowed inside the attribute
+The first colon inside the header separates the type and attribute. Additional colons belong to the opaque attribute string.
 
-### Phase 1 Interpretation
+The type must be nonempty. These are invalid and fall through to paragraph parsing:
 
-- The parser treats the attribute as a single opaque string
-- For `code`, the attribute value is assigned to the `Language` field of the AST node
-- For `code`, `:::[code:go]` sets `Language` to `go`
+```text
+:::[]
+content
+:::
 
-### Examples
+:::[:attribute]
+content
+:::
+```
+
+A missing terminator also causes the entire nonblank candidate to fall through to paragraph parsing.
+
+The core parser currently has an AST builder only for the `code` directive:
 
 ```text
 :::[code]
-fmt.Println("hello")
+code text
 :::
 
 :::[code:go]
@@ -197,10 +146,54 @@ fmt.Println("hello")
 :::
 ```
 
-### Invalid Cases
+For `code`, the attribute becomes `CodeBlock.Language`. Content is preserved literally and is not inline-parsed. A syntactically valid directive with an unregistered type causes an AST build error.
 
-- Missing closing `]`
-- Missing closing block terminator `:::`
-- Empty block type
+## Inline Elements
 
-Invalid block directives are treated as paragraph text.
+Inline candidates use:
+
+```text
+:[type]{content}
+:[type:attribute]{content}
+```
+
+The first colon separates the type and opaque attribute. Additional colons remain in the attribute. Type matching is case-sensitive.
+
+Malformed, unterminated, or unsupported inline candidates remain literal text. There is no escape syntax.
+
+Empty inline content is valid.
+
+### Emphasis
+
+```text
+:[em]{text}
+:[em]{}
+```
+
+Emphasis content is recursively inline-parsed. An emphasis attribute is accepted but ignored.
+
+### Code span
+
+```text
+:[code]{x := 1}
+:[code]{}
+```
+
+Code content is literal and ends at the first `}`. Nested inline syntax is not parsed inside code. A code attribute is accepted but ignored.
+
+### Link
+
+```text
+:[link:https://example.com]{Example}
+:[link:https://example.com]{}
+```
+
+The attribute is the URI and must be nonempty. Link content is recursively inline-parsed. Empty content creates a link with no visible content; the URI is not inserted as display text.
+
+## Fallback Summary
+
+- Invalid heading opener → paragraph text
+- Invalid or unterminated block directive → paragraph text
+- Invalid list line at block start → paragraph text
+- Invalid or unsupported inline candidate → literal text
+- Valid block directive without a registered builder → AST build error

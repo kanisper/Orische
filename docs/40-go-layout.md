@@ -1,123 +1,63 @@
 # Go Project Layout
 
-## Core Policy
-
-- Single module
-- Minimal package count
-- Expand via files first, not packages
-- Keep parser internals in `internal/parser` unless a boundary becomes truly stable
-
----
-
-## Directory Structure
+## Current Structure
 
 ```text
-/cmd
-  /orische
-/internal
-  /ast
-  /parser
-  /render/html
-/testdata
-/docs
+cmd/                         # reserved; currently empty
+docs/                        # design and behavior documentation
+internal/
+  ast/                       # AST definitions
+  parser/                    # parser, private IR, builders, tests
+  render/html/               # HTML renderer under development
 ```
 
----
+There is currently no `testdata/` directory or separate syntax-specification package.
 
-## Package Roles
+## Package Responsibilities
 
-### ast
+### `internal/ast`
 
-- Defines AST nodes
-- Stable layer
-- Uses pointer-oriented node contracts where useful
+Defines document, block, inline, and range types. AST interfaces are implemented by pointer types.
 
-### parser
+### `internal/parser`
 
-- splits input into lines
-- Parses document-level blocks into parsed block IR
-- Parses list structure with dedicated list logic
-- Builds AST from parsed block IR
-- Parses inline systax during build
+- splits input into lines;
+- parses document blocks into private parsed-block IR;
+- parses list structure with dedicated recursive logic;
+- builds AST nodes from IR;
+- parses inline content during AST building.
 
-### render/html
+Syntax registration is implemented internally in `internal/parser/spec.go`.
 
-- Converts AST → HTML
+### `internal/render/html`
 
-### cmd/orische
+Converts AST nodes to HTML. This package is under development and is not part of parser-only validation.
 
-- CLI entrypoint
-- Reads from stdin or a file path
-- Writes rendered HTML to stdout
+### `cmd`
 
----
+Reserved for future command-line entrypoints. No CLI is currently implemented.
 
-## Parser Growth Strategy
+## Package Policy
 
-Phase 1 layout:
+- Keep the project in one Go module.
+- Prefer file-level separation before adding packages.
+- Keep parser internals in `internal/parser` until a stable public boundary is needed.
+- Do not reuse document block parsing as a generic nested-block parser.
+- Do not present internal registration as a public extension API.
 
-```text
-internal/parser/
-  parser.go
-  context.go
-  spec.go
+## Parser Files
 
-  parsed_block.go
+The parser package is organized by responsibility:
 
-  block_directive.go
-  block_heading.go
-  block_list.go
-  block_paragraph.go
+- `parser.go`, `context.go`, `spec.go` — orchestration and registration
+- `parsed_block.go` — private parsed-block IR
+- `block_*.go` — document block parsers
+- `builder_*.go` — AST builders
+- `inline.go` — inline parser
+- `*_test.go` — package behavior tests
 
-  builder_code.go
-  builder_heading.go
-  builder_list.go
-  builder_paragraph.go
+Validate parser changes with:
 
-  inline.go
+```sh
+go test ./internal/parser
 ```
-
-### parser.go
-
-- Parser entrypoint
-- Coordinates block parse -> build
-
-### context.go
-
-- Block parser cursor state
-- Holds lines and current position
-
-### spec.go
-
-- Parser and builder registration
-- Keeps paragraph fallback last
-- May remain internal to `parser` until there is a real need for a public syntax configuration package
-
-### parsed_block.go
-
-- Parsed block IR definitions
-
-### block_*.go
-
-- Document-level block parsers
-- Block parsers produce parsed block IR, not AST
-
-### builder_*.go
-
-- Converts parsed block IR to AST
-- Calls inline parser
-- Does not inline-parse code blocks
-
-### inline.go
-
-- Unified inline parser
-
----
-
-## Avoid
-
-- Multiple modules
-- Early package fragmentation
-- Generic names such as `util` or `common`
-- A public `internal/ast` package before syntax configuration has a stable API
-- Reusing document block parsing as a generic neted parser
