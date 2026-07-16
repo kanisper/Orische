@@ -58,7 +58,7 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2",
 		Range: ast.Range{
-			StartLine: 0,
+			StartLine: 1,
 			EndLine:   2,
 		},
 	}
