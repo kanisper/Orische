@@ -146,7 +146,7 @@ The parser does NOT interpret attribute structure in Phase 1.
 - Multi-paragraph list items
 - Nested blocks inside list items, **except for a single nested list**
 - Skipping nesting levels
-- Code blocks inside list items
+- any blocks excluding paragraph blocks inside list items
 
 Invalid list candidates are treated as paragraph text.
 

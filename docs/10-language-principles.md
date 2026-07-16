@@ -33,5 +33,5 @@ This design prioritizes readability for common cases and extensibility for advan
 
 ## 5. Extensibility
 
-- Syntax defined via modules
+- Syntax can be extended later through explicit parser and builder registration
 - Future expansion without breaking core

@@ -5,8 +5,9 @@ This project implements a custom lightweight markup language parser and HTML con
 ## Goals
 
 - Strict and predictable parsing
+- Explicit syntax with minimal ambiguity
 - Modular syntax design
-- Clear separation between parsing and rendering
+- Clear separation between block parsing, inline parsing, AST building, and rendering
 - Minimal structural changes over time
 
 ## Directory Guide

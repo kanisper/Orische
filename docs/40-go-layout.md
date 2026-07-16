@@ -5,6 +5,7 @@
 - Single module
 - Minimal package count
 - Expand via files first, not packages
+- Keep parser internals in `internal/parser` unless a boundary becomes truly stable
 
 ---
 
@@ -17,7 +18,8 @@
   /ast
   /parser
   /render/html
-  /spec
+/testdata
+/docs
 ```
 
 ---
@@ -26,21 +28,21 @@
 
 ### ast
 
-- Defines nodes
+- Defines AST nodes
 - Stable layer
+- Uses pointer-oriented node contracts where useful
 
 ### parser
 
-- Block + inline parsing
-- Expected to grow
+- splits input into lines
+- Parses document-level blocks into parsed block IR
+- Parses list structure with dedicated list logic
+- Builds AST from parsed block IR
+- Parses inline systax during build
 
 ### render/html
 
 - Converts AST → HTML
-
-### spec
-
-- Defines enabled syntax
 
 ### cmd/medoc
 
@@ -52,27 +54,63 @@
 
 ## Parser Growth Strategy
 
-Start with:
+Phase 1 layout:
 
 ```text
-parser/
+internal/parser/
   parser.go
   context.go
-  block.go
+  spec.go
+
+  parsed_block.go
+
+  block_directive.go
+  block_heading.go
+  block_list.go
+  block_paragraph.go
+
+  builder_code.go
+  builder_heading.go
+  builder_list.go
+  builder_paragraph.go
+
   inline.go
 ```
 
-Then expand into:
+### parser.go
 
-```text
-parser/
-  blocks_heading.go
-  blocks_list.go
-  blocks_directive.go
-  inlines_directive.go
-```
+- Parser entrypoint
+- Coordinates block parse -> build
 
-Only split packages if necessary.
+### context.go
+
+- Block parser cursor state
+- Holds lines and current position
+
+### spec.go
+
+- Parser and builder registration
+- Keeps paragraph fallback last
+- May remain internal to `parser` until there is a real need for a public syntax configuration package
+
+### parsed_block.go
+
+- Parsed block IR definitions
+
+### block_*.go
+
+- Document-level block parsers
+- Block parsers produce parsed block IR, not AST
+
+### builder_*.go
+
+- Converts parsed block IR to AST
+- Calls inline parser
+- Does not inline-parse code blocks
+
+### inline.go
+
+- Unified inline parser
 
 ---
 
@@ -80,4 +118,6 @@ Only split packages if necessary.
 
 - Multiple modules
 - Early package fragmentation
-- Generic names (`util`, `common`)
+- Generic names such as `util` or `common`
+- A public `internal/ast` package before syntax configuration has a stable API
+- Reusing document block parsing as a generic neted parser
