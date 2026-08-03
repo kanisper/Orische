@@ -178,7 +178,7 @@ int main()
 `
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := renderer.Render(&buf, input)
 
 	if err != nil {

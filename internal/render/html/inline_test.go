@@ -36,7 +36,7 @@ func TestInlineRender(t *testing.T) {
 	want := "Plain Text<em>Emphasized Text</em><code>Code Span</code><a href=\"https://example.com\">Link Text</a>"
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := renderer.renderInlines(&buf, input)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func TestInlineRenderEscapesHTML(t *testing.T) {
 		"<a href=\"https://example.com/search?q=&#34;quoted&#34;&amp;page=1\">&lt;link&gt;</a>"
 
 	var buf bytes.Buffer
-	if err := NewRenderer(coreSpec()).renderInlines(&buf, input); err != nil {
+	if err := NewRenderer().renderInlines(&buf, input); err != nil {
 		t.Fatalf("rendering failed: %s", err)
 	}
 
@@ -88,7 +88,7 @@ func TestLinkRendererAllowsSupportedSchemes(t *testing.T) {
 			want := `<a href="` + tt.uri + `">link</a>`
 
 			var buf bytes.Buffer
-			err := (&linkRenderer{}).render(NewRenderer(coreSpec()), &buf, input)
+			err := (&linkRenderer{}).render(NewRenderer(), &buf, input)
 			if err != nil {
 				t.Fatalf("rendering failed: %s", err)
 			}
@@ -115,7 +115,7 @@ func TestLinkRendererRejectsUnsupportedSchemes(t *testing.T) {
 			input := &ast.Link{URI: tt.uri, Content: []ast.Inline{&ast.Text{Value: "link"}}}
 
 			var buf bytes.Buffer
-			err := (&linkRenderer{}).render(NewRenderer(coreSpec()), &buf, input)
+			err := (&linkRenderer{}).render(NewRenderer(), &buf, input)
 			if err == nil {
 				t.Fatal("rendering succeeded for an unsupported URI scheme")
 			}

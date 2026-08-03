@@ -20,7 +20,7 @@ func TestHeadingRenderer(t *testing.T) {
 	want := "<h1>Heading level 1 text</h1>\n"
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := (&headingRenderer{}).render(renderer, &buf, input)
 
 	if err != nil {
@@ -48,7 +48,7 @@ func TestCodeBlockRenderer(t *testing.T) {
 	want := strings.Join(want_array, "\n")
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := (&codeblockRenderer{}).render(renderer, &buf, input)
 
 	if err != nil {
@@ -121,7 +121,7 @@ func TestListRenderer(t *testing.T) {
 	want := strings.Join(want_array, "\n")
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := (&listRenderer{}).render(renderer, &buf, input)
 
 	if err != nil {
@@ -143,7 +143,7 @@ func TestParagraphRenderer(t *testing.T) {
 	want := "<p>\nParagraph text\n</p>\n"
 
 	var buf bytes.Buffer
-	renderer := NewRenderer(coreSpec())
+	renderer := NewRenderer()
 	err := (&paragraphRenderer{}).render(renderer, &buf, input)
 
 	if err != nil {
