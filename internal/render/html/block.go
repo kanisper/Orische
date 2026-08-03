@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"html"
 	"io"
 
 	"orische/internal/ast"
@@ -44,8 +45,8 @@ type codeblockRenderer struct{}
 func (*codeblockRenderer) render(_ *Renderer, w io.Writer, codeblock *ast.CodeBlock) error {
 	_, err := fmt.Fprintf(w,
 		"<pre><code data-language=\"%s\">\n%s\n</code></pre>\n",
-		codeblock.Language,
-		codeblock.Text,
+		html.EscapeString(codeblock.Language),
+		html.EscapeString(codeblock.Text),
 	)
 	if err != nil {
 		return fmt.Errorf("codeblock renderer: %w", err)

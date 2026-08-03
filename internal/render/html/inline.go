@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"html"
 	"io"
 
 	"orische/internal/ast"
@@ -31,7 +32,7 @@ func (r *Renderer) renderOneInline(w io.Writer, inline ast.Inline) error {
 type textRenderer struct{}
 
 func (*textRenderer) render(_ *Renderer, w io.Writer, text *ast.Text) error {
-	_, err := fmt.Fprintf(w, "%s", text.Value)
+	_, err := fmt.Fprintf(w, "%s", html.EscapeString(text.Value))
 	if err != nil {
 		return fmt.Errorf("plain text render: %w", err)
 	}
@@ -70,7 +71,7 @@ func (*codespanRenderer) render(_ *Renderer, w io.Writer, codespan *ast.CodeSpan
 		return fmt.Errorf("codespan render: %w", err)
 	}
 
-	_, err = fmt.Fprintf(w, "%s", codespan.Value)
+	_, err = fmt.Fprintf(w, "%s", html.EscapeString(codespan.Value))
 	if err != nil {
 		return fmt.Errorf("codespan render: %w", err)
 	}
@@ -84,7 +85,7 @@ func (*codespanRenderer) render(_ *Renderer, w io.Writer, codespan *ast.CodeSpan
 type linkRenderer struct{}
 
 func (*linkRenderer) render(r *Renderer, w io.Writer, link *ast.Link) error {
-	_, err := fmt.Fprintf(w, "<a href=\"%s\">", link.URI)
+	_, err := fmt.Fprintf(w, "<a href=\"%s\">", html.EscapeString(link.URI))
 	if err != nil {
 		return fmt.Errorf("link render: %w", err)
 	}
