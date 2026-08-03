@@ -14,7 +14,7 @@ Treat the parser implementation and tests as the current language behavior. Upda
 
 - `internal/ast/` — AST definitions and pointer-based node contracts
 - `internal/parser/` — block parsing, parsed-block IR, AST builders, and inline parsing
-- `internal/render/html/` — HTML renderer; currently under development
+- `internal/render/html/` — completed AST-to-HTML renderer and its output/security contracts
 - `cmd/` — reserved for command-line entrypoints; currently empty
 - `docs/` — current syntax, architecture, layout, and status
 
@@ -38,7 +38,13 @@ For parser changes, run:
 go test ./internal/parser
 ```
 
-The HTML renderer is under development and is not required when validating parser-only changes.
+For HTML renderer changes, run:
+
+```sh
+go test ./internal/render/html
+```
+
+Renderer-specific maintenance rules live in `internal/render/html/AGENTS.md`.
 
 ## Change Discipline
 
