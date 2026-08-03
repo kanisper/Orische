@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"net/url"
+	"strings"
 
 	"orische/internal/ast"
 )
@@ -85,7 +87,20 @@ func (*codespanRenderer) render(_ *Renderer, w io.Writer, codespan *ast.CodeSpan
 type linkRenderer struct{}
 
 func (*linkRenderer) render(r *Renderer, w io.Writer, link *ast.Link) error {
-	_, err := fmt.Fprintf(w, "<a href=\"%s\">", html.EscapeString(link.URI))
+	parsedURI, err := url.Parse(link.URI)
+	if err != nil {
+		return fmt.Errorf("link render: invalid URI: %w", err)
+	}
+
+	switch {
+	case strings.EqualFold(parsedURI.Scheme, "http"):
+	case strings.EqualFold(parsedURI.Scheme, "https"):
+	case strings.EqualFold(parsedURI.Scheme, "mailto"):
+	default:
+		return fmt.Errorf("link renderer: unsupported URI scheme %q", parsedURI.Scheme)
+	}
+
+	_, err = fmt.Fprintf(w, "<a href=\"%s\">", html.EscapeString(link.URI))
 	if err != nil {
 		return fmt.Errorf("link render: %w", err)
 	}
