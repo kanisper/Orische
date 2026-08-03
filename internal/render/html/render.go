@@ -1,5 +1,11 @@
 package html
 
+import (
+	"io"
+
+	"orische/internal/ast"
+)
+
 type Renderer struct {
 	spec *Spec
 }
@@ -11,8 +17,17 @@ func NewRenderer(spec *Spec) *Renderer {
 	return &Renderer{spec: spec}
 }
 
-// func Render(doc *ast.Document) (string, error) {
-// 	return NewRenderer(coreSpec()).Render(doc)
-// }
+func Render(w io.Writer, doc *ast.Document) error {
+	return NewRenderer(coreSpec()).Render(w, doc)
+}
 
-// func (r *Renderer) Render(doc *ast.Document) (string, error)
+func (r *Renderer) Render(w io.Writer, doc *ast.Document) error {
+	for _, block := range doc.Blocks {
+		err := r.renderBlock(w, block)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
