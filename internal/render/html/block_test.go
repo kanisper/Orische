@@ -41,7 +41,7 @@ func TestCodeBlockRenderer(t *testing.T) {
 
 	want_array := []string{
 		"<pre><code data-language=\"go\">",
-		"fmt.Println(\"Hello, world!\")",
+		"fmt.Println(&#34;Hello, world!&#34;)",
 		"</code></pre>",
 		"",
 	}

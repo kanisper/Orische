@@ -156,11 +156,11 @@ Plain text <em>Emphasized Text</em>
 </p>
 <h2>heading level 2</h2>
 <pre><code data-language="cpp">
-#include <iostream>
+#include &lt;iostream&gt;
 
 int main()
 {
-  std::cout << "Hello, world!" << endl;
+  std::cout &lt;&lt; &#34;Hello, world!&#34; &lt;&lt; endl;
   return 0;
 }
 </code></pre>
