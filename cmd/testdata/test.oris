@@ -1,0 +1,88 @@
+= Title
+
+Hello, world!
+This is the first text written in :[code]{Orische}.
+:[code]{Orische} is a lightweight markup language for writing structured documents with simple and consistent syntax.
+
+== Inline Elements
+
+Text can contain :[em]{emphasised content} to highlight an important phrase.
+
+Inline code can be written with a code span, such as :[code]{orische input.ori}.
+
+Links can include readable text:
+:[link:https://github.com/kanisper/Orische]{Visit the Orische repository}
+
+Inline elements can also be nested:
+:[em]{Orische can contain :[code]{inline code} inside emphasised text.}
+
+== Lists
+
+Orische supports unordered lists.
+
+* Simple syntax
+* Clear document structure
+* Extensible block and inline elements
+** Block directives
+** Inline directives
+*** Emphasis
+*** Code spans
+*** Links
+* HTML rendering
+
+Ordered lists are also supported.
+
+# Write an Orische document
+# Parse the document into an AST
+# Render the AST as HTML
+## Render headings
+## Render paragraphs
+## Render lists
+## Render code blocks
+
+== Code Block
+
+A code block can specify a language.
+
+:::[code:go]
+package main
+
+import (
+"fmt"
+"os"
+)
+
+func main() {
+fmt.Println("Hello from Orische")
+os.Exit(0)
+}
+:::
+
+A code block can also omit the language.
+
+:::[code]
+orische -o output.html input.ori
+:::
+
+== Complete Example
+
+The following sentence combines multiple inline elements:
+:[em]{Orische} converts structured text such as :[code]{= Heading} into HTML, and its source code is available at :[link:https://github.com/kanisper/Orische]{GitHub}.
+
+=== Nested List Example
+
+* Document
+** Heading
+** Paragraph
+** List
+*** Ordered list
+*** Unordered list
+** Code block
+* Inline content
+** Emphasis
+** Code span
+** Link
+
+== End
+
+This document exercises headings, paragraphs, nested lists, emphasised text, code spans, links, and code blocks.

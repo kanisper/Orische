@@ -1,0 +1,118 @@
+<h1>Title</h1>
+<p>
+Hello, world!
+This is the first text written in <code>Orische</code>.
+<code>Orische</code> is a lightweight markup language for writing structured documents with simple and consistent syntax.
+</p>
+<h2>Inline Elements</h2>
+<p>
+Text can contain <em>emphasised content</em> to highlight an important phrase.
+</p>
+<p>
+Inline code can be written with a code span, such as <code>orische input.ori</code>.
+</p>
+<p>
+Links can include readable text:
+<a href="https://github.com/kanisper/Orische">Visit the Orische repository</a>
+</p>
+<p>
+Inline elements can also be nested:
+<em>Orische can contain <code>inline code</code> inside emphasised text.</em>
+</p>
+<h2>Lists</h2>
+<p>
+Orische supports unordered lists.
+</p>
+<ul>
+<li>Simple syntax</li>
+<li>Clear document structure</li>
+<li>Extensible block and inline elements</li>
+<li>
+<ul>
+<li>Block directives</li>
+<li>Inline directives</li>
+<li>
+<ul>
+<li>Emphasis</li>
+<li>Code spans</li>
+<li>Links</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>HTML rendering</li>
+</ul>
+<p>
+Ordered lists are also supported.
+</p>
+<ol>
+<li>Write an Orische document</li>
+<li>Parse the document into an AST</li>
+<li>Render the AST as HTML</li>
+<li>
+<ol>
+<li>Render headings</li>
+<li>Render paragraphs</li>
+<li>Render lists</li>
+<li>Render code blocks</li>
+</ol>
+</li>
+</ol>
+<h2>Code Block</h2>
+<p>
+A code block can specify a language.
+</p>
+<pre><code data-language="go">
+package main
+
+import (
+&#34;fmt&#34;
+&#34;os&#34;
+)
+
+func main() {
+fmt.Println(&#34;Hello from Orische&#34;)
+os.Exit(0)
+}
+</code></pre>
+<p>
+A code block can also omit the language.
+</p>
+<pre><code data-language="">
+orische -o output.html input.ori
+</code></pre>
+<h2>Complete Example</h2>
+<p>
+The following sentence combines multiple inline elements:
+<em>Orische</em> converts structured text such as <code>= Heading</code> into HTML, and its source code is available at <a href="https://github.com/kanisper/Orische">GitHub</a>.
+</p>
+<h3>Nested List Example</h3>
+<ul>
+<li>Document</li>
+<li>
+<ul>
+<li>Heading</li>
+<li>Paragraph</li>
+<li>List</li>
+<li>
+<ul>
+<li>Ordered list</li>
+<li>Unordered list</li>
+</ul>
+</li>
+<li>Code block</li>
+</ul>
+</li>
+<li>Inline content</li>
+<li>
+<ul>
+<li>Emphasis</li>
+<li>Code span</li>
+<li>Link</li>
+</ul>
+</li>
+</ul>
+<h2>End</h2>
+<p>
+This document exercises headings, paragraphs, nested lists, emphasised text, code spans, links, and code blocks.
+</p>
