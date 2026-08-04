@@ -41,7 +41,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := convertFile(inputPath, outputPath); err != nil {
-		fmt.Fprintf(stderr, "orische: %v\n", err)
+		printErrors(stderr, inputPath, err)
 		return exitFailure
 	}
 
@@ -56,13 +56,13 @@ func convertFile(inputPath, outputPath string) error {
 
 	doc, err := parser.Parse(string(source))
 	if err != nil {
-		return fmt.Errorf("parse %q: %w", inputPath, err)
+		return err
 	}
 
 	var output bytes.Buffer
 
 	if err := htmlrenderer.Render(&output, doc); err != nil {
-		return fmt.Errorf("render %q: %w", inputPath, err)
+		return err
 	}
 
 	if err := os.WriteFile(outputPath, output.Bytes(), 0o644); err != nil {
