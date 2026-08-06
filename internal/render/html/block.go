@@ -11,10 +11,19 @@ import (
 func (r *Renderer) renderBlock(w io.Writer, block ast.Block) error {
 	renderer, ok := r.spec.getBlockRenderer(block)
 	if !ok {
-		return fmt.Errorf("block renderer: not found the renderer for %T type of block", block)
+		return fmt.Errorf("renderBlock: not found the renderer for \"%T\" block", block)
 	}
 
-	return renderer.render(r, w, block)
+	err := renderer.render(r, w, block)
+	if err != nil {
+		return fmt.Errorf(
+			"render \"%T\" block: %w",
+			block,
+			err,
+		)
+	}
+
+	return nil
 }
 
 // heading
@@ -23,17 +32,17 @@ type headingRenderer struct{}
 func (*headingRenderer) render(r *Renderer, w io.Writer, heading *ast.Heading) error {
 	_, err := fmt.Fprintf(w, "<h%d>", heading.Level)
 	if err != nil {
-		return fmt.Errorf("heading renderer: %w", err)
+		return err
 	}
 
 	err = r.renderInlines(w, heading.Content)
 	if err != nil {
-		return fmt.Errorf("heading renderer: %w", err)
+		return err
 	}
 
 	_, err = fmt.Fprintf(w, "</h%d>\n", heading.Level)
 	if err != nil {
-		return fmt.Errorf("heading renderer: %w", err)
+		return err
 	}
 
 	return nil
@@ -49,7 +58,7 @@ func (*codeblockRenderer) render(_ *Renderer, w io.Writer, codeblock *ast.CodeBl
 		html.EscapeString(codeblock.Text),
 	)
 	if err != nil {
-		return fmt.Errorf("codeblock renderer: %w", err)
+		return err
 	}
 
 	return nil
@@ -66,7 +75,7 @@ func (*listRenderer) render(r *Renderer, w io.Writer, list *ast.List) error {
 		_, err = fmt.Fprintln(w, "<ul>")
 	}
 	if err != nil {
-		return fmt.Errorf("list renderer: %w", err)
+		return err
 	}
 
 	for _, item := range list.Items {
@@ -82,7 +91,7 @@ func (*listRenderer) render(r *Renderer, w io.Writer, list *ast.List) error {
 		_, err = fmt.Fprintln(w, "</ul>")
 	}
 	if err != nil {
-		return fmt.Errorf("list renderer: %w", err)
+		return err
 	}
 
 	return nil
@@ -94,33 +103,33 @@ func renderListItem(r *Renderer, w io.Writer, item *ast.ListItem) error {
 		case *ast.Paragraph:
 			_, err := fmt.Fprint(w, "<li>")
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 			err = r.renderInlines(w, b.Content)
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 			_, err = fmt.Fprint(w, "</li>\n")
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 		case *ast.List:
 			_, err := fmt.Fprintln(w, "<li>")
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 			err = (&listRenderer{}).render(r, w, b)
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 			_, err = fmt.Fprintln(w, "</li>")
 			if err != nil {
-				return fmt.Errorf("list item renderer: %w", err)
+				return err
 			}
 
 		default:
@@ -137,17 +146,17 @@ type paragraphRenderer struct{}
 func (*paragraphRenderer) render(r *Renderer, w io.Writer, paragraph *ast.Paragraph) error {
 	_, err := fmt.Fprintln(w, "<p>")
 	if err != nil {
-		return fmt.Errorf("paragraph renderer: %w", err)
+		return err
 	}
 
 	err = r.renderInlines(w, paragraph.Content)
 	if err != nil {
-		return fmt.Errorf("paragraph renderer: %w", err)
+		return err
 	}
 
 	_, err = fmt.Fprintln(w, "\n</p>")
 	if err != nil {
-		return fmt.Errorf("paragraph renderer: %w", err)
+		return err
 	}
 
 	return nil

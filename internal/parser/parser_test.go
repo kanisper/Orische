@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"orische/internal/ast"
+	"orische/internal/diagnostic"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -304,5 +306,26 @@ func TestBuildAST(t *testing.T) {
 
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
+	}
+}
+
+func TestUnsupportedDirective(t *testing.T) {
+	input := `:::[Unsupported]
+content
+:::`
+
+	_, err := Parse(input)
+
+	var diag *diagnostic.Error
+	if !errors.As(err, &diag) {
+		t.Fatalf("expected diagnostic error, but got %v", err)
+	}
+
+	if diag.Message != "unsupported block directive type \"unsupported\"" {
+		t.Errorf("expected message: unsupported directive type \"unsupported\", but got: %s", diag.Message)
+	}
+
+	if diag.Range.StartLine != 1 {
+		t.Errorf("expected start line: 1, but got: %d", diag.Range.StartLine)
 	}
 }

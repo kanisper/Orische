@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"orische/internal/ast"
+	"orische/internal/diagnostic"
 )
 
 type Parser struct {
@@ -100,20 +102,22 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 	for _, node := range parsedDoc.Blocks {
 		builder, ok := p.spec.getBuilder(node.getBuilderKey())
 		if !ok {
-			return nil, fmt.Errorf(
-				"build document: builder not found for parsed block %T with key %q",
-				node,
-				node.getBuilderKey(),
-			)
+			return nil, &diagnostic.Error{
+				Message: fmt.Sprintf("unsupported block directive type %q", node.getBuilderKey()),
+				Range:   node.getBlockRange(),
+			}
 		}
 
 		buildedBlock, err := builder.build(node)
 		if err != nil {
+			var diag *diagnostic.Error
+			if errors.As(err, &diag) {
+				return nil, err
+			}
+
 			return nil, fmt.Errorf(
-				"build document: build failed %q block at lines %d-%d: %w",
+				"build %q block: %w",
 				node.getBuilderKey(),
-				node.getBlockRange().StartLine,
-				node.getBlockRange().EndLine,
 				err,
 			)
 		}

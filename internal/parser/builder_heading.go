@@ -12,12 +12,12 @@ type headingBuilder struct{}
 func (*headingBuilder) build(node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
-		return nil, fmt.Errorf("heading Builder: expected *parsedBlock, got %T", node)
+		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)
 	}
 
 	level, err := strconv.Atoi(block.Attr[len(block.Attr)-1:])
 	if err != nil {
-		return nil, fmt.Errorf("heading Builder: invalid attribute, %s\n%w", block.Attr, err)
+		return nil, fmt.Errorf("invalid attribute %s: %w", block.Attr, err)
 	}
 
 	content, err := parseInlines(block.Text)

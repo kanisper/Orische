@@ -59,12 +59,12 @@ func buildListItemBlock(node parsedBlockNode) (ast.Block, error) {
 	switch block := node.(type) {
 	case *parsedBlock:
 		if !strings.EqualFold(block.Type, "paragraph") {
-			return nil, fmt.Errorf("list builder: unexpected block type in list item: %q", block.Type)
+			return nil, fmt.Errorf("unexpected block type in list item: %q", block.Type)
 		}
 
 		inlines, err := parseInlines(block.Text)
 		if err != nil {
-			return nil, fmt.Errorf("list builder: parse paragraph inlines: %w", err)
+			return nil, err
 		}
 
 		return &ast.Paragraph{
@@ -75,12 +75,12 @@ func buildListItemBlock(node parsedBlockNode) (ast.Block, error) {
 	case *parsedList:
 		nested, err := buildList(block)
 		if err != nil {
-			return nil, fmt.Errorf("list builder: build nested list: %w", err)
+			return nil, err
 		}
 
 		return nested, nil
 
 	default:
-		return nil, fmt.Errorf("list builder: unsupported type of node in list item: %T", node)
+		return nil, fmt.Errorf("unsupported type of node in list item: %T", node)
 	}
 }
