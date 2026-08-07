@@ -123,8 +123,8 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 		Ordered: first.Ordered,
 		Items:   make([]parsedListItem, 0),
 		Range: ast.Range{
-			StartLine: first.Line,
-			EndLine:   first.Line,
+			Start: ast.Position{Line: first.Line, Column: 1},
+			End:   ast.Position{Line: first.Line},
 		},
 	}
 
@@ -140,9 +140,9 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 
 			parent := &list.Items[len(list.Items)-1]
 			parent.Blocks = append(parent.Blocks, nested)
-			parent.Range.EndLine = nested.Range.EndLine
+			parent.Range.End = nested.Range.End
 
-			list.Range.EndLine = nested.Range.EndLine
+			list.Range.End = nested.Range.End
 
 		default:
 			list.Items = append(list.Items, parsedListItem{
@@ -152,18 +152,19 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 						Attr: "",
 						Text: line.Text,
 						Range: ast.Range{
-							StartLine: line.Line,
-							EndLine:   line.Line,
+							Start: ast.Position{Line: line.Line, Column: 1},
+							End:   ast.Position{Line: line.Line, Column: line.RawLevel + 1 + len(line.Text)},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: line.Line,
-					EndLine:   line.Line,
+					Start: ast.Position{Line: line.Line, Column: 1},
+					End:   ast.Position{Line: line.Line, Column: line.RawLevel + 1 + len(line.Text)},
 				},
 			})
 
-			list.Range.EndLine = line.Line
+			list.Range.End.Line = line.Line
+			list.Range.End.Column = line.RawLevel + 1 + len(line.Text)
 			(*index)++
 		}
 	}

@@ -10,10 +10,13 @@ import (
 
 func TestBuildParagraph(t *testing.T) {
 	input := &parsedBlock{
-		Type:  "paragraph",
-		Attr:  "",
-		Text:  "First Line\nThis is :[em]{second line}\nThird line",
-		Range: ast.Range{StartLine: 1, EndLine: 3},
+		Type: "paragraph",
+		Attr: "",
+		Text: "First Line\nThis is :[em]{second line}\nThird line",
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 10},
+		},
 	}
 
 	want := &ast.Paragraph{
@@ -26,7 +29,10 @@ func TestBuildParagraph(t *testing.T) {
 			},
 			&ast.Text{Value: "\nThird line"},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 3},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 10},
+		},
 	}
 
 	got, err := (&paragraphBuilder{}).build(input)

@@ -22,8 +22,8 @@ func TestParseParagraph(t *testing.T) {
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2\n:::[code:go]",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   3,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 12},
 		},
 	}
 
@@ -58,8 +58,8 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   2,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 2, Column: 16},
 		},
 	}
 

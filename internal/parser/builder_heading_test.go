@@ -10,10 +10,13 @@ import (
 
 func TestBuildHeading(t *testing.T) {
 	input := &parsedBlock{
-		Type:  "Heading",
-		Attr:  "level1",
-		Text:  "heading level 1",
-		Range: ast.Range{StartLine: 0, EndLine: 0},
+		Type: "Heading",
+		Attr: "level1",
+		Text: "heading level 1",
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 17},
+		},
 	}
 
 	want := &ast.Heading{
@@ -21,7 +24,10 @@ func TestBuildHeading(t *testing.T) {
 		Content: []ast.Inline{
 			&ast.Text{Value: "heading level 1"},
 		},
-		Range: ast.Range{StartLine: 0, EndLine: 0},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 17},
+		},
 	}
 
 	got, err := (&headingBuilder{}).build(input)

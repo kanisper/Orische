@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"orische/internal/ast"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseBlockDirective(t *testing.T) {
@@ -24,8 +26,8 @@ func TestParseBlockDirective(t *testing.T) {
 		Attr: "go",
 		Text: "fmt.Println(\"Hello, world!\")",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   3,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 3},
 		},
 	}
 
@@ -59,8 +61,8 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 		Attr: "",
 		Text: "fmt.Println(\"Hello, world!\")",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   3,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 3},
 		},
 	}
 
@@ -108,18 +110,18 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 				Attr: "",
 				Text: ":::[code:go]\nfmt.Println(\"Hello, world!\")",
 				Range: ast.Range{
-					StartLine: 1,
-					EndLine:   2,
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 2, Column: 28},
 				},
 			},
 		},
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   2,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 2, Column: 28},
 		},
 	}
-	if !reflect.DeepEqual(doc, wantDoc) {
-		t.Errorf("document parsed incorrectly.\nwant:\n%v\ngot:\n%v", wantDoc, doc)
+	if diff := cmp.Diff(wantDoc, doc); diff != "" {
+		t.Errorf("document parsed incorrectly.\n(-want +got)\n%s", diff)
 	}
 }
 

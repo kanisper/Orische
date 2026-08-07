@@ -29,8 +29,8 @@ func (*paragraphParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) 
 		Attr: "",
 		Text: strings.Join(content, "\n"),
 		Range: ast.Range{
-			StartLine: startPos,
-			EndLine:   ctx.getPos() + 1,
+			Start: ast.Position{Line: startPos, Column: 1},
+			End:   ast.Position{Line: ctx.getPos() + 1, Column: len(content[len(content)-1])},
 		},
 	}, true, nil
 }

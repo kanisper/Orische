@@ -19,8 +19,8 @@ func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 			Attr: "level" + strconv.Itoa(level),
 			Text: content,
 			Range: ast.Range{
-				StartLine: ctx.getPos() + 1,
-				EndLine:   ctx.getPos() + 1,
+				Start: ast.Position{Line: ctx.getPos() + 1, Column: 1},
+				End:   ast.Position{Line: ctx.getPos() + 1, Column: level + 1 + len(content)},
 			},
 		}, true, nil
 	}

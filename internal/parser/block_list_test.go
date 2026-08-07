@@ -29,14 +29,14 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 1",
 						Range: ast.Range{
-							StartLine: 1,
-							EndLine:   1,
+							Start: ast.Position{Line: 1, Column: 1},
+							End:   ast.Position{Line: 1, Column: 19},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 1,
-					EndLine:   1,
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 19},
 				},
 			},
 			{
@@ -46,8 +46,8 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 2",
 						Range: ast.Range{
-							StartLine: 2,
-							EndLine:   2,
+							Start: ast.Position{Line: 2, Column: 1},
+							End:   ast.Position{Line: 2, Column: 19},
 						},
 					},
 					&parsedList{
@@ -60,26 +60,26 @@ func TestParseList(t *testing.T) {
 										Attr: "",
 										Text: "ul level 2 line 1",
 										Range: ast.Range{
-											StartLine: 3,
-											EndLine:   3,
+											Start: ast.Position{Line: 3, Column: 1},
+											End:   ast.Position{Line: 3, Column: 20},
 										},
 									},
 								},
 								Range: ast.Range{
-									StartLine: 3,
-									EndLine:   3,
+									Start: ast.Position{Line: 3, Column: 1},
+									End:   ast.Position{Line: 3, Column: 20},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 3,
-							EndLine:   3,
+							Start: ast.Position{Line: 3, Column: 1},
+							End:   ast.Position{Line: 3, Column: 20},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 2,
-					EndLine:   3,
+					Start: ast.Position{Line: 2, Column: 1},
+					End:   ast.Position{Line: 3, Column: 20},
 				},
 			},
 			{
@@ -89,20 +89,20 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 3",
 						Range: ast.Range{
-							StartLine: 4,
-							EndLine:   4,
+							Start: ast.Position{Line: 4, Column: 1},
+							End:   ast.Position{Line: 4, Column: 19},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 4,
-					EndLine:   4,
+					Start: ast.Position{Line: 4, Column: 1},
+					End:   ast.Position{Line: 4, Column: 19},
 				},
 			},
 		},
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   4,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 4, Column: 19},
 		},
 	}
 
@@ -140,8 +140,8 @@ func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
 						Attr: "",
 						Text: "parent",
 						Range: ast.Range{
-							StartLine: 1,
-							EndLine:   1,
+							Start: ast.Position{Line: 1, Column: 1},
+							End:   ast.Position{Line: 1, Column: 8},
 						},
 					},
 					&parsedList{
@@ -154,32 +154,32 @@ func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
 										Attr: "",
 										Text: "child",
 										Range: ast.Range{
-											StartLine: 2,
-											EndLine:   2,
+											Start: ast.Position{Line: 2, Column: 1},
+											End:   ast.Position{Line: 2, Column: 9},
 										},
 									},
 								},
 								Range: ast.Range{
-									StartLine: 2,
-									EndLine:   2,
+									Start: ast.Position{Line: 2, Column: 1},
+									End:   ast.Position{Line: 2, Column: 9},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 2,
-							EndLine:   2,
+							Start: ast.Position{Line: 2, Column: 1},
+							End:   ast.Position{Line: 2, Column: 9},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 1,
-					EndLine:   2,
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 2, Column: 9},
 				},
 			},
 		},
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   2,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 2, Column: 9},
 		},
 	}
 

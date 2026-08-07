@@ -44,7 +44,10 @@ func TestRender(t *testing.T) {
 				Content: []ast.Inline{
 					&ast.Text{Value: "heading level 1"},
 				},
-				Range: ast.Range{StartLine: 1, EndLine: 1},
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 17},
+				},
 			},
 			&ast.Paragraph{
 				Content: []ast.Inline{
@@ -62,14 +65,20 @@ func TestRender(t *testing.T) {
 						},
 					},
 				},
-				Range: ast.Range{StartLine: 3, EndLine: 4},
+				Range: ast.Range{
+					Start: ast.Position{Line: 3, Column: 1},
+					End:   ast.Position{Line: 4, Column: 38},
+				},
 			},
 			&ast.Heading{
 				Level: 2,
 				Content: []ast.Inline{
 					&ast.Text{Value: "heading level 2"},
 				},
-				Range: ast.Range{StartLine: 6, EndLine: 6},
+				Range: ast.Range{
+					Start: ast.Position{Line: 6, Column: 1},
+					End:   ast.Position{Line: 6, Column: 18},
+				},
 			},
 			&ast.CodeBlock{
 				Language: "cpp",
@@ -80,14 +89,20 @@ int main()
   std::cout << "Hello, world!" << endl;
   return 0;
 }`,
-				Range: ast.Range{StartLine: 8, EndLine: 16},
+				Range: ast.Range{
+					Start: ast.Position{Line: 8, Column: 1},
+					End:   ast.Position{Line: 16, Column: 3},
+				},
 			},
 			&ast.Heading{
 				Level: 3,
 				Content: []ast.Inline{
 					&ast.Text{Value: "heading level 3"},
 				},
-				Range: ast.Range{StartLine: 18, EndLine: 18},
+				Range: ast.Range{
+					Start: ast.Position{Line: 18, Column: 1},
+					End:   ast.Position{Line: 18, Column: 19},
+				},
 			},
 			&ast.List{
 				Ordered: true,
@@ -98,7 +113,10 @@ int main()
 								Content: []ast.Inline{
 									&ast.Text{Value: "ol level 1 line 1"},
 								},
-								Range: ast.Range{StartLine: 20, EndLine: 20},
+								Range: ast.Range{
+									Start: ast.Position{Line: 20, Column: 1},
+									End:   ast.Position{Line: 20, Column: 19},
+								},
 							},
 							&ast.List{
 								Ordered: false,
@@ -109,10 +127,16 @@ int main()
 												Content: []ast.Inline{
 													&ast.Text{Value: "ul level 2 line 1"},
 												},
-												Range: ast.Range{StartLine: 21, EndLine: 21},
+												Range: ast.Range{
+													Start: ast.Position{Line: 21, Column: 1},
+													End:   ast.Position{Line: 21, Column: 20},
+												},
 											},
 										},
-										Range: ast.Range{StartLine: 21, EndLine: 21},
+										Range: ast.Range{
+											Start: ast.Position{Line: 21, Column: 1},
+											End:   ast.Position{Line: 21, Column: 20},
+										},
 									},
 									{
 										Blocks: []ast.Block{
@@ -120,16 +144,28 @@ int main()
 												Content: []ast.Inline{
 													&ast.Text{Value: "ul level 2 line 2"},
 												},
-												Range: ast.Range{StartLine: 22, EndLine: 22},
+												Range: ast.Range{
+													Start: ast.Position{Line: 22, Column: 1},
+													End:   ast.Position{Line: 22, Column: 20},
+												},
 											},
 										},
-										Range: ast.Range{StartLine: 22, EndLine: 22},
+										Range: ast.Range{
+											Start: ast.Position{Line: 22, Column: 1},
+											End:   ast.Position{Line: 22, Column: 20},
+										},
 									},
 								},
-								Range: ast.Range{StartLine: 21, EndLine: 22},
+								Range: ast.Range{
+									Start: ast.Position{Line: 21, Column: 1},
+									End:   ast.Position{Line: 22, Column: 20},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 20, EndLine: 22},
+						Range: ast.Range{
+							Start: ast.Position{Line: 20, Column: 1},
+							End:   ast.Position{Line: 22, Column: 20},
+						},
 					},
 					{
 						Blocks: []ast.Block{
@@ -137,16 +173,28 @@ int main()
 								Content: []ast.Inline{
 									&ast.Text{Value: "ol level 1 line 2"},
 								},
-								Range: ast.Range{StartLine: 23, EndLine: 23},
+								Range: ast.Range{
+									Start: ast.Position{Line: 23, Column: 1},
+									End:   ast.Position{Line: 23, Column: 19},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 23, EndLine: 23},
+						Range: ast.Range{
+							Start: ast.Position{Line: 23, Column: 1},
+							End:   ast.Position{Line: 23, Column: 19},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 20, EndLine: 23},
+				Range: ast.Range{
+					Start: ast.Position{Line: 20, Column: 1},
+					End:   ast.Position{Line: 23, Column: 19},
+				},
 			},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 23},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 23, Column: 19},
+		},
 	}
 
 	want := `<h1>heading level 1</h1>

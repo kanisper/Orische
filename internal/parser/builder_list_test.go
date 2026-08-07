@@ -19,14 +19,14 @@ func TestBuildList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 1",
 						Range: ast.Range{
-							StartLine: 1,
-							EndLine:   1,
+							Start: ast.Position{Line: 1, Column: 1},
+							End:   ast.Position{Line: 1, Column: 19},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 1,
-					EndLine:   1,
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 19},
 				},
 			},
 			{
@@ -36,8 +36,8 @@ func TestBuildList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 2",
 						Range: ast.Range{
-							StartLine: 2,
-							EndLine:   2,
+							Start: ast.Position{Line: 2, Column: 1},
+							End:   ast.Position{Line: 2, Column: 19},
 						},
 					},
 					&parsedList{
@@ -50,26 +50,26 @@ func TestBuildList(t *testing.T) {
 										Attr: "",
 										Text: "ul level 2 line 1",
 										Range: ast.Range{
-											StartLine: 3,
-											EndLine:   3,
+											Start: ast.Position{Line: 3, Column: 1},
+											End:   ast.Position{Line: 3, Column: 20},
 										},
 									},
 								},
 								Range: ast.Range{
-									StartLine: 3,
-									EndLine:   3,
+									Start: ast.Position{Line: 3, Column: 1},
+									End:   ast.Position{Line: 3, Column: 20},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 3,
-							EndLine:   3,
+							Start: ast.Position{Line: 3, Column: 1},
+							End:   ast.Position{Line: 3, Column: 20},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 2,
-					EndLine:   3,
+					Start: ast.Position{Line: 2, Column: 1},
+					End:   ast.Position{Line: 3, Column: 20},
 				},
 			},
 			{
@@ -79,20 +79,20 @@ func TestBuildList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 3",
 						Range: ast.Range{
-							StartLine: 4,
-							EndLine:   4,
+							Start: ast.Position{Line: 4, Column: 1},
+							End:   ast.Position{Line: 4, Column: 19},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 4,
-					EndLine:   4,
+					Start: ast.Position{Line: 4, Column: 1},
+					End:   ast.Position{Line: 4, Column: 19},
 				},
 			},
 		},
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   4,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 4, Column: 19},
 		},
 	}
 
@@ -105,10 +105,16 @@ func TestBuildList(t *testing.T) {
 						Content: []ast.Inline{
 							&ast.Text{Value: "ol level 1 line 1"},
 						},
-						Range: ast.Range{StartLine: 1, EndLine: 1},
+						Range: ast.Range{
+							Start: ast.Position{Line: 1, Column: 1},
+							End:   ast.Position{Line: 1, Column: 19},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 1, EndLine: 1},
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 19},
+				},
 			},
 			{
 				Blocks: []ast.Block{
@@ -116,7 +122,10 @@ func TestBuildList(t *testing.T) {
 						Content: []ast.Inline{
 							&ast.Text{Value: "ol level 1 line 2"},
 						},
-						Range: ast.Range{StartLine: 2, EndLine: 2},
+						Range: ast.Range{
+							Start: ast.Position{Line: 2, Column: 1},
+							End:   ast.Position{Line: 2, Column: 19},
+						},
 					},
 					&ast.List{
 						Ordered: false,
@@ -127,16 +136,28 @@ func TestBuildList(t *testing.T) {
 										Content: []ast.Inline{
 											&ast.Text{Value: "ul level 2 line 1"},
 										},
-										Range: ast.Range{StartLine: 3, EndLine: 3},
+										Range: ast.Range{
+											Start: ast.Position{Line: 3, Column: 1},
+											End:   ast.Position{Line: 3, Column: 20},
+										},
 									},
 								},
-								Range: ast.Range{StartLine: 3, EndLine: 3},
+								Range: ast.Range{
+									Start: ast.Position{Line: 3, Column: 1},
+									End:   ast.Position{Line: 3, Column: 20},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 3, EndLine: 3},
+						Range: ast.Range{
+							Start: ast.Position{Line: 3, Column: 1},
+							End:   ast.Position{Line: 3, Column: 20},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 2, EndLine: 3},
+				Range: ast.Range{
+					Start: ast.Position{Line: 2, Column: 1},
+					End:   ast.Position{Line: 3, Column: 20},
+				},
 			},
 			{
 				Blocks: []ast.Block{
@@ -144,13 +165,22 @@ func TestBuildList(t *testing.T) {
 						Content: []ast.Inline{
 							&ast.Text{Value: "ol level 1 line 3"},
 						},
-						Range: ast.Range{StartLine: 4, EndLine: 4},
+						Range: ast.Range{
+							Start: ast.Position{Line: 4, Column: 1},
+							End:   ast.Position{Line: 4, Column: 19},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 4, EndLine: 4},
+				Range: ast.Range{
+					Start: ast.Position{Line: 4, Column: 1},
+					End:   ast.Position{Line: 4, Column: 19},
+				},
 			},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 4},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 4, Column: 19},
+		},
 	}
 
 	got, err := (&listBuilder{}).build(input)

@@ -19,21 +19,23 @@ func printErrors(w io.Writer, path string, err error) {
 }
 
 func printDiagnostic(w io.Writer, path string, diag *diagnostic.Error) {
-	line := diag.Range.StartLine
+	diagPosition := diag.Range.Start
 
 	if path == "" {
 		fmt.Fprintf(
 			w,
-			"orische: line %d: error: %s\n",
-			line,
+			"orische: line %d:%d error: %s\n",
+			diagPosition.Line,
+			diagPosition.Column,
 			diag.Message,
 		)
 	} else {
 		fmt.Fprintf(
 			w,
-			"orische: %s:%d: error: %s\n",
+			"orische: %s:%d:%d error: %s\n",
 			path,
-			line,
+			diagPosition.Line,
+			diagPosition.Column,
 			diag.Message,
 		)
 	}

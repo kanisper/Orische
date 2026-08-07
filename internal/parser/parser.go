@@ -40,7 +40,7 @@ func (p *Parser) Parse(input string) (*ast.Document, error) {
 func (p *Parser) parseDocument(lines []string) (*parsedDocument, error) {
 	ctx := newBlockContext(lines, 0)
 
-	blocks, err := p.parseBlocks(ctx)
+	blocks, endDocPosition, err := p.parseBlocks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -48,16 +48,17 @@ func (p *Parser) parseDocument(lines []string) (*parsedDocument, error) {
 	doc := &parsedDocument{
 		Blocks: blocks,
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   ctx.getPos(),
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   endDocPosition,
 		},
 	}
 
 	return doc, nil
 }
 
-func (p *Parser) parseBlocks(ctx *blockContext) ([]parsedBlockNode, error) {
+func (p *Parser) parseBlocks(ctx *blockContext) ([]parsedBlockNode, ast.Position, error) {
 	var blocks []parsedBlockNode
+	var docEndPosition ast.Position
 
 	for !ctx.isEOF() {
 		if strings.TrimSpace(ctx.getLine()) == "" {
@@ -67,9 +68,10 @@ func (p *Parser) parseBlocks(ctx *blockContext) ([]parsedBlockNode, error) {
 
 		block, ok, err := p.parseOneBlock(ctx)
 		if err != nil {
-			return nil, err
+			return nil, ast.Position{}, err
 		}
 		if ok {
+			docEndPosition = block.getBlockRange().End
 			blocks = append(blocks, block)
 			ctx.advance(1)
 			continue
@@ -77,7 +79,7 @@ func (p *Parser) parseBlocks(ctx *blockContext) ([]parsedBlockNode, error) {
 
 		panic("unreachable: paragraph fallback must always parse")
 	}
-	return blocks, nil
+	return blocks, docEndPosition, nil
 }
 
 func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, bool, error) {

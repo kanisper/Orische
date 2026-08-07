@@ -18,8 +18,8 @@ func TestParseHeading(t *testing.T) {
 		Attr: "level1",
 		Text: "Heading1",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   1,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 10},
 		},
 	}
 	if !ok || err != nil {
@@ -41,8 +41,8 @@ func TestParseHeading_Level2(t *testing.T) {
 		Attr: "level2",
 		Text: "Heading2",
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   1,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 11},
 		},
 	}
 	if !ok || err != nil {

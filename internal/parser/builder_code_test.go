@@ -10,16 +10,32 @@ import (
 
 func TestBuildCodeBlock(t *testing.T) {
 	input := &parsedBlock{
-		Type:  "code",
-		Attr:  "c",
-		Text:  "#include <stdio.h>\n\nint main()\n{\nprintf(\"Hello, world!\");\n}",
-		Range: ast.Range{StartLine: 1, EndLine: 6},
+		Type: "code",
+		Attr: "c",
+		Text: `#include <stdio.h>
+
+int main()
+{
+	printf("Hello, world!");
+}`,
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 6, Column: 1},
+		},
 	}
 
 	want := &ast.CodeBlock{
 		Language: "c",
-		Text:     "#include <stdio.h>\n\nint main()\n{\nprintf(\"Hello, world!\");\n}",
-		Range:    ast.Range{StartLine: 1, EndLine: 6},
+		Text: `#include <stdio.h>
+
+int main()
+{
+	printf("Hello, world!");
+}`,
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 6, Column: 1},
+		},
 	}
 
 	got, err := (&codeBlockBuilder{}).build(input)

@@ -14,7 +14,10 @@ func TestHeadingRenderer(t *testing.T) {
 		Content: []ast.Inline{
 			&ast.Text{Value: "Heading level 1 text"},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 1},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 22},
+		},
 	}
 
 	want := "<h1>Heading level 1 text</h1>\n"
@@ -36,7 +39,10 @@ func TestCodeBlockRenderer(t *testing.T) {
 	input := &ast.CodeBlock{
 		Language: "go",
 		Text:     "fmt.Println(\"Hello, world!\")",
-		Range:    ast.Range{StartLine: 1, EndLine: 3},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 3},
+		},
 	}
 
 	want_array := []string{
@@ -69,7 +75,10 @@ func TestListRenderer(t *testing.T) {
 						Content: []ast.Inline{
 							&ast.Text{Value: "ul level 1 line 1"},
 						},
-						Range: ast.Range{StartLine: 1, EndLine: 1},
+						Range: ast.Range{
+							Start: ast.Position{Line: 1, Column: 1},
+							End:   ast.Position{Line: 1, Column: 19},
+						},
 					},
 					&ast.List{
 						Ordered: true,
@@ -80,16 +89,28 @@ func TestListRenderer(t *testing.T) {
 										Content: []ast.Inline{
 											&ast.Text{Value: "ol level 2 line 1"},
 										},
-										Range: ast.Range{StartLine: 2, EndLine: 2},
+										Range: ast.Range{
+											Start: ast.Position{Line: 2, Column: 1},
+											End:   ast.Position{Line: 2, Column: 20},
+										},
 									},
 								},
-								Range: ast.Range{StartLine: 2, EndLine: 2},
+								Range: ast.Range{
+									Start: ast.Position{Line: 2, Column: 1},
+									End:   ast.Position{Line: 2, Column: 20},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 2, EndLine: 2},
+						Range: ast.Range{
+							Start: ast.Position{Line: 2, Column: 1},
+							End:   ast.Position{Line: 2, Column: 20},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 1, EndLine: 2},
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 2, Column: 20},
+				},
 			},
 			{
 				Blocks: []ast.Block{
@@ -97,13 +118,22 @@ func TestListRenderer(t *testing.T) {
 						Content: []ast.Inline{
 							&ast.Text{Value: "ul level 1 line 2"},
 						},
-						Range: ast.Range{StartLine: 3, EndLine: 3},
+						Range: ast.Range{
+							Start: ast.Position{Line: 3, Column: 1},
+							End:   ast.Position{Line: 3, Column: 19},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 3, EndLine: 3},
+				Range: ast.Range{
+					Start: ast.Position{Line: 3, Column: 1},
+					End:   ast.Position{Line: 3, Column: 19},
+				},
 			},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 3},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 3, Column: 19},
+		},
 	}
 
 	want_array := []string{
@@ -137,7 +167,10 @@ func TestParagraphRenderer(t *testing.T) {
 		Content: []ast.Inline{
 			&ast.Text{Value: "Paragraph text"},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 1},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 14},
+		},
 	}
 
 	want := "<p>\nParagraph text\n</p>\n"

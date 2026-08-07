@@ -39,8 +39,8 @@ func TestParseDocument(t *testing.T) {
 				Attr: "level1",
 				Text: "Heading1",
 				Range: ast.Range{
-					StartLine: 1,
-					EndLine:   1,
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 10},
 				},
 			},
 			&parsedBlock{
@@ -48,8 +48,8 @@ func TestParseDocument(t *testing.T) {
 				Attr: "",
 				Text: "paragraph1 line1",
 				Range: ast.Range{
-					StartLine: 3,
-					EndLine:   3,
+					Start: ast.Position{Line: 3, Column: 1},
+					End:   ast.Position{Line: 3, Column: 16},
 				},
 			},
 			&parsedList{
@@ -62,14 +62,14 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 1",
 								Range: ast.Range{
-									StartLine: 5,
-									EndLine:   5,
+									Start: ast.Position{Line: 5, Column: 1},
+									End:   ast.Position{Line: 5, Column: 19},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 5,
-							EndLine:   5,
+							Start: ast.Position{Line: 5, Column: 1},
+							End:   ast.Position{Line: 5, Column: 19},
 						},
 					},
 					{
@@ -79,8 +79,8 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 2",
 								Range: ast.Range{
-									StartLine: 6,
-									EndLine:   6,
+									Start: ast.Position{Line: 6, Column: 1},
+									End:   ast.Position{Line: 6, Column: 19},
 								},
 							},
 							&parsedList{
@@ -93,26 +93,26 @@ func TestParseDocument(t *testing.T) {
 												Attr: "",
 												Text: "ul level 2 line 1",
 												Range: ast.Range{
-													StartLine: 7,
-													EndLine:   7,
+													Start: ast.Position{Line: 7, Column: 1},
+													End:   ast.Position{Line: 7, Column: 20},
 												},
 											},
 										},
 										Range: ast.Range{
-											StartLine: 7,
-											EndLine:   7,
+											Start: ast.Position{Line: 7, Column: 1},
+											End:   ast.Position{Line: 7, Column: 20},
 										},
 									},
 								},
 								Range: ast.Range{
-									StartLine: 7,
-									EndLine:   7,
+									Start: ast.Position{Line: 7, Column: 1},
+									End:   ast.Position{Line: 7, Column: 20},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 6,
-							EndLine:   7,
+							Start: ast.Position{Line: 6, Column: 1},
+							End:   ast.Position{Line: 7, Column: 20},
 						},
 					},
 					{
@@ -122,20 +122,20 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 3",
 								Range: ast.Range{
-									StartLine: 8,
-									EndLine:   8,
+									Start: ast.Position{Line: 8, Column: 1},
+									End:   ast.Position{Line: 8, Column: 19},
 								},
 							},
 						},
 						Range: ast.Range{
-							StartLine: 8,
-							EndLine:   8,
+							Start: ast.Position{Line: 8, Column: 1},
+							End:   ast.Position{Line: 8, Column: 19},
 						},
 					},
 				},
 				Range: ast.Range{
-					StartLine: 5,
-					EndLine:   8,
+					Start: ast.Position{Line: 5, Column: 1},
+					End:   ast.Position{Line: 8, Column: 19},
 				},
 			},
 			&parsedBlock{
@@ -143,8 +143,8 @@ func TestParseDocument(t *testing.T) {
 				Attr: "go",
 				Text: "fmt.Println(\"Hello\")",
 				Range: ast.Range{
-					StartLine: 10,
-					EndLine:   12,
+					Start: ast.Position{Line: 10, Column: 1},
+					End:   ast.Position{Line: 12, Column: 3},
 				},
 			},
 			&parsedBlock{
@@ -152,8 +152,8 @@ func TestParseDocument(t *testing.T) {
 				Attr: "level2",
 				Text: "Heading2",
 				Range: ast.Range{
-					StartLine: 14,
-					EndLine:   14,
+					Start: ast.Position{Line: 14, Column: 1},
+					End:   ast.Position{Line: 14, Column: 11},
 				},
 			},
 			&parsedBlock{
@@ -161,14 +161,14 @@ func TestParseDocument(t *testing.T) {
 				Attr: "",
 				Text: "paragraph2 line1\nparagraph2 line2",
 				Range: ast.Range{
-					StartLine: 16,
-					EndLine:   17,
+					Start: ast.Position{Line: 16, Column: 1},
+					End:   ast.Position{Line: 17, Column: 16},
 				},
 			},
 		},
 		Range: ast.Range{
-			StartLine: 1,
-			EndLine:   17,
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 17, Column: 16},
 		},
 	}
 
@@ -213,13 +213,19 @@ func TestBuildAST(t *testing.T) {
 				Content: []ast.Inline{
 					&ast.Text{Value: "Heading1"},
 				},
-				Range: ast.Range{StartLine: 1, EndLine: 1},
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 10},
+				},
 			},
 			&ast.Paragraph{
 				Content: []ast.Inline{
 					&ast.Text{Value: "paragraph1 line1"},
 				},
-				Range: ast.Range{StartLine: 3, EndLine: 3},
+				Range: ast.Range{
+					Start: ast.Position{Line: 3, Column: 1},
+					End:   ast.Position{Line: 3, Column: 16},
+				},
 			},
 			&ast.List{
 				Ordered: true,
@@ -230,10 +236,16 @@ func TestBuildAST(t *testing.T) {
 								Content: []ast.Inline{
 									&ast.Text{Value: "ol level 1 line 1"},
 								},
-								Range: ast.Range{StartLine: 5, EndLine: 5},
+								Range: ast.Range{
+									Start: ast.Position{Line: 5, Column: 1},
+									End:   ast.Position{Line: 5, Column: 19},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 5, EndLine: 5},
+						Range: ast.Range{
+							Start: ast.Position{Line: 5, Column: 1},
+							End:   ast.Position{Line: 5, Column: 19},
+						},
 					},
 					{
 						Blocks: []ast.Block{
@@ -241,7 +253,10 @@ func TestBuildAST(t *testing.T) {
 								Content: []ast.Inline{
 									&ast.Text{Value: "ol level 1 line 2"},
 								},
-								Range: ast.Range{StartLine: 6, EndLine: 6},
+								Range: ast.Range{
+									Start: ast.Position{Line: 6, Column: 1},
+									End:   ast.Position{Line: 6, Column: 19},
+								},
 							},
 							&ast.List{
 								Ordered: false,
@@ -252,16 +267,28 @@ func TestBuildAST(t *testing.T) {
 												Content: []ast.Inline{
 													&ast.Text{Value: "ul level 2 line 1"},
 												},
-												Range: ast.Range{StartLine: 7, EndLine: 7},
+												Range: ast.Range{
+													Start: ast.Position{Line: 7, Column: 1},
+													End:   ast.Position{Line: 7, Column: 20},
+												},
 											},
 										},
-										Range: ast.Range{StartLine: 7, EndLine: 7},
+										Range: ast.Range{
+											Start: ast.Position{Line: 7, Column: 1},
+											End:   ast.Position{Line: 7, Column: 20},
+										},
 									},
 								},
-								Range: ast.Range{StartLine: 7, EndLine: 7},
+								Range: ast.Range{
+									Start: ast.Position{Line: 7, Column: 1},
+									End:   ast.Position{Line: 7, Column: 20},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 6, EndLine: 7},
+						Range: ast.Range{
+							Start: ast.Position{Line: 6, Column: 1},
+							End:   ast.Position{Line: 7, Column: 20},
+						},
 					},
 					{
 						Blocks: []ast.Block{
@@ -269,34 +296,55 @@ func TestBuildAST(t *testing.T) {
 								Content: []ast.Inline{
 									&ast.Text{Value: "ol level 1 line 3"},
 								},
-								Range: ast.Range{StartLine: 8, EndLine: 8},
+								Range: ast.Range{
+									Start: ast.Position{Line: 8, Column: 1},
+									End:   ast.Position{Line: 8, Column: 19},
+								},
 							},
 						},
-						Range: ast.Range{StartLine: 8, EndLine: 8},
+						Range: ast.Range{
+							Start: ast.Position{Line: 8, Column: 1},
+							End:   ast.Position{Line: 8, Column: 19},
+						},
 					},
 				},
-				Range: ast.Range{StartLine: 5, EndLine: 8},
+				Range: ast.Range{
+					Start: ast.Position{Line: 5, Column: 1},
+					End:   ast.Position{Line: 8, Column: 19},
+				},
 			},
 			&ast.CodeBlock{
 				Language: "go",
 				Text:     "fmt.Println(\"Hello\")",
-				Range:    ast.Range{StartLine: 10, EndLine: 12},
+				Range: ast.Range{
+					Start: ast.Position{Line: 10, Column: 1},
+					End:   ast.Position{Line: 12, Column: 3},
+				},
 			},
 			&ast.Heading{
 				Level: 2,
 				Content: []ast.Inline{
 					&ast.Text{Value: "Heading2"},
 				},
-				Range: ast.Range{StartLine: 14, EndLine: 14},
+				Range: ast.Range{
+					Start: ast.Position{Line: 14, Column: 1},
+					End:   ast.Position{Line: 14, Column: 11},
+				},
 			},
 			&ast.Paragraph{
 				Content: []ast.Inline{
 					&ast.Text{Value: "paragraph2 line1\nparagraph2 line2"},
 				},
-				Range: ast.Range{StartLine: 16, EndLine: 17},
+				Range: ast.Range{
+					Start: ast.Position{Line: 16, Column: 1},
+					End:   ast.Position{Line: 17, Column: 16},
+				},
 			},
 		},
-		Range: ast.Range{StartLine: 1, EndLine: 17},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 17, Column: 16},
+		},
 	}
 
 	got, err := Parse(input)
@@ -325,7 +373,7 @@ content
 		t.Errorf("expected message: unsupported directive type \"unsupported\", but got: %s", diag.Message)
 	}
 
-	if diag.Range.StartLine != 1 {
-		t.Errorf("expected start line: 1, but got: %d", diag.Range.StartLine)
+	if diag.Range.Start.Line != 1 {
+		t.Errorf("expected start line: 1, but got: %d", diag.Range.Start.Line)
 	}
 }

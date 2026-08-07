@@ -1,8 +1,13 @@
 package ast
 
+type Position struct {
+	Line   int
+	Column int
+}
+
 type Range struct {
-	StartLine int
-	EndLine   int
+	Start Position
+	End   Position
 }
 
 type Root interface {
