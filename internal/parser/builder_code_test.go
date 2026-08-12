@@ -40,9 +40,19 @@ int main()
 
 	got, err := (&codeBlockBuilder{}).build(input)
 	if err != nil {
-		t.Errorf("build failed: %v", err)
+		t.Fatalf("build returned an error: %v", err)
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("build incorrectly.\n(-want +got)\n%s", diff)
+	}
+}
+
+func TestBuildCodeBlock_RejectsWrongNodeType(t *testing.T) {
+	got, err := (&codeBlockBuilder{}).build(&parsedList{})
+	if err == nil {
+		t.Fatal("build accepted an unexpected node type")
+	}
+	if got != nil {
+		t.Errorf("build returned a block: %v", got)
 	}
 }

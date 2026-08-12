@@ -2,6 +2,7 @@ package parser
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"orische/internal/ast"
 )
@@ -30,7 +31,7 @@ func (*paragraphParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) 
 		Text: strings.Join(content, "\n"),
 		Range: ast.Range{
 			Start: ast.Position{Line: startPos, Column: 1},
-			End:   ast.Position{Line: ctx.getPos() + 1, Column: len(content[len(content)-1])},
+			End:   ast.Position{Line: ctx.getPos() + 1, Column: utf8.RuneCountInString(content[len(content)-1])},
 		},
 	}, true, nil
 }

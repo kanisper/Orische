@@ -62,7 +62,7 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 1",
 								Range: ast.Range{
-									Start: ast.Position{Line: 5, Column: 1},
+									Start: ast.Position{Line: 5, Column: 3},
 									End:   ast.Position{Line: 5, Column: 19},
 								},
 							},
@@ -79,7 +79,7 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 2",
 								Range: ast.Range{
-									Start: ast.Position{Line: 6, Column: 1},
+									Start: ast.Position{Line: 6, Column: 3},
 									End:   ast.Position{Line: 6, Column: 19},
 								},
 							},
@@ -93,7 +93,7 @@ func TestParseDocument(t *testing.T) {
 												Attr: "",
 												Text: "ul level 2 line 1",
 												Range: ast.Range{
-													Start: ast.Position{Line: 7, Column: 1},
+													Start: ast.Position{Line: 7, Column: 4},
 													End:   ast.Position{Line: 7, Column: 20},
 												},
 											},
@@ -122,7 +122,7 @@ func TestParseDocument(t *testing.T) {
 								Attr: "",
 								Text: "ol level 1 line 3",
 								Range: ast.Range{
-									Start: ast.Position{Line: 8, Column: 1},
+									Start: ast.Position{Line: 8, Column: 3},
 									End:   ast.Position{Line: 8, Column: 19},
 								},
 							},
@@ -175,7 +175,7 @@ func TestParseDocument(t *testing.T) {
 	output, err := NewParser(coreSpec()).parseDocument(input)
 
 	if err != nil {
-		t.Errorf("parse failed.\n%s", err)
+		t.Fatalf("parse returned an error: %v", err)
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
@@ -211,7 +211,13 @@ func TestBuildAST(t *testing.T) {
 			&ast.Heading{
 				Level: 1,
 				Content: []ast.Inline{
-					&ast.Text{Value: "Heading1"},
+					&ast.Text{
+						Value: "Heading1",
+						Range: ast.Range{
+							Start: ast.Position{Line: 1, Column: 3},
+							End:   ast.Position{Line: 1, Column: 10},
+						},
+					},
 				},
 				Range: ast.Range{
 					Start: ast.Position{Line: 1, Column: 1},
@@ -220,7 +226,13 @@ func TestBuildAST(t *testing.T) {
 			},
 			&ast.Paragraph{
 				Content: []ast.Inline{
-					&ast.Text{Value: "paragraph1 line1"},
+					&ast.Text{
+						Value: "paragraph1 line1",
+						Range: ast.Range{
+							Start: ast.Position{Line: 3, Column: 1},
+							End:   ast.Position{Line: 3, Column: 16},
+						},
+					},
 				},
 				Range: ast.Range{
 					Start: ast.Position{Line: 3, Column: 1},
@@ -234,10 +246,16 @@ func TestBuildAST(t *testing.T) {
 						Blocks: []ast.Block{
 							&ast.Paragraph{
 								Content: []ast.Inline{
-									&ast.Text{Value: "ol level 1 line 1"},
+									&ast.Text{
+										Value: "ol level 1 line 1",
+										Range: ast.Range{
+											Start: ast.Position{Line: 5, Column: 3},
+											End:   ast.Position{Line: 5, Column: 19},
+										},
+									},
 								},
 								Range: ast.Range{
-									Start: ast.Position{Line: 5, Column: 1},
+									Start: ast.Position{Line: 5, Column: 3},
 									End:   ast.Position{Line: 5, Column: 19},
 								},
 							},
@@ -251,10 +269,16 @@ func TestBuildAST(t *testing.T) {
 						Blocks: []ast.Block{
 							&ast.Paragraph{
 								Content: []ast.Inline{
-									&ast.Text{Value: "ol level 1 line 2"},
+									&ast.Text{
+										Value: "ol level 1 line 2",
+										Range: ast.Range{
+											Start: ast.Position{Line: 6, Column: 3},
+											End:   ast.Position{Line: 6, Column: 19},
+										},
+									},
 								},
 								Range: ast.Range{
-									Start: ast.Position{Line: 6, Column: 1},
+									Start: ast.Position{Line: 6, Column: 3},
 									End:   ast.Position{Line: 6, Column: 19},
 								},
 							},
@@ -265,10 +289,16 @@ func TestBuildAST(t *testing.T) {
 										Blocks: []ast.Block{
 											&ast.Paragraph{
 												Content: []ast.Inline{
-													&ast.Text{Value: "ul level 2 line 1"},
+													&ast.Text{
+														Value: "ul level 2 line 1",
+														Range: ast.Range{
+															Start: ast.Position{Line: 7, Column: 4},
+															End:   ast.Position{Line: 7, Column: 20},
+														},
+													},
 												},
 												Range: ast.Range{
-													Start: ast.Position{Line: 7, Column: 1},
+													Start: ast.Position{Line: 7, Column: 4},
 													End:   ast.Position{Line: 7, Column: 20},
 												},
 											},
@@ -294,10 +324,16 @@ func TestBuildAST(t *testing.T) {
 						Blocks: []ast.Block{
 							&ast.Paragraph{
 								Content: []ast.Inline{
-									&ast.Text{Value: "ol level 1 line 3"},
+									&ast.Text{
+										Value: "ol level 1 line 3",
+										Range: ast.Range{
+											Start: ast.Position{Line: 8, Column: 3},
+											End:   ast.Position{Line: 8, Column: 19},
+										},
+									},
 								},
 								Range: ast.Range{
-									Start: ast.Position{Line: 8, Column: 1},
+									Start: ast.Position{Line: 8, Column: 3},
 									End:   ast.Position{Line: 8, Column: 19},
 								},
 							},
@@ -324,7 +360,13 @@ func TestBuildAST(t *testing.T) {
 			&ast.Heading{
 				Level: 2,
 				Content: []ast.Inline{
-					&ast.Text{Value: "Heading2"},
+					&ast.Text{
+						Value: "Heading2",
+						Range: ast.Range{
+							Start: ast.Position{Line: 14, Column: 4},
+							End:   ast.Position{Line: 14, Column: 11},
+						},
+					},
 				},
 				Range: ast.Range{
 					Start: ast.Position{Line: 14, Column: 1},
@@ -333,7 +375,13 @@ func TestBuildAST(t *testing.T) {
 			},
 			&ast.Paragraph{
 				Content: []ast.Inline{
-					&ast.Text{Value: "paragraph2 line1\nparagraph2 line2"},
+					&ast.Text{
+						Value: "paragraph2 line1\nparagraph2 line2",
+						Range: ast.Range{
+							Start: ast.Position{Line: 16, Column: 1},
+							End:   ast.Position{Line: 17, Column: 16},
+						},
+					},
 				},
 				Range: ast.Range{
 					Start: ast.Position{Line: 16, Column: 1},
@@ -349,7 +397,7 @@ func TestBuildAST(t *testing.T) {
 
 	got, err := Parse(input)
 	if err != nil {
-		t.Errorf("parse failed: %s", err)
+		t.Fatalf("parse returned an error: %v", err)
 	}
 
 	if diff := cmp.Diff(want, got); diff != "" {

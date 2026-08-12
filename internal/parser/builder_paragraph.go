@@ -14,7 +14,11 @@ func (*paragraphBuilder) build(node parsedBlockNode) (ast.Block, error) {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)
 	}
 
-	contents, err := parseInlines(block.Text)
+	origin := ast.Position{
+		Line:   block.Range.Start.Line,
+		Column: block.Range.Start.Column,
+	}
+	contents, err := parseInlines(block.Text, origin)
 	if err != nil {
 		return nil, err
 	}

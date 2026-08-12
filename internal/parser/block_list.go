@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"orische/internal/ast"
 )
@@ -145,6 +146,8 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 			list.Range.End = nested.Range.End
 
 		default:
+			endColumn := line.RawLevel + 1 + utf8.RuneCountInString(line.Text)
+
 			list.Items = append(list.Items, parsedListItem{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
@@ -152,19 +155,19 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 						Attr: "",
 						Text: line.Text,
 						Range: ast.Range{
-							Start: ast.Position{Line: line.Line, Column: 1},
-							End:   ast.Position{Line: line.Line, Column: line.RawLevel + 1 + len(line.Text)},
+							Start: ast.Position{Line: line.Line, Column: line.RawLevel + 2},
+							End:   ast.Position{Line: line.Line, Column: endColumn},
 						},
 					},
 				},
 				Range: ast.Range{
 					Start: ast.Position{Line: line.Line, Column: 1},
-					End:   ast.Position{Line: line.Line, Column: line.RawLevel + 1 + len(line.Text)},
+					End:   ast.Position{Line: line.Line, Column: endColumn},
 				},
 			})
 
 			list.Range.End.Line = line.Line
-			list.Range.End.Column = line.RawLevel + 1 + len(line.Text)
+			list.Range.End.Column = endColumn
 			(*index)++
 		}
 	}

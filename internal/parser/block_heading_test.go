@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"reflect"
 	"testing"
 
 	"orische/internal/ast"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseHeading(t *testing.T) {
@@ -22,11 +23,14 @@ func TestParseHeading(t *testing.T) {
 			End:   ast.Position{Line: 1, Column: 10},
 		},
 	}
-	if !ok || err != nil {
-		t.Errorf("parse failed.")
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
 	}
-	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	if !ok {
+		t.Fatal("heading parser did not recognize valid input")
+	}
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
 	}
 }
 
@@ -45,11 +49,39 @@ func TestParseHeading_Level2(t *testing.T) {
 			End:   ast.Position{Line: 1, Column: 11},
 		},
 	}
-	if !ok || err != nil {
-		t.Errorf("parse failed.")
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
 	}
-	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parsed incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	if !ok {
+		t.Fatal("heading parser did not recognize valid input")
+	}
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
+	}
+}
+
+func TestParseHeading_UnicodeRange(t *testing.T) {
+	input := &blockContext{lines: []string{"= あ😀"}}
+
+	got, ok, err := (&headingParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("heading parser did not recognize valid Unicode input")
+	}
+
+	want := &parsedBlock{
+		Type: "Heading",
+		Attr: "level1",
+		Text: "あ😀",
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 4},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
 	}
 }
 
@@ -76,8 +108,8 @@ func TestParseHeading_LevelOutOfRange(t *testing.T) {
 
 func TestParseHeading_NoSpace(t *testing.T) {
 	input := &blockContext{
-		lines: []string{"=Heading"},
-		pos:   0,
+		lines: []string{"before", "=Heading", "after"},
+		pos:   1,
 	}
 	output, ok, err := (&headingParser{}).parse(input)
 	if err != nil {
@@ -89,12 +121,15 @@ func TestParseHeading_NoSpace(t *testing.T) {
 	if output != nil {
 		t.Errorf("heading without a separator space returned a node: %v", output)
 	}
+	if input.pos != 1 {
+		t.Errorf("position in context changed. want 1, got %d", input.pos)
+	}
 }
 
 func TestParseHeading_NoText(t *testing.T) {
 	input := &blockContext{
-		lines: []string{"="},
-		pos:   0,
+		lines: []string{"before", "=", "after"},
+		pos:   1,
 	}
 	output, ok, err := (&headingParser{}).parse(input)
 	if err != nil {
@@ -105,5 +140,8 @@ func TestParseHeading_NoText(t *testing.T) {
 	}
 	if output != nil {
 		t.Errorf("heading without a separator or content returned a node: %v", output)
+	}
+	if input.pos != 1 {
+		t.Errorf("position in context changed. want 1, got %d", input.pos)
 	}
 }

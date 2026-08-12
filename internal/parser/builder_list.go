@@ -41,7 +41,7 @@ func buildListItem(parsedItem parsedListItem) (*ast.ListItem, error) {
 	blocks := make([]ast.Block, 0, len(parsedItem.Blocks))
 
 	for _, node := range parsedItem.Blocks {
-		block, err := buildListItemBlock(node)
+		block, err := buildListItemBlock(node, parsedItem.RawLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -55,14 +55,15 @@ func buildListItem(parsedItem parsedListItem) (*ast.ListItem, error) {
 	}, nil
 }
 
-func buildListItemBlock(node parsedBlockNode) (ast.Block, error) {
+func buildListItemBlock(node parsedBlockNode, itemRawLevel int) (ast.Block, error) {
 	switch block := node.(type) {
 	case *parsedBlock:
 		if !strings.EqualFold(block.Type, "paragraph") {
 			return nil, fmt.Errorf("unexpected block type in list item: %q", block.Type)
 		}
 
-		inlines, err := parseInlines(block.Text)
+		origin := block.getBlockRange().Start
+		inlines, err := parseInlines(block.Text, origin)
 		if err != nil {
 			return nil, err
 		}

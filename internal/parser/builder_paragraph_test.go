@@ -21,13 +21,35 @@ func TestBuildParagraph(t *testing.T) {
 
 	want := &ast.Paragraph{
 		Content: []ast.Inline{
-			&ast.Text{Value: "First Line\nThis is "},
-			&ast.Emphasis{
-				Content: []ast.Inline{
-					&ast.Text{Value: "second line"},
+			&ast.Text{
+				Value: "First Line\nThis is ",
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 2, Column: 8},
 				},
 			},
-			&ast.Text{Value: "\nThird line"},
+			&ast.Emphasis{
+				Content: []ast.Inline{
+					&ast.Text{
+						Value: "second line",
+						Range: ast.Range{
+							Start: ast.Position{Line: 2, Column: 15},
+							End:   ast.Position{Line: 2, Column: 25},
+						},
+					},
+				},
+				Range: ast.Range{
+					Start: ast.Position{Line: 2, Column: 9},
+					End:   ast.Position{Line: 2, Column: 26},
+				},
+			},
+			&ast.Text{
+				Value: "\nThird line",
+				Range: ast.Range{
+					Start: ast.Position{Line: 2, Column: 27},
+					End:   ast.Position{Line: 3, Column: 10},
+				},
+			},
 		},
 		Range: ast.Range{
 			Start: ast.Position{Line: 1, Column: 1},
@@ -37,7 +59,7 @@ func TestBuildParagraph(t *testing.T) {
 
 	got, err := (&paragraphBuilder{}).build(input)
 	if err != nil {
-		t.Errorf("build failed: %v", err)
+		t.Fatalf("build returned an error: %v", err)
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("build incorrectly.\n(-want +got)\n%s", diff)

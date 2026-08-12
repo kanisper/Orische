@@ -29,7 +29,7 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 1",
 						Range: ast.Range{
-							Start: ast.Position{Line: 1, Column: 1},
+							Start: ast.Position{Line: 1, Column: 3},
 							End:   ast.Position{Line: 1, Column: 19},
 						},
 					},
@@ -46,7 +46,7 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 2",
 						Range: ast.Range{
-							Start: ast.Position{Line: 2, Column: 1},
+							Start: ast.Position{Line: 2, Column: 3},
 							End:   ast.Position{Line: 2, Column: 19},
 						},
 					},
@@ -60,7 +60,7 @@ func TestParseList(t *testing.T) {
 										Attr: "",
 										Text: "ul level 2 line 1",
 										Range: ast.Range{
-											Start: ast.Position{Line: 3, Column: 1},
+											Start: ast.Position{Line: 3, Column: 4},
 											End:   ast.Position{Line: 3, Column: 20},
 										},
 									},
@@ -89,7 +89,7 @@ func TestParseList(t *testing.T) {
 						Attr: "",
 						Text: "ol level 1 line 3",
 						Range: ast.Range{
-							Start: ast.Position{Line: 4, Column: 1},
+							Start: ast.Position{Line: 4, Column: 3},
 							End:   ast.Position{Line: 4, Column: 19},
 						},
 					},
@@ -110,14 +110,91 @@ func TestParseList(t *testing.T) {
 
 	output, ok, err := (&listParser{}).parse(input)
 
-	if !ok || err != nil {
-		t.Errorf("parse failed.")
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("list parser did not recognize valid input")
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
 	}
 	if input.pos != ctx_pos_want {
 		t.Errorf("position in context is not updated correctly. want %d, got %d", ctx_pos_want, input.pos)
+	}
+}
+
+func TestParseList_UnicodeRange(t *testing.T) {
+	input := &blockContext{lines: []string{"* あ😀"}}
+
+	got, ok, err := (&listParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("list parser did not recognize valid Unicode input")
+	}
+
+	want := &parsedList{
+		Ordered: false,
+		Items: []parsedListItem{
+			{
+				Blocks: []parsedBlockNode{
+					&parsedBlock{
+						Type: "Paragraph",
+						Text: "あ😀",
+						Range: ast.Range{
+							Start: ast.Position{Line: 1, Column: 3},
+							End:   ast.Position{Line: 1, Column: 4},
+						},
+					},
+				},
+				Range: ast.Range{
+					Start: ast.Position{Line: 1, Column: 1},
+					End:   ast.Position{Line: 1, Column: 4},
+				},
+			},
+		},
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 1, Column: 4},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
+	}
+}
+
+func TestParseList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
+	tests := []string{
+		"plain text",
+		" * indented",
+		"- item",
+		"*item",
+		"*X item",
+	}
+
+	for _, line := range tests {
+		t.Run(line, func(t *testing.T) {
+			ctx := &blockContext{
+				lines: []string{"before", line, "after"},
+				pos:   1,
+			}
+
+			got, ok, err := (&listParser{}).parse(ctx)
+			if err != nil {
+				t.Fatalf("parse returned an error: %v", err)
+			}
+			if ok {
+				t.Error("list parser recognized invalid input")
+			}
+			if got != nil {
+				t.Errorf("list parser returned a node: %v", got)
+			}
+			if ctx.pos != 1 {
+				t.Errorf("position in context changed. want 1, got %d", ctx.pos)
+			}
+		})
 	}
 }
 
@@ -140,7 +217,7 @@ func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
 						Attr: "",
 						Text: "parent",
 						Range: ast.Range{
-							Start: ast.Position{Line: 1, Column: 1},
+							Start: ast.Position{Line: 1, Column: 3},
 							End:   ast.Position{Line: 1, Column: 8},
 						},
 					},
@@ -154,7 +231,7 @@ func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
 										Attr: "",
 										Text: "child",
 										Range: ast.Range{
-											Start: ast.Position{Line: 2, Column: 1},
+											Start: ast.Position{Line: 2, Column: 5},
 											End:   ast.Position{Line: 2, Column: 9},
 										},
 									},

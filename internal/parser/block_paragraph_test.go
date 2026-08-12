@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"reflect"
 	"testing"
 
 	"orische/internal/ast"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseParagraph(t *testing.T) {
@@ -31,11 +32,14 @@ func TestParseParagraph(t *testing.T) {
 
 	output, ok, err := (&paragraphParser{}).parse(input)
 
-	if !ok || err != nil {
-		t.Errorf("parse failed.")
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
 	}
-	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parse incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	if !ok {
+		t.Fatal("paragraph parser did not recognize valid input")
+	}
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
 	}
 	if input.pos != ctx_pos_want {
 		t.Errorf("position in context is not updated correctly. want: %d, got: %d", ctx_pos_want, input.pos)
@@ -65,11 +69,43 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 
 	output, ok, err := (&paragraphParser{}).parse(input)
 
-	if !ok || err != nil {
-		t.Errorf("parse failed.")
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("paragraph parser did not recognize valid input")
 	}
 
-	if !reflect.DeepEqual(output, want) {
-		t.Errorf("parse incorrectly.\nwant:\n%v\ngot:\n%v", want, output)
+	if diff := cmp.Diff(want, output); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
+	}
+}
+
+func TestParseParagraph_UnicodeRange(t *testing.T) {
+	input := &blockContext{
+		lines: []string{"first line", "é😀"},
+	}
+
+	got, ok, err := (&paragraphParser{}).parse(input)
+	if err != nil {
+		t.Fatalf("parse returned an error: %v", err)
+	}
+	if !ok {
+		t.Fatal("paragraph parser did not recognize valid Unicode input")
+	}
+
+	want := &parsedBlock{
+		Type: "Paragraph",
+		Text: "first line\né😀",
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 1},
+			End:   ast.Position{Line: 2, Column: 2},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
+	}
+	if input.pos != 1 {
+		t.Errorf("position in context is not updated correctly. want 1, got %d", input.pos)
 	}
 }

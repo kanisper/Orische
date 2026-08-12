@@ -3,6 +3,7 @@ package parser
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"orische/internal/ast"
 )
@@ -20,7 +21,7 @@ func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 			Text: content,
 			Range: ast.Range{
 				Start: ast.Position{Line: ctx.getPos() + 1, Column: 1},
-				End:   ast.Position{Line: ctx.getPos() + 1, Column: level + 1 + len(content)},
+				End:   ast.Position{Line: ctx.getPos() + 1, Column: level + 1 + utf8.RuneCountInString(content)},
 			},
 		}, true, nil
 	}

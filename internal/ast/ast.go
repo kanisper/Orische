@@ -57,19 +57,23 @@ type CodeBlock struct {
 
 type Text struct {
 	Value string
+	Range Range
 }
 
 type Emphasis struct {
 	Content []Inline
+	Range   Range
 }
 
 type CodeSpan struct {
 	Value string
+	Range Range
 }
 
 type Link struct {
 	URI     string
 	Content []Inline
+	Range   Range
 }
 
 func (*Document) isRoot() {}

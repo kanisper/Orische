@@ -20,7 +20,11 @@ func (*headingBuilder) build(node parsedBlockNode) (ast.Block, error) {
 		return nil, fmt.Errorf("invalid attribute %s: %w", block.Attr, err)
 	}
 
-	content, err := parseInlines(block.Text)
+	origin := ast.Position{
+		Line:   block.Range.Start.Line,
+		Column: block.Range.Start.Column + level + 1,
+	}
+	content, err := parseInlines(block.Text, origin)
 	if err != nil {
 		return nil, err
 	}
