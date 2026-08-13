@@ -3,15 +3,15 @@
 ## Current Structure
 
 ```text
-cmd/                         # reserved; currently empty
+cmd/                         # HTML-conversion CLI, diagnostics, tests, and test data
 docs/                        # design and behavior documentation
 internal/
   ast/                       # AST definitions
   parser/                    # parser, private IR, builders, tests
-  render/html/               # HTML renderer under development
+  render/html/               # completed AST-to-HTML renderer and output/security tests
 ```
 
-There is currently no `testdata/` directory or separate syntax-specification package.
+Command-line integration fixtures live in `cmd/testdata/`. There is no separate syntax-specification package.
 
 ## Package Responsibilities
 
@@ -31,11 +31,11 @@ Syntax registration is implemented internally in `internal/parser/spec.go`.
 
 ### `internal/render/html`
 
-Converts AST nodes to HTML. This package is under development and is not part of parser-only validation.
+Converts AST nodes to HTML. The renderer has exact-output, escaping, URI-policy, dispatch, and error-propagation tests. Parser-only validation does not exercise it.
 
 ### `cmd`
 
-Reserved for future command-line entrypoints. No CLI is currently implemented.
+Implements the `orische` command-line entrypoint. It reads one input file, renders HTML, writes either the `-o` path or a derived `.html` path, and reports parse, render, and file errors to standard error.
 
 ## Package Policy
 
@@ -49,11 +49,13 @@ Reserved for future command-line entrypoints. No CLI is currently implemented.
 
 The parser package is organized by responsibility:
 
-- `parser.go`, `context.go`, `spec.go` — orchestration and registration
+- `parser.go`, `block_context.go`, `spec.go` — document orchestration, block-parser context, and registration
 - `parsed_block.go` — private parsed-block IR
 - `block_*.go` — document block parsers
 - `builder_*.go` — AST builders
-- `inline.go` — inline parser
+- `inline.go` — inline-sequence orchestration and `Text` node construction
+- `inline_context.go` — byte-offset-to-source-position conversion and inline source ranges
+- `inline_directive.go` — inline header parsing and directive-specific AST construction
 - `*_test.go` — package behavior tests
 
 Validate parser changes with:

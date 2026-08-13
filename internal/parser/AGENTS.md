@@ -32,11 +32,11 @@ Marker-run length is a raw level. `normalizeListLevel` converts changes into log
 
 Heading, paragraph, and list-item paragraph builders parse inline content. Code blocks preserve content literally.
 
-Malformed or unsupported inline candidates remain literal text. Empty inline content is valid. Links require a nonempty URI attribute.
+Empty inline content is valid, and links require a nonempty URI attribute. Unsupported directives, invalid headers, and links without a URI are emitted as literal source text rather than errors. Other malformed or unterminated candidates resume ordinary scanning, so a later valid inline sequence may still be recognized.
 
 ## AST and Ranges
 
-AST block and inline interfaces use pointer implementations. Source ranges are one-based and inclusive.
+AST block and inline interfaces use pointer implementations. Parser-produced non-empty source ranges use one-based, inclusive positions; columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: recognized directive nodes cover their complete delimiter syntax, while nested content and literal text nodes cover their own source spans.
 
 ## Validation
 

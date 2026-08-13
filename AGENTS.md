@@ -15,7 +15,7 @@ Treat the parser implementation and tests as the current language behavior. Upda
 - `internal/ast/` — AST definitions and pointer-based node contracts
 - `internal/parser/` — block parsing, parsed-block IR, AST builders, and inline parsing
 - `internal/render/html/` — completed AST-to-HTML renderer and its output/security contracts
-- `cmd/` — reserved for command-line entrypoints; currently empty
+- `cmd/` — command-line entrypoint for converting Orische source files to HTML, with diagnostics and tests
 - `docs/` — current syntax, architecture, layout, and status
 
 ## Parser Invariants
@@ -26,7 +26,8 @@ Treat the parser implementation and tests as the current language behavior. Upda
 - Code block content is not inline-parsed.
 - Lists use dedicated recursive parsing rather than the document block parser.
 - AST block and inline interfaces are implemented by pointer types.
-- Source ranges are one-based and inclusive.
+- Parser-produced non-empty source ranges are one-based and inclusive; columns count Unicode code points, not UTF-8 bytes.
+- Every inline AST node carries a range. Directive-node ranges include the complete `:[...]{...}` syntax; nested content and literal text nodes carry their own source spans.
 - On success, a block parser leaves `ctx.pos` on the last consumed line. The caller advances it once.
 - A block parser that returns `ok=false` must not consume input.
 

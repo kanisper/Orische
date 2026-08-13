@@ -28,7 +28,7 @@ Block parsing records structure and raw inline-capable text. It does not create 
 
 ## Context Cursor Contract
 
-`blockContext.pos` is zero-based. Parsed and AST line ranges are one-based and inclusive.
+`blockContext.pos` is a zero-based line index. Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes.
 
 On successful parsing, a block parser leaves `pos` on the last consumed line. `parseBlocks` then calls `ctx.advance(1)`.
 
@@ -69,23 +69,23 @@ Builders convert private IR into pointer-based AST nodes.
 - Heading and paragraph builders parse inline content.
 - List builders recursively build item blocks.
 - Code builders preserve text literally and do not parse inline syntax.
-- Parsed source ranges are copied to AST nodes.
+- Parsed block ranges are copied to their AST block nodes. Inline parsing computes ranges from each block's inline-content origin, and every inline node receives its own source range.
 
 The core builder keys are `heading`, `paragraph`, `list`, and `code`.
 
 ## Inline Parser
 
-The inline parser scans character by character. It recognizes:
+The inline parser scans UTF-8 text by byte offset. `inlineContext` maps valid byte boundaries to one-based lines and Unicode-code-point columns. It recognizes:
 
 - emphasis with recursively parsed content;
 - links with recursively parsed content;
 - code spans with literal content.
 
-Malformed and unsupported candidates remain text. Empty content is valid. Code spans end at the first `}` and do not support nesting or escaping.
+Empty content is valid. Unsupported directives, invalid headers, and links without a URI are retained as literal text through the first available `}`. Other malformed or unterminated candidates resume ordinary scanning, so later valid inline syntax may still be recognized. Code spans end at the first `}` and do not support nesting or escaping.
 
 ## Error Model
 
-Malformed block candidates normally return `ok=false` and fall through to paragraph parsing. Malformed inline candidates remain text.
+Malformed block candidates normally return `ok=false` and fall through to paragraph parsing. Inline fallback does not produce user-facing parse errors: unsupported or invalid-header forms are retained literally through the first available `}`, while other malformed forms resume ordinary scanning.
 
 Errors are reserved for unsupported or inconsistent internal states, including:
 
@@ -115,3 +115,5 @@ AST interfaces use pointer implementations.
 - `*ast.Emphasis`
 - `*ast.CodeSpan`
 - `*ast.Link`
+
+Each inline node contains an `ast.Range`. Directive-node ranges include the complete source directive and delimiters. Nested inline and literal `Text` nodes have independent ranges covering their own source spans.

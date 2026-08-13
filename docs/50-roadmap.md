@@ -13,6 +13,11 @@ This file records current repository status. It is not a versioned language spec
 - `code` block directives
 - Inline emphasis, code spans, and links
 - Parsed-block IR and AST builders
+- Source ranges on all block and inline AST nodes
+- One-based, inclusive source positions with Unicode-code-point columns
+- HTML rendering with escaping and link URI-scheme validation
+- Command-line conversion from Orische source files to HTML
+- Structured diagnostic errors and CLI diagnostic formatting
 
 Parser validation:
 
@@ -22,13 +27,11 @@ go test ./internal/parser
 
 ## Under Development
 
-- HTML rendering
 - Broader parser edge-case coverage
 - Documentation maintenance
 
 ## Not Implemented
 
-- Command-line interface
 - Stable public extension API
 - Structured attributes such as `key=value`
 - Additional output formats

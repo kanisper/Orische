@@ -4,7 +4,7 @@
 
 Syntax is explicit and parsing is deterministic. The parser does not auto-correct malformed input.
 
-Malformed block candidates normally fall through to paragraph parsing. Malformed or unsupported inline candidates remain literal text. Syntactically valid block directives require a registered builder and may return an error if unsupported.
+Malformed block candidates normally fall through to paragraph parsing. Unsupported inline directives and invalid inline headers are emitted as literal source text rather than errors. Other malformed or unterminated inline candidates resume ordinary scanning, so a later valid inline sequence may still be recognized. Syntactically valid block directives require a registered builder and return an error if unsupported.
 
 ## Explicit Structure
 

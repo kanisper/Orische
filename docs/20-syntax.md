@@ -15,7 +15,7 @@ Block parsers run in this order:
 
 Once a paragraph starts, it consumes every consecutive nonblank line. A heading, list marker, or directive opener on a later paragraph line remains paragraph text. Use a blank line before such a block when the preceding block is a paragraph.
 
-Source ranges are one-based and inclusive.
+Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: an emphasis, code-span, or link range includes the complete `:[...]{...}` syntax, while nested inline and literal `Text` ranges cover their own source spans.
 
 ## Headings
 
@@ -159,7 +159,7 @@ Inline candidates use:
 
 The first colon separates the type and opaque attribute. Additional colons remain in the attribute. Type matching is case-sensitive.
 
-Malformed, unterminated, or unsupported inline candidates remain literal text. There is no escape syntax.
+Unsupported directive types, empty directive types, and links without a nonempty URI are emitted as literal source text rather than errors. When such a candidate has a closing `}`, literal fallback consumes through the first `}`. Other malformed or unterminated candidates resume ordinary scanning, so a later valid `:[` sequence may still be parsed. There is no escape syntax.
 
 Empty inline content is valid.
 
@@ -195,5 +195,6 @@ The attribute is the URI and must be nonempty. Link content is recursively inlin
 - Invalid heading opener → paragraph text
 - Invalid or unterminated block directive → paragraph text
 - Invalid list line at block start → paragraph text
-- Invalid or unsupported inline candidate → literal text
+- Unsupported inline directive, invalid header, or link without a URI → literal source text through the first available `}`
+- Other malformed or unterminated inline candidate → ordinary literal scanning resumes; later valid inline syntax may still be recognized
 - Valid block directive without a registered builder → AST build error
