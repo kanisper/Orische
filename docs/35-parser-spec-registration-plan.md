@@ -4,7 +4,7 @@
 
 This document is a proposed implementation plan. It describes an internal refactoring of `internal/parser`; it does not describe behavior that is already implemented.
 
-The parser implementation and tests remain the source of truth until this plan is implemented. The refactoring should preserve the currently accepted syntax, AST output, source ranges, fallback behavior, and diagnostics.
+The parser implementation and tests remain the source of truth until this plan is implemented. Except for the explicitly approved case-insensitive matching of inline Directive Types described below, the refactoring should preserve the currently accepted syntax, AST output, source ranges, fallback behavior, and diagnostics.
 
 ## Motivation
 
@@ -31,14 +31,15 @@ A block parser and a builder are therefore not universally a one-to-one pair. Th
 - Ensure the active `Spec` is used throughout AST building, inline parsing, and recursive list construction.
 - Reuse one block-building dispatch path at the document level and inside list items.
 - Detect invalid or duplicate registrations as early as practical.
-- Preserve all current language behavior and parser invariants.
+- Apply one case-insensitive Directive Type matching rule to block and inline directives.
+- Preserve all other current language behavior and parser invariants.
 - Keep the initial implementation internal to `internal/parser`.
 
 ## Non-goals
 
 - Defining a stable public extension API.
 - Providing a plugin or dynamic-loading mechanism.
-- Changing accepted block or inline syntax.
+- Changing accepted block or inline syntax beyond making inline Directive Type matching case-insensitive.
 - Adding new directive types or AST node types.
 - Changing the private parsed-block IR solely to make it public or generic.
 - Replacing the dedicated recursive list parser with the document block parser.
@@ -149,11 +150,25 @@ Paragraph is registered through a dedicated fallback operation that associates i
 
 The design must guarantee that the fallback remains last. Replacing or omitting it should either be impossible for a usable core `Spec` or fail during specification validation rather than during document parsing.
 
-### Builder keys and normalization
+### Builder keys
 
-Builder lookup continues to use stable internal keys produced by private parsed-block IR. Key normalization should occur at one defined boundary. Registration and lookup must use the same normalization rule, and duplicate normalized keys must not silently replace existing definitions.
+Builder lookup continues to use stable internal keys produced by private parsed-block IR. Registration and lookup must use the Directive Type normalization rule defined below, and duplicate normalized keys must not silently replace existing definitions.
 
 The implementation should avoid requiring a syntax parser to know about concrete AST types. Its contract is the private IR and the builder key associated with that IR.
+
+## Directive Type Normalization
+
+Directive Type matching is case-insensitive for both block and inline directives. This is already the effective behavior for block builder lookup and becomes the required behavior for inline definition lookup when this plan is implemented.
+
+Directive Types are converted to a canonical lowercase form using the same Unicode-aware lowercasing behavior as Go's `strings.ToLower`. Both registration keys and parsed lookup keys must be normalized at their respective boundaries before comparison or map access. Callers and individual builders must not perform independent case handling.
+
+Normalization applies only to the Directive Type. Directive attributes and content retain their original spelling and remain subject to their directive-specific semantics. In particular, URI, language, and literal-content values must not be lowercased as a side effect of type normalization.
+
+Directive Type spelling is not preserved as semantic AST data unless a future AST contract explicitly requires it. Differently cased spellings of the same type therefore select the same definition and produce equivalent AST node kinds.
+
+Registrations whose keys differ only by case normalize to the same key and are duplicates. They must be rejected or reported during specification construction rather than silently replacing one another. The same collision rule applies consistently to block and inline directive definitions.
+
+For inline syntax this is an intentional behavior change: forms such as uppercase or mixed-case spellings of registered Directive Types will become recognized instead of remaining literal text. The implementation must update parser tests and `docs/20-syntax.md` when this behavior lands. Until then, the existing implementation and tests continue to define current behavior.
 
 ## Inline Registration
 
@@ -165,7 +180,7 @@ The parser extracts the directive type and attribute, then looks up the type in 
 
 ### Definition lookup
 
-Inline definitions are keyed by normalized directive type. The core specification registers the existing emphasis, link, and code-span definitions.
+Inline definitions are keyed by Directive Type after applying the shared case-insensitive normalization rule. The core specification registers the existing emphasis, link, and code-span definitions.
 
 An unregistered inline directive must continue to be emitted as literal source text according to the current fallback rules. Registration lookup failure is not an error.
 
@@ -287,6 +302,7 @@ Specification-construction errors, such as duplicate normalized keys or a missin
 
 - Introduce responsibility-oriented registration operations for standard directive definitions, sugar-syntax features, and the fallback.
 - Migrate the core specification without changing parser order.
+- Apply the shared case-insensitive Directive Type normalization rule to registration and block builder lookup.
 - Add duplicate and incomplete-registration validation.
 - Remove the independent parser/builder setup paths once all core features use the new model.
 
@@ -295,13 +311,14 @@ Specification-construction errors, such as duplicate normalized keys or a missin
 - Add internal inline directive definitions and content policies.
 - Register the existing emphasis, link, and code-span behavior in the core specification.
 - Replace hardcoded directive-type dispatch with specification lookup.
-- Preserve exact literal fallback and range behavior.
+- Apply the shared case-insensitive Directive Type normalization rule to inline lookup.
+- Preserve exact literal fallback and range behavior except that registered types with uppercase or mixed-case spelling are now recognized.
 
 ### Stage 6: Consolidate and document the implemented architecture
 
 - Remove obsolete registration and dispatch helpers.
 - Update `docs/30-parser-architecture.md` and `docs/40-go-layout.md` to describe the implementation that actually lands.
-- Update `docs/20-syntax.md` only if accepted syntax or user-visible fallback behavior changes. No syntax-document change is expected for this internal refactoring.
+- Update `docs/20-syntax.md` to document case-insensitive Directive Type matching when the inline behavior change is implemented. Other syntax documentation changes are required only if additional accepted syntax or user-visible fallback behavior changes.
 - Re-evaluate names after responsibilities and call sites are visible together.
 
 Each stage should be independently testable and should avoid mixing registration refactoring with new language features.
@@ -324,6 +341,7 @@ Add focused tests that verify:
 - incomplete feature registration is rejected or impossible through the internal API;
 - duplicate normalized block keys are not silently overwritten;
 - duplicate normalized inline directive types are not silently overwritten;
+- block and inline registrations whose types differ only by case are treated as duplicates;
 - Paragraph remains the final fallback;
 - the core parser order remains Block Directive, Heading, List, Paragraph.
 
@@ -345,7 +363,9 @@ Add focused tests that verify:
 
 - registered nested-content definitions recursively parse child inline directives;
 - registered literal-content definitions do not parse child directives;
-- unregistered directives remain literal;
+- lowercase, uppercase, and mixed-case spellings of a registered Directive Type select the same definition;
+- normalization does not modify directive attributes or content;
+- genuinely unregistered directives remain literal;
 - semantic validation rejection follows literal fallback;
 - malformed and unterminated candidates retain current scanning behavior;
 - empty content remains valid where it is currently valid;
@@ -371,6 +391,7 @@ The refactoring is complete when:
 - no directive-type switch in the central inline parser selects `em`, `link`, or `code` behavior;
 - sugar-syntax parsers cannot be configured independently from their required builders through the intended internal registration path;
 - standard block directive types share the common Block Directive syntax parser;
+- block and inline Directive Types use the same case-insensitive normalization rule;
 - the active `Spec` reaches all block builders and recursive inline parsing;
 - top-level and list-item AST construction use common block dispatch;
 - all existing parser behavior and source-range tests pass;
@@ -383,7 +404,7 @@ The refactoring is complete when:
 - What terminology best distinguishes a standard directive-type definition from a sugar-syntax feature registration?
 - Should registration validation happen incrementally, when constructing a usable `Spec`, or both?
 - Should registration failures be returned as errors or made impossible through unexported construction helpers?
-- Which component should own directive-type normalization, and should type matching remain case-insensitive everywhere?
+- Which internal boundary should own the shared Directive Type normalization operation while ensuring that both registration and lookup always apply it?
 - How much private parsed-inline representation is useful before it becomes unnecessary abstraction?
 - Should content policy be a closed internal enum or behavior exposed through a private strategy interface?
 - How should a directive definition report semantic rejection separately from an internal build error while preserving literal fallback?
