@@ -5,7 +5,7 @@ This file records current repository status. It is not a versioned language spec
 ## Implemented and Tested
 
 - AST definitions
-- Document block parser chain
+- Document block reader chain
 - Headings with levels 1–6
 - Paragraphs
 - Ordered and unordered lists

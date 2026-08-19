@@ -6,9 +6,9 @@ import (
 	"orische/internal/ast"
 )
 
-type blockDirectiveParser struct{}
+type blockDirectiveReader struct{}
 
-func (*blockDirectiveParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*blockDirectiveReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	if !isBlockDirective(ctx.getLine()) {
 		return nil, false, nil
 	}

@@ -57,7 +57,7 @@ func TestBuildParagraph(t *testing.T) {
 		},
 	}
 
-	got, err := (&paragraphBuilder{}).build(input)
+	got, err := (&paragraphBuilder{}).build(NewParser(nil), input)
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)
 	}

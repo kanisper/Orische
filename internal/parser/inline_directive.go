@@ -6,7 +6,7 @@ import (
 	"orische/internal/ast"
 )
 
-func (p *inlineParser) parseDirective(start int) (ast.Inline, int, bool, error) {
+func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, error) {
 	headerStart := start + 2
 
 	headerEnd := strings.Index(p.ctx.text[headerStart:], "]{")

@@ -8,7 +8,7 @@ import (
 
 type codeBlockBuilder struct{}
 
-func (*codeBlockBuilder) build(node parsedBlockNode) (ast.Block, error) {
+func (*codeBlockBuilder) build(_ *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)

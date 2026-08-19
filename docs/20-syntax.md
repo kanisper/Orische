@@ -6,7 +6,7 @@ This document describes current parser behavior. Tests and implementation take p
 
 Input is parsed line by line. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
 
-Block parsers run in this order:
+Block readers run in this order:
 
 1. block directive;
 2. heading;
@@ -33,7 +33,7 @@ Heading content is inline-parsed during AST building.
 
 ## Paragraphs
 
-A paragraph is one or more consecutive nonblank lines that are not consumed by another block parser at the start of the block.
+A paragraph is one or more consecutive nonblank lines that are not consumed by another block reader at the start of the block.
 
 ```text
 First line

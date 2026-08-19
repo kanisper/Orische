@@ -38,7 +38,7 @@ int main()
 		},
 	}
 
-	got, err := (&codeBlockBuilder{}).build(input)
+	got, err := (&codeBlockBuilder{}).build(NewParser(nil), input)
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)
 	}
@@ -48,7 +48,7 @@ int main()
 }
 
 func TestBuildCodeBlock_RejectsWrongNodeType(t *testing.T) {
-	got, err := (&codeBlockBuilder{}).build(&parsedList{})
+	got, err := (&codeBlockBuilder{}).build(NewParser(nil), &parsedList{})
 	if err == nil {
 		t.Fatal("build accepted an unexpected node type")
 	}

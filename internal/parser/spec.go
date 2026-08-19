@@ -3,23 +3,23 @@ package parser
 import "orische/internal/ast"
 
 type Spec struct {
-	blockParsers []blockParser
-	fallback     blockParser
+	blockReaders []blockReader
+	fallback     blockReader
 	builders     map[string]blockBuilder
 }
 
-type blockParser interface {
-	parse(ctx *blockContext) (parsedBlockNode, bool, error)
+type blockReader interface {
+	read(ctx *blockContext) (parsedBlockNode, bool, error)
 }
 
 type blockBuilder interface {
-	build(block parsedBlockNode) (ast.Block, error)
+	build(parser *Parser, block parsedBlockNode) (ast.Block, error)
 }
 
 func newSpec() *Spec {
 	return &Spec{
-		blockParsers: []blockParser{},
-		fallback:     &paragraphParser{},
+		blockReaders: []blockReader{},
+		fallback:     &paragraphReader{},
 		builders:     map[string]blockBuilder{},
 	}
 }
@@ -27,9 +27,9 @@ func newSpec() *Spec {
 func coreSpec() *Spec {
 	s := newSpec()
 
-	s.addBlockParser(&blockDirectiveParser{})
-	s.addBlockParser(&headingParser{})
-	s.addBlockParser(&listParser{})
+	s.addBlockReader(&blockDirectiveReader{})
+	s.addBlockReader(&headingReader{})
+	s.addBlockReader(&listReader{})
 
 	s.addBlockBuilder("heading", &headingBuilder{})
 	s.addBlockBuilder("code", &codeBlockBuilder{})
@@ -39,18 +39,18 @@ func coreSpec() *Spec {
 	return s
 }
 
-func (s *Spec) addBlockParser(b blockParser) {
-	s.blockParsers = append(s.blockParsers, b)
+func (s *Spec) addBlockReader(reader blockReader) {
+	s.blockReaders = append(s.blockReaders, reader)
 }
 func (s *Spec) addBlockBuilder(dirtype string, b blockBuilder) {
 	s.builders[dirtype] = b
 }
 
-func (s *Spec) getParsers() []blockParser {
-	parsers := make([]blockParser, 0, len(s.blockParsers)+1)
-	parsers = append(parsers, s.blockParsers...)
-	parsers = append(parsers, s.fallback)
-	return parsers
+func (s *Spec) getReaders() []blockReader {
+	readers := make([]blockReader, 0, len(s.blockReaders)+1)
+	readers = append(readers, s.blockReaders...)
+	readers = append(readers, s.fallback)
+	return readers
 }
 
 func (s *Spec) getBuilder(dirtype string) (blockBuilder, bool) {

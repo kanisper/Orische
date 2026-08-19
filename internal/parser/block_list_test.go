@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseList(t *testing.T) {
+func TestReadList(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			"# ol level 1 line 1",
@@ -108,13 +108,13 @@ func TestParseList(t *testing.T) {
 
 	ctx_pos_want := 3
 
-	output, ok, err := (&listParser{}).parse(input)
+	output, ok, err := (&listReader{}).read(input)
 
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("list parser did not recognize valid input")
+		t.Fatal("list reader did not recognize valid input")
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
@@ -124,15 +124,15 @@ func TestParseList(t *testing.T) {
 	}
 }
 
-func TestParseList_UnicodeRange(t *testing.T) {
+func TestReadList_UnicodeRange(t *testing.T) {
 	input := &blockContext{lines: []string{"* あ😀"}}
 
-	got, ok, err := (&listParser{}).parse(input)
+	got, ok, err := (&listReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("list parser did not recognize valid Unicode input")
+		t.Fatal("list reader did not recognize valid Unicode input")
 	}
 
 	want := &parsedList{
@@ -165,7 +165,7 @@ func TestParseList_UnicodeRange(t *testing.T) {
 	}
 }
 
-func TestParseList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
+func TestReadList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
 	tests := []string{
 		"plain text",
 		" * indented",
@@ -181,15 +181,15 @@ func TestParseList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
 				pos:   1,
 			}
 
-			got, ok, err := (&listParser{}).parse(ctx)
+			got, ok, err := (&listReader{}).read(ctx)
 			if err != nil {
-				t.Fatalf("parse returned an error: %v", err)
+				t.Fatalf("read returned an error: %v", err)
 			}
 			if ok {
-				t.Error("list parser recognized invalid input")
+				t.Error("list reader recognized invalid input")
 			}
 			if got != nil {
-				t.Errorf("list parser returned a node: %v", got)
+				t.Errorf("list reader returned a node: %v", got)
 			}
 			if ctx.pos != 1 {
 				t.Errorf("position in context changed. want 1, got %d", ctx.pos)
@@ -198,7 +198,7 @@ func TestParseList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
 	}
 }
 
-func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
+func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			"* parent",
@@ -260,9 +260,9 @@ func TestParseList_NormalizesRawNestingLevelJump(t *testing.T) {
 		},
 	}
 
-	output, ok, err := (&listParser{}).parse(input)
+	output, ok, err := (&listReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
 		t.Fatal("list with a raw nesting level jump was not parsed")

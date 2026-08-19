@@ -8,7 +8,7 @@ import (
 	"orische/internal/ast"
 )
 
-type listParser struct{}
+type listReader struct{}
 
 type listLine struct {
 	Ordered      bool
@@ -18,7 +18,7 @@ type listLine struct {
 	Line         int
 }
 
-func (*listParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*listReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	_, rawLevel, _ := parseListLine(ctx.getLine())
 	if rawLevel <= 0 {
 		return nil, false, nil
@@ -35,7 +35,7 @@ func (*listParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
 
 	if index != len(lines) {
 		return nil, false, fmt.Errorf(
-			"list parser: %d unconsumed list lines",
+			"list reader: %d unconsumed list lines",
 			len(lines)-index,
 		)
 	}

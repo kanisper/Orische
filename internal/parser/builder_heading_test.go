@@ -36,7 +36,7 @@ func TestBuildHeading(t *testing.T) {
 		},
 	}
 
-	got, err := (&headingBuilder{}).build(input)
+	got, err := (&headingBuilder{}).build(NewParser(nil), input)
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)
 	}

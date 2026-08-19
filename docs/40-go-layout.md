@@ -42,7 +42,7 @@ Implements the `orische` command-line entrypoint. It reads one input file, rende
 - Keep the project in one Go module.
 - Prefer file-level separation before adding packages.
 - Keep parser internals in `internal/parser` until a stable public boundary is needed.
-- Do not reuse document block parsing as a generic nested-block parser.
+- Do not reuse the document block reader chain as a generic nested-block reader.
 - Do not present internal registration as a public extension API.
 
 ## Parser Files
@@ -51,9 +51,9 @@ The parser package is organized by responsibility:
 
 - `parser.go`, `block_context.go`, `spec.go` — document orchestration, block-parser context, and registration
 - `parsed_block.go` — private parsed-block IR
-- `block_*.go` — document block parsers
+- `block_*.go` — document block readers that produce private parsed-block IR
 - `builder_*.go` — AST builders
-- `inline.go` — inline-sequence orchestration and `Text` node construction
+- `inline.go` — `Parser.parseInlines`, inline-sequence state, and `Text` node construction
 - `inline_context.go` — byte-offset-to-source-position conversion and inline source ranges
 - `inline_directive.go` — inline header parsing and directive-specific AST construction
 - `*_test.go` — package behavior tests

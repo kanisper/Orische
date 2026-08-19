@@ -8,12 +8,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseHeading(t *testing.T) {
+func TestReadHeading(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"= Heading1"},
 		pos:   0,
 	}
-	output, ok, err := (&headingParser{}).parse(input)
+	output, ok, err := (&headingReader{}).read(input)
 	want := &parsedBlock{
 		Type: "Heading",
 		Attr: "level1",
@@ -24,22 +24,22 @@ func TestParseHeading(t *testing.T) {
 		},
 	}
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("heading parser did not recognize valid input")
+		t.Fatal("heading reader did not recognize valid input")
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
 	}
 }
 
-func TestParseHeading_Level2(t *testing.T) {
+func TestReadHeading_Level2(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"== Heading2"},
 		pos:   0,
 	}
-	output, ok, err := (&headingParser{}).parse(input)
+	output, ok, err := (&headingReader{}).read(input)
 	want := &parsedBlock{
 		Type: "Heading",
 		Attr: "level2",
@@ -50,25 +50,25 @@ func TestParseHeading_Level2(t *testing.T) {
 		},
 	}
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("heading parser did not recognize valid input")
+		t.Fatal("heading reader did not recognize valid input")
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
 	}
 }
 
-func TestParseHeading_UnicodeRange(t *testing.T) {
+func TestReadHeading_UnicodeRange(t *testing.T) {
 	input := &blockContext{lines: []string{"= あ😀"}}
 
-	got, ok, err := (&headingParser{}).parse(input)
+	got, ok, err := (&headingReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("heading parser did not recognize valid Unicode input")
+		t.Fatal("heading reader did not recognize valid Unicode input")
 	}
 
 	want := &parsedBlock{
@@ -85,15 +85,15 @@ func TestParseHeading_UnicodeRange(t *testing.T) {
 	}
 }
 
-func TestParseHeading_LevelOutOfRange(t *testing.T) {
+func TestReadHeading_LevelOutOfRange(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"======= Heading7"},
 		pos:   0,
 	}
 
-	output, ok, err := (&headingParser{}).parse(input)
+	output, ok, err := (&headingReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if ok {
 		t.Error("heading above level 6 was parsed successfully")
@@ -106,14 +106,14 @@ func TestParseHeading_LevelOutOfRange(t *testing.T) {
 	}
 }
 
-func TestParseHeading_NoSpace(t *testing.T) {
+func TestReadHeading_NoSpace(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"before", "=Heading", "after"},
 		pos:   1,
 	}
-	output, ok, err := (&headingParser{}).parse(input)
+	output, ok, err := (&headingReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if ok {
 		t.Error("heading without a separator space was parsed successfully")
@@ -126,14 +126,14 @@ func TestParseHeading_NoSpace(t *testing.T) {
 	}
 }
 
-func TestParseHeading_NoText(t *testing.T) {
+func TestReadHeading_NoText(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"before", "=", "after"},
 		pos:   1,
 	}
-	output, ok, err := (&headingParser{}).parse(input)
+	output, ok, err := (&headingReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if ok {
 		t.Error("heading without a separator or content was parsed successfully")

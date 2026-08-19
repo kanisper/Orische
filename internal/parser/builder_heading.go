@@ -9,7 +9,7 @@ import (
 
 type headingBuilder struct{}
 
-func (*headingBuilder) build(node parsedBlockNode) (ast.Block, error) {
+func (*headingBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)
@@ -24,7 +24,7 @@ func (*headingBuilder) build(node parsedBlockNode) (ast.Block, error) {
 		Line:   block.Range.Start.Line,
 		Column: block.Range.Start.Column + level + 1,
 	}
-	content, err := parseInlines(block.Text, origin)
+	content, err := parser.parseInlines(block.Text, origin)
 	if err != nil {
 		return nil, err
 	}

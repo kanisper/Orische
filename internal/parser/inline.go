@@ -4,16 +4,18 @@ import (
 	"orische/internal/ast"
 )
 
-type inlineParser struct {
-	ctx *inlineContext
+type inlineParseState struct {
+	parser *Parser
+	ctx    *inlineContext
 }
 
-func parseInlines(text string, origin ast.Position) ([]ast.Inline, error) {
-	p := &inlineParser{
-		ctx: newInlineContext(text, origin),
+func (p *Parser) parseInlines(text string, origin ast.Position) ([]ast.Inline, error) {
+	state := &inlineParseState{
+		parser: p,
+		ctx:    newInlineContext(text, origin),
 	}
 
-	nodes, _, _, err := p.parseSeq(0, false)
+	nodes, _, _, err := state.parseSeq(0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +27,7 @@ func parseInlines(text string, origin ast.Position) ([]ast.Inline, error) {
 // return int           the position after the parsed inline nodes
 // return bool          whether the parsing stopped at a closing brace
 // return error
-func (p *inlineParser) parseSeq(
+func (p *inlineParseState) parseSeq(
 	start int,
 	stopAtClosingBrace bool,
 ) ([]ast.Inline, int, bool, error) {

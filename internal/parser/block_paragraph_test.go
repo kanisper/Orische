@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseParagraph(t *testing.T) {
+func TestReadParagraph(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			"paragraph line 1",
@@ -30,13 +30,13 @@ func TestParseParagraph(t *testing.T) {
 
 	ctx_pos_want := 2
 
-	output, ok, err := (&paragraphParser{}).parse(input)
+	output, ok, err := (&paragraphReader{}).read(input)
 
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("paragraph parser did not recognize valid input")
+		t.Fatal("paragraph reader did not recognize valid input")
 	}
 	if diff := cmp.Diff(want, output); diff != "" {
 		t.Errorf("parsed incorrectly\n(-want +got)\n%s", diff)
@@ -46,7 +46,7 @@ func TestParseParagraph(t *testing.T) {
 	}
 }
 
-func TestParseParagraph_EndWithBlankLine(t *testing.T) {
+func TestReadParagraph_EndWithBlankLine(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			"paragraph line 1",
@@ -67,13 +67,13 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 		},
 	}
 
-	output, ok, err := (&paragraphParser{}).parse(input)
+	output, ok, err := (&paragraphReader{}).read(input)
 
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("paragraph parser did not recognize valid input")
+		t.Fatal("paragraph reader did not recognize valid input")
 	}
 
 	if diff := cmp.Diff(want, output); diff != "" {
@@ -81,17 +81,17 @@ func TestParseParagraph_EndWithBlankLine(t *testing.T) {
 	}
 }
 
-func TestParseParagraph_UnicodeRange(t *testing.T) {
+func TestReadParagraph_UnicodeRange(t *testing.T) {
 	input := &blockContext{
 		lines: []string{"first line", "é😀"},
 	}
 
-	got, ok, err := (&paragraphParser{}).parse(input)
+	got, ok, err := (&paragraphReader{}).read(input)
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if !ok {
-		t.Fatal("paragraph parser did not recognize valid Unicode input")
+		t.Fatal("paragraph reader did not recognize valid Unicode input")
 	}
 
 	want := &parsedBlock{

@@ -207,7 +207,7 @@ func TestBuildList(t *testing.T) {
 		},
 	}
 
-	got, err := (&listBuilder{}).build(input)
+	got, err := (&listBuilder{}).build(NewParser(nil), input)
 
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)

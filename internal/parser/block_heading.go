@@ -8,9 +8,9 @@ import (
 	"orische/internal/ast"
 )
 
-type headingParser struct{}
+type headingReader struct{}
 
-func (*headingParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*headingReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	level, content := parseHeadingLine(ctx.getLine())
 	if level < 1 || level > 6 {
 		return nil, false, nil

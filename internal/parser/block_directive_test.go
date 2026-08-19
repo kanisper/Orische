@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestParseBlockDirective(t *testing.T) {
+func TestReadBlockDirective(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			":::[code:go]",
@@ -19,7 +19,7 @@ func TestParseBlockDirective(t *testing.T) {
 		pos: 0,
 	}
 
-	output, ok, err := (&blockDirectiveParser{}).parse(input)
+	output, ok, err := (&blockDirectiveReader{}).read(input)
 
 	want := &parsedBlock{
 		Type: "code",
@@ -44,7 +44,7 @@ func TestParseBlockDirective(t *testing.T) {
 	}
 }
 
-func TestParseBlockDirective_NoAttr(t *testing.T) {
+func TestReadBlockDirective_NoAttr(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			":::[code]",
@@ -54,7 +54,7 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 		pos: 0,
 	}
 
-	output, ok, err := (&blockDirectiveParser{}).parse(input)
+	output, ok, err := (&blockDirectiveReader{}).read(input)
 
 	want := &parsedBlock{
 		Type: "code",
@@ -74,7 +74,7 @@ func TestParseBlockDirective_NoAttr(t *testing.T) {
 	}
 }
 
-func TestParseBlockDirective_NoClosing(t *testing.T) {
+func TestReadBlockDirective_NoClosing(t *testing.T) {
 	input := &blockContext{
 		lines: []string{
 			":::[code:go]",
@@ -83,10 +83,10 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 		pos: 0,
 	}
 
-	output, ok, err := (&blockDirectiveParser{}).parse(input)
+	output, ok, err := (&blockDirectiveReader{}).read(input)
 
 	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
+		t.Fatalf("read returned an error: %v", err)
 	}
 	if ok {
 		t.Error("unterminated directive was parsed successfully")
@@ -125,7 +125,7 @@ func TestParseBlockDirective_NoClosing(t *testing.T) {
 	}
 }
 
-func TestParseBlockDirective_NoType(t *testing.T) {
+func TestReadBlockDirective_NoType(t *testing.T) {
 	tests := []string{
 		":::[:go]",
 		":::[]",
@@ -142,9 +142,9 @@ func TestParseBlockDirective_NoType(t *testing.T) {
 				pos: 0,
 			}
 
-			output, ok, err := (&blockDirectiveParser{}).parse(input)
+			output, ok, err := (&blockDirectiveReader{}).read(input)
 			if err != nil {
-				t.Fatalf("parse returned an error: %v", err)
+				t.Fatalf("read returned an error: %v", err)
 			}
 			if ok {
 				t.Error("directive without a type was parsed successfully")

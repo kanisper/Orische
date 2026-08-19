@@ -8,7 +8,7 @@ import (
 
 type paragraphBuilder struct{}
 
-func (*paragraphBuilder) build(node parsedBlockNode) (ast.Block, error) {
+func (*paragraphBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)
@@ -18,7 +18,7 @@ func (*paragraphBuilder) build(node parsedBlockNode) (ast.Block, error) {
 		Line:   block.Range.Start.Line,
 		Column: block.Range.Start.Column,
 	}
-	contents, err := parseInlines(block.Text, origin)
+	contents, err := parser.parseInlines(block.Text, origin)
 	if err != nil {
 		return nil, err
 	}

@@ -5,24 +5,24 @@
 ```text
 input string
   → splitLines
-  → document block parsers
+  → document block readers
   → private parsed-block IR
-  → AST builders and inline parser
+  → AST builders and Parser.parseInlines
   → ast.Document
 ```
 
 Rendering is outside the parser package.
 
-## Block Parser Chain
+## Block Reader Chain
 
-`parseBlocks` processes nonblank lines. `parseOneBlock` tries parsers in this order:
+`parseBlocks` processes nonblank lines. `parseOneBlock` tries readers in this order:
 
-1. `blockDirectiveParser`
-2. `headingParser`
-3. `listParser`
-4. `paragraphParser` fallback
+1. `blockDirectiveReader`
+2. `headingReader`
+3. `listReader`
+4. `paragraphReader` fallback
 
-The fallback is stored separately in `Spec` and appended last by `getParsers`. It must remain last.
+The fallback is stored separately in `Spec` and appended last by `getReaders`. It must remain last.
 
 Block parsing records structure and raw inline-capable text. It does not create final AST blocks or call the inline parser.
 
@@ -30,9 +30,9 @@ Block parsing records structure and raw inline-capable text. It does not create 
 
 `blockContext.pos` is a zero-based line index. Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes.
 
-On successful parsing, a block parser leaves `pos` on the last consumed line. `parseBlocks` then calls `ctx.advance(1)`.
+On a successful read, a block reader leaves `pos` on the last consumed line. `parseBlocks` then calls `ctx.advance(1)`.
 
-A parser returning `ok=false` must not consume input. A parser that scans ahead must restore its starting position before returning false. This is required for paragraph fallback.
+A reader returning `ok=false` must not consume input. A reader that scans ahead must restore its starting position before returning false. This is required for paragraph fallback.
 
 `getLine` assumes the context is not at EOF; callers enforce this precondition.
 
@@ -47,7 +47,7 @@ The IR keeps raw text until AST building. `getBuilderKey` selects the AST builde
 
 ## List Parsing
 
-Lists use dedicated recursive parsing and do not invoke the document block parser for item content.
+Lists use dedicated recursive reading and do not invoke the document block reader chain for item content.
 
 `collectListLines` records each line's raw marker level. `normalizeListLevel` converts raw changes into logical levels:
 
@@ -64,7 +64,7 @@ Each list item initially contains a paragraph-like `*parsedBlock`. A nested `*pa
 
 ## AST Building and Inline Parsing
 
-Builders convert private IR into pointer-based AST nodes.
+Builders convert private IR into pointer-based AST nodes. Builders receive the active `Parser`; inline-capable builders call `Parser.parseInlines`, which preserves access to the parser's `Spec`.
 
 - Heading and paragraph builders parse inline content.
 - List builders recursively build item blocks.
@@ -73,9 +73,9 @@ Builders convert private IR into pointer-based AST nodes.
 
 The core builder keys are `heading`, `paragraph`, `list`, and `code`.
 
-## Inline Parser
+## Inline Parsing
 
-The inline parser scans UTF-8 text by byte offset. `inlineContext` maps valid byte boundaries to one-based lines and Unicode-code-point columns. It recognizes:
+`Parser.parseInlines` scans UTF-8 text by byte offset with a short-lived `inlineParseState`. `inlineContext` maps valid byte boundaries to one-based lines and Unicode-code-point columns. It recognizes:
 
 - emphasis with recursively parsed content;
 - links with recursively parsed content;
@@ -107,7 +107,7 @@ AST interfaces use pointer implementations.
 - `*ast.List`
 - `*ast.CodeBlock`
 
-`ast.List.Items` is `[]*ast.ListItem`. List-item blocks currently contain paragraph and nested-list nodes produced by the list parser.
+`ast.List.Items` is `[]*ast.ListItem`. List-item blocks currently contain paragraph and nested-list nodes produced by the list reader.
 
 ### Inline nodes
 

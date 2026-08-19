@@ -20,16 +20,16 @@ Treat the parser implementation and tests as the current language behavior. Upda
 
 ## Parser Invariants
 
-- Block parser order is directive, heading, list, then paragraph fallback.
-- Block parsing produces private parsed-block IR, not final AST nodes.
+- Block reader order is directive, heading, list, then paragraph fallback.
+- Block readers produce private parsed-block IR, not final AST nodes.
 - Inline parsing occurs during AST building for inline-capable blocks.
 - Code block content is not inline-parsed.
-- Lists use dedicated recursive parsing rather than the document block parser.
+- Lists use dedicated recursive reading rather than the document block reader chain.
 - AST block and inline interfaces are implemented by pointer types.
 - Parser-produced non-empty source ranges are one-based and inclusive; columns count Unicode code points, not UTF-8 bytes.
 - Every inline AST node carries a range. Directive-node ranges include the complete `:[...]{...}` syntax; nested content and literal text nodes carry their own source spans.
-- On success, a block parser leaves `ctx.pos` on the last consumed line. The caller advances it once.
-- A block parser that returns `ok=false` must not consume input.
+- On success, a block reader leaves `ctx.pos` on the last consumed line. The caller advances it once.
+- A block reader that returns `ok=false` must not consume input.
 
 ## Validation
 

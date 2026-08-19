@@ -77,14 +77,14 @@ func (p *Parser) parseBlocks(ctx *blockContext) ([]parsedBlockNode, ast.Position
 			continue
 		}
 
-		panic("unreachable: paragraph fallback must always parse")
+		panic("unreachable: paragraph fallback reader must always succeed")
 	}
 	return blocks, docEndPosition, nil
 }
 
 func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, bool, error) {
-	for _, bp := range p.spec.getParsers() {
-		block, ok, err := bp.parse(ctx)
+	for _, reader := range p.spec.getReaders() {
+		block, ok, err := reader.read(ctx)
 		if err != nil {
 			return nil, false, err
 		}
@@ -110,7 +110,7 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 			}
 		}
 
-		buildedBlock, err := builder.build(node)
+		builtBlock, err := builder.build(p, node)
 		if err != nil {
 			var diag *diagnostic.Error
 			if errors.As(err, &diag) {
@@ -124,7 +124,7 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 			)
 		}
 
-		doc.Blocks = append(doc.Blocks, buildedBlock)
+		doc.Blocks = append(doc.Blocks, builtBlock)
 	}
 
 	return doc, nil

@@ -7,9 +7,9 @@ import (
 	"orische/internal/ast"
 )
 
-type paragraphParser struct{}
+type paragraphReader struct{}
 
-func (*paragraphParser) parse(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*paragraphReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	var line string
 	startPos := ctx.getPos() + 1
 	content := []string{}

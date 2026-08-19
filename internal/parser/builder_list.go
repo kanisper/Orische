@@ -9,16 +9,16 @@ import (
 
 type listBuilder struct{}
 
-func (*listBuilder) build(node parsedBlockNode) (ast.Block, error) {
+func (*listBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	list, ok := node.(*parsedList)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedList, got %T", node)
 	}
 
-	return buildList(list)
+	return buildList(parser, list)
 }
 
-func buildList(pl *parsedList) (*ast.List, error) {
+func buildList(parser *Parser, pl *parsedList) (*ast.List, error) {
 	list := &ast.List{
 		Ordered: pl.Ordered,
 		Items:   make([]*ast.ListItem, 0, len(pl.Items)),
@@ -26,7 +26,7 @@ func buildList(pl *parsedList) (*ast.List, error) {
 	}
 
 	for _, parsedItem := range pl.Items {
-		item, err := buildListItem(parsedItem)
+		item, err := buildListItem(parser, parsedItem)
 		if err != nil {
 			return nil, err
 		}
@@ -37,11 +37,11 @@ func buildList(pl *parsedList) (*ast.List, error) {
 	return list, nil
 }
 
-func buildListItem(parsedItem parsedListItem) (*ast.ListItem, error) {
+func buildListItem(parser *Parser, parsedItem parsedListItem) (*ast.ListItem, error) {
 	blocks := make([]ast.Block, 0, len(parsedItem.Blocks))
 
 	for _, node := range parsedItem.Blocks {
-		block, err := buildListItemBlock(node, parsedItem.RawLevel)
+		block, err := buildListItemBlock(parser, node, parsedItem.RawLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func buildListItem(parsedItem parsedListItem) (*ast.ListItem, error) {
 	}, nil
 }
 
-func buildListItemBlock(node parsedBlockNode, itemRawLevel int) (ast.Block, error) {
+func buildListItemBlock(parser *Parser, node parsedBlockNode, itemRawLevel int) (ast.Block, error) {
 	switch block := node.(type) {
 	case *parsedBlock:
 		if !strings.EqualFold(block.Type, "paragraph") {
@@ -63,7 +63,7 @@ func buildListItemBlock(node parsedBlockNode, itemRawLevel int) (ast.Block, erro
 		}
 
 		origin := block.getBlockRange().Start
-		inlines, err := parseInlines(block.Text, origin)
+		inlines, err := parser.parseInlines(block.Text, origin)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func buildListItemBlock(node parsedBlockNode, itemRawLevel int) (ast.Block, erro
 		}, nil
 
 	case *parsedList:
-		nested, err := buildList(block)
+		nested, err := buildList(parser, block)
 		if err != nil {
 			return nil, err
 		}

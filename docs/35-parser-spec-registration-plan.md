@@ -8,24 +8,24 @@ The parser implementation and tests remain the source of truth until this plan i
 
 ## Motivation
 
-`Spec` currently registers document block parsers and block AST builders independently. This permits an inconsistent configuration in which parsing produces a private IR node for which no corresponding builder has been registered.
+`Spec` currently registers document block readers and block AST builders independently. This permits an inconsistent configuration in which reading produces a private IR node for which no corresponding builder has been registered.
 
 Inline directives are managed differently: their recognition, validation, content handling, and AST construction are selected by hardcoded directive-type dispatch in the inline parser. Adding an inline element therefore requires modifying the central parser instead of adding a definition to `Spec`.
 
 The registration model should express complete language features while preserving an important distinction between syntax and semantics:
 
 - Block Directive is the standard block syntax and can represent multiple directive types.
-- Heading and List are sugar syntax with their own document block parsers.
-- Paragraph is the document block fallback.
+- Heading and List are sugar syntax with their own document block readers.
+- Paragraph is the document block fallback reader.
 - Inline directives share one syntactic form but differ in validation, content handling, and AST construction.
 
-A block parser and a builder are therefore not universally a one-to-one pair. The design must guarantee consistency without hiding this distinction.
+A block reader and a builder are therefore not universally a one-to-one pair. The design must guarantee consistency without hiding this distinction.
 
 ## Goals
 
 - Make `Spec` the internal source of parser feature definitions for both block and inline elements.
-- Register each sugar-syntax block parser together with the builder required for the private IR it produces.
-- Register standard block directive types independently from the shared Block Directive syntax parser.
+- Register each sugar-syntax block reader together with the builder required for the private IR it produces.
+- Register standard block directive types independently from the shared Block Directive reader.
 - Replace hardcoded inline directive-type dispatch with definitions registered in `Spec`.
 - Represent whether inline directive content is recursively parsed or retained literally.
 - Ensure the active `Spec` is used throughout AST building, inline parsing, and recursive list construction.
@@ -42,7 +42,7 @@ A block parser and a builder are therefore not universally a one-to-one pair. Th
 - Changing accepted block or inline syntax beyond making inline Directive Type matching case-insensitive.
 - Adding new directive types or AST node types.
 - Changing the private parsed-block IR solely to make it public or generic.
-- Replacing the dedicated recursive list parser with the document block parser.
+- Replacing the dedicated recursive list reader with the document block reader chain.
 - Changing malformed-input recovery, unsupported-directive handling, or diagnostic wording unless required by a separately approved change.
 - Finalizing registration method or type names before their responsibilities are settled.
 
@@ -52,7 +52,7 @@ A block parser and a builder are therefore not universally a one-to-one pair. Th
 
 Registration operations should represent coherent language features. A sugar syntax that produces a particular builder key should not be registerable without the builder that handles that key.
 
-The shared Block Directive parser is different: it recognizes the standard envelope and places the directive type in private IR. Directive-type definitions provide the builders selected from that IR. The syntax parser and each directive definition must therefore remain distinct concepts.
+The shared Block Directive reader is different: it reads the standard envelope and places the directive type in private IR. Directive-type definitions provide the builders selected from that IR. The reader and each directive definition must therefore remain distinct concepts.
 
 ### Separate syntax recognition from AST construction
 
@@ -66,7 +66,7 @@ A `Parser` created with a particular `Spec` must use that same specification for
 
 ### Preserve deterministic precedence and fallback
 
-Registration must not make parser order accidental. The core block parser order remains part of the language contract, and unsupported or malformed syntax must retain its current behavior.
+Registration must not make reader order accidental. The core block reader order remains part of the language contract, and unsupported or malformed syntax must retain its current behavior.
 
 ## Responsibility Model
 
@@ -74,8 +74,8 @@ Registration must not make parser order accidental. The core block parser order 
 
 `Spec` owns internal definitions and their ordering. It is responsible for:
 
-- the ordered document block parser chain;
-- the paragraph fallback;
+- the ordered document block reader chain;
+- the paragraph fallback reader;
 - builder lookup for parsed block keys;
 - standard block directive-type definitions;
 - inline directive-type definitions;
@@ -84,23 +84,23 @@ Registration must not make parser order accidental. The core block parser order 
 
 `Spec` should not parse a document, own mutable parse cursors, or build AST nodes directly.
 
-### Document block parsers
+### Document block readers
 
-Document block parsers recognize syntax and produce private parsed-block IR. They retain the existing success and cursor contracts.
+Document block readers consume source syntax and produce private parsed-block IR. A reader both determines whether its syntax applies and extracts the structured data, content, and source range required by that IR. Readers retain the existing success and cursor contracts.
 
-The standard Block Directive parser recognizes the shared directive envelope. It does not own the set of supported directive types. A syntactically valid directive may therefore be parsed before builder support is checked.
+The standard Block Directive reader reads the shared directive envelope. It does not own the set of supported directive types. A syntactically valid directive may therefore be read before builder support is checked.
 
-Heading and List parsers recognize sugar syntax. Their registration must associate their output with a compatible builder.
+Heading and List readers handle sugar syntax. Their registration must associate their output with a compatible builder.
 
-Paragraph remains a separately designated fallback and must always run last.
+Paragraph remains a separately designated fallback reader and must always run last.
 
 ### Block builders
 
-Block builders convert private parsed-block IR into AST blocks. Builders that accept inline-capable content must request inline parsing through the active build context rather than through a package-level core-only path.
+Block builders convert private parsed-block IR into AST blocks. Builders that accept inline-capable content must request inline parsing through the active `Parser` rather than through a package-level core-only path.
 
-### Inline parser and inline definitions
+### Inline parsing and inline definitions
 
-The inline parser owns sequence scanning, common directive-envelope recognition, delimiter handling, recursive sequence control, text flushing, and source-offset tracking.
+`Parser.parseInlines` and its short-lived `inlineParseState` own sequence scanning, common directive-envelope recognition, delimiter handling, recursive sequence control, text flushing, and source-offset tracking.
 
 A registered inline directive definition owns the behavior specific to a directive type:
 
@@ -109,27 +109,29 @@ A registered inline directive definition owns the behavior specific to a directi
 - construction of the appropriate AST node from validated data;
 - directive-specific semantic rejection that currently causes literal fallback.
 
-The common parser remains responsible for preserving the exact source span when a candidate must be emitted as literal text.
+The common inline-sequence processing remains responsible for preserving the exact source span when a candidate must be emitted as literal text.
 
-### Build context
+### `Parser` orchestration
 
-An internal build context carries the active `Spec` and provides common dispatch operations for:
+No separate build-context type is introduced in this refactoring. `Parser` already owns the active `Spec` and therefore coordinates both parsing and AST construction.
+
+Internal `Parser` methods provide common operations for:
 
 - building a parsed block through its registered builder;
 - parsing inline-capable text through the active inline definitions;
 - recursively building nested blocks without bypassing `Spec`.
 
-This context is an internal coordination mechanism, not a public extension surface.
+Block builders receive the active `Parser` when they need these operations. Document and inline cursor state remains in short-lived `blockContext`, `inlineContext`, and `inlineParseState` values rather than becoming mutable fields of `Parser`.
 
 ## Block Registration
 
 ### Standard Block Directive syntax
 
-The Block Directive parser is registered as a syntax parser exactly once in the core parser chain. It remains first in precedence.
+The Block Directive reader is registered exactly once in the core reader chain. It remains first in precedence.
 
 Block directive types such as `code` are registered as semantic definitions keyed by normalized directive type. Their registration supplies the builder needed to convert the generic parsed directive block into the appropriate AST block.
 
-This separation allows one standard syntax parser to serve multiple directive types without pretending that each directive owns a separate block parser.
+This separation allows one standard reader to serve multiple directive types without pretending that each directive owns a separate block reader.
 
 A syntactically valid Block Directive whose type has no registered builder must continue to produce the current unsupported-block build error.
 
@@ -137,16 +139,16 @@ A syntactically valid Block Directive whose type has no registered builder must 
 
 Heading and List are registered as sugar-syntax features. Each registration includes both:
 
-- the document block parser that recognizes the sugar form; and
-- the block builder for the private IR produced by that parser.
+- the document block reader that reads the sugar form; and
+- the block builder for the private IR produced by that reader.
 
-Registration order remains explicit because it controls parsing precedence. Adding a sugar syntax must not reorder existing parsers implicitly.
+Registration order remains explicit because it controls parsing precedence. Adding a sugar syntax must not reorder existing readers implicitly.
 
-The registration layer should reject or otherwise prevent a sugar parser from being installed without its corresponding builder definition.
+The registration layer should reject or otherwise prevent a sugar reader from being installed without its corresponding builder definition.
 
 ### Paragraph fallback
 
-Paragraph is registered through a dedicated fallback operation that associates its parser with its builder. It is not part of the ordinary ordered parser list and is appended only when the effective parser chain is obtained.
+Paragraph is registered through a dedicated fallback operation that associates its reader with its builder. It is not part of the ordinary ordered reader list and is appended only when the effective reader chain is obtained.
 
 The design must guarantee that the fallback remains last. Replacing or omitting it should either be impossible for a usable core `Spec` or fail during specification validation rather than during document parsing.
 
@@ -154,7 +156,7 @@ The design must guarantee that the fallback remains last. Replacing or omitting 
 
 Builder lookup continues to use stable internal keys produced by private parsed-block IR. Registration and lookup must use the Directive Type normalization rule defined below, and duplicate normalized keys must not silently replace existing definitions.
 
-The implementation should avoid requiring a syntax parser to know about concrete AST types. Its contract is the private IR and the builder key associated with that IR.
+The implementation should avoid requiring a block reader to know about concrete AST types. Its contract is the private IR and the builder key associated with that IR.
 
 ## Directive Type Normalization
 
@@ -205,21 +207,21 @@ A definition must distinguish semantic rejection from an internal error. Semanti
 
 AST construction must preserve pointer-based inline node contracts and assign a range to every node. Directive-node ranges include the complete directive syntax, while nested content and literal `Text` nodes retain their own source spans.
 
-## Specification and Build-Context Propagation
+## Specification Propagation Through `Parser`
 
-The active `Spec` must be passed from `Parser` into document AST building. Block builders receive access to the internal build context rather than calling a core-only inline parser directly.
+The active `Spec` remains owned by `Parser` throughout document AST building. Block builders receive the active `Parser` rather than a separate build context or a core-only inline parser.
 
-Heading and Paragraph builders use the context to parse inline content. Code Block builders preserve their content literally and must not request inline parsing.
+Inline parsing is exposed as an internal `Parser` method. Heading and Paragraph builders use that method to parse inline content. Code Block builders preserve their content literally and must not request inline parsing.
 
-The inline parser receives the active `Spec`, including during recursive parsing of nested inline content. A custom internal specification must therefore behave consistently in headings, paragraphs, and list-item paragraphs.
+A short-lived `inlineParseState` supports scanning and recursion for one inline input while retaining access to the active `Parser`. Recursive parsing therefore uses the same `Spec`. A custom internal specification must behave consistently in headings, paragraphs, and list-item paragraphs.
 
 Package-level convenience parsing may continue to construct the core specification, but internal nested calls must never construct a replacement core specification.
 
 ## List Dispatch
 
-List syntax continues to use its dedicated recursive parser. This plan does not make list items invoke the document block parser.
+List syntax continues to use its dedicated recursive reader. This plan does not make list items invoke the document block reader chain.
 
-During AST construction, however, list-item blocks should use the same build-context dispatch as top-level document blocks. The List builder should not directly construct Paragraph AST nodes or maintain a type switch that duplicates builder selection.
+During AST construction, however, list-item blocks should use the same `Parser` dispatch as top-level document blocks. The List builder should not directly construct Paragraph AST nodes or maintain a type switch that duplicates builder selection.
 
 Nested lists are built by dispatching their private IR through the registered List builder. Paragraph-like list-item content is built through the registered Paragraph builder. This ensures that inline registration and block-building behavior are applied consistently at every nesting level.
 
@@ -227,39 +229,41 @@ Any list-specific metadata needed to build item content must remain available in
 
 ## Naming Guidelines
 
-Concrete method and type names remain undecided. Naming should be selected after the responsibility model is represented cleanly in code.
+The internal terminology is fixed as follows:
 
-Names must make the following distinctions clear:
+- `Parser` is the source-to-AST orchestrator and owns the active `Spec`.
+- A document `blockReader` reads source and produces private parsed-block IR.
+- A `blockBuilder` converts private parsed-block IR into an AST block.
+- A directive definition describes Directive Type-specific semantics and AST construction.
+- `blockContext` and `inlineContext` hold short-lived source and cursor information.
+- `inlineParseState` holds the short-lived scanning and recursion state used by `Parser.parseInlines`.
 
-- a document syntax parser versus a directive-type definition;
-- standard Block Directive syntax versus sugar syntax;
-- an ordinary ordered parser versus the paragraph fallback;
-- block AST construction versus inline directive AST construction;
-- registration operations versus lookup or dispatch operations;
-- content parsing policy versus AST builder implementation.
+Reader implementation names follow the syntax they read, including Block Directive, Heading, List, and Paragraph readers. Paragraph is identified by its fallback registration rather than by a different component category.
 
-Names implying a universal one-to-one parser/builder relationship should be avoided because standard directives share one syntax parser. Names suggesting a stable public plugin API should also be avoided while the mechanism remains internal.
+`Reader` is deliberately limited to the block source-to-private-IR phase. Inline processing does not currently introduce an equivalent private IR and therefore is not named as an inline reader.
+
+Names must continue to distinguish standard Block Directive syntax from sugar syntax, registration from lookup or dispatch, and content policy from AST construction. Names implying a universal one-to-one reader/builder relationship must be avoided because standard directives share one reader. Names suggesting a stable public plugin API must also be avoided while the mechanism remains internal.
 
 ## Preserved Invariants
 
 The implementation must preserve all existing parser invariants:
 
-- Document block parser order is Block Directive, Heading, List, then Paragraph fallback.
+- Document block reader order is Block Directive, Heading, List, then Paragraph fallback.
 - Block Directive is the standard block syntax; Heading and List remain sugar syntax.
-- Document block parsing produces private parsed-block IR, not final AST nodes.
+- Document block readers produce private parsed-block IR, not final AST nodes.
 - Inline parsing occurs during AST building for inline-capable blocks.
 - Code Block content is not inline-parsed.
-- Lists use dedicated recursive parsing rather than the document block parser.
+- Lists use dedicated recursive reading rather than the document block reader chain.
 - AST block and inline interfaces continue to be implemented by pointer types.
 - Parser-produced nonempty source ranges are one-based and inclusive.
 - Columns count Unicode code points rather than UTF-8 bytes.
 - Every inline AST node carries a source range.
 - Inline directive-node ranges include the complete directive syntax.
 - Nested inline nodes and literal text nodes carry their own source spans.
-- On success, a document block parser leaves the block context on the last consumed line; the caller advances once.
-- A document block parser returning `ok=false` does not consume input.
-- A parser that scans ahead restores its starting cursor before returning `ok=false`.
-- Paragraph fallback remains capable of consuming any nonblank block start not accepted by an earlier parser.
+- On success, a document block reader leaves the block context on the last consumed line; the caller advances once.
+- A document block reader returning `ok=false` does not consume input.
+- A reader that scans ahead restores its starting cursor before returning `ok=false`.
+- Paragraph fallback remains capable of consuming any nonblank block start not accepted by an earlier reader.
 
 ## Error and Fallback Compatibility
 
@@ -280,28 +284,28 @@ Specification-construction errors, such as duplicate normalized keys or a missin
 
 ### Stage 1: Introduce common build dispatch
 
-- Add an internal build context carrying the active `Spec`.
-- Move block builder lookup and error wrapping into one shared dispatch path.
+- Make `Parser` the common AST-construction coordinator without introducing a build-context type.
+- Move block builder lookup and error wrapping into one shared `Parser` dispatch path.
 - Route document AST construction through that path.
 - Preserve existing builder behavior and output.
 
 ### Stage 2: Propagate the active specification
 
-- Update block builder contracts to receive the build context.
-- Route Heading and Paragraph inline parsing through the context.
+- Update block builder contracts to receive the active `Parser`.
+- Define inline parsing as an internal `Parser` method and route Heading and Paragraph through it.
 - Ensure recursive inline parsing uses the same `Spec`.
 - Keep Code Block construction literal.
 
 ### Stage 3: Unify list AST construction
 
-- Replace direct Paragraph construction and list-specific builder selection with common build-context dispatch.
+- Replace direct Paragraph construction and list-specific builder selection with common `Parser` dispatch.
 - Preserve the dedicated list parsing algorithm and existing private IR.
 - Verify nested lists and list-item inline ranges before continuing.
 
 ### Stage 4: Restructure block registration
 
-- Introduce responsibility-oriented registration operations for standard directive definitions, sugar-syntax features, and the fallback.
-- Migrate the core specification without changing parser order.
+- Introduce responsibility-oriented registration operations for standard directive definitions, sugar-syntax reader features, and the fallback reader.
+- Migrate the core specification without changing reader order.
 - Apply the shared case-insensitive Directive Type normalization rule to registration and block builder lookup.
 - Add duplicate and incomplete-registration validation.
 - Remove the independent parser/builder setup paths once all core features use the new model.
@@ -331,19 +335,19 @@ Run the complete parser test suite after every stage:
 
 - `go test ./internal/parser`
 
-Existing tests must continue to cover block precedence, cursor behavior, parsed IR, AST shape, nested lists, inline nesting, literal code content, malformed-input fallback, and Unicode source ranges.
+Existing tests must continue to cover block-reader precedence, cursor behavior, parsed IR, AST shape, nested lists, inline nesting, literal code content, malformed-input fallback, and Unicode source ranges.
 
 ### Registration consistency
 
 Add focused tests that verify:
 
-- a sugar-syntax registration supplies both recognition and construction behavior;
+- a sugar-syntax registration supplies both reading and construction behavior;
 - incomplete feature registration is rejected or impossible through the internal API;
 - duplicate normalized block keys are not silently overwritten;
 - duplicate normalized inline directive types are not silently overwritten;
 - block and inline registrations whose types differ only by case are treated as duplicates;
 - Paragraph remains the final fallback;
-- the core parser order remains Block Directive, Heading, List, Paragraph.
+- the core reader order remains Block Directive, Heading, List, Paragraph.
 
 ### Active specification propagation
 
@@ -375,10 +379,10 @@ Add focused tests that verify:
 
 Add tests that verify:
 
-- one Block Directive syntax parser dispatches multiple registered directive types without requiring multiple syntax parsers;
+- one Block Directive reader dispatches multiple registered directive types without requiring multiple readers;
 - an unregistered but syntactically valid block directive retains the current build error;
-- sugar parser precedence remains deterministic;
-- failed sugar recognition does not consume the block context;
+- sugar reader precedence remains deterministic;
+- a sugar reader returning `ok=false` does not consume the block context;
 - Code Block content remains literal after inline definitions become configurable.
 
 Broader repository tests may be run after parser tests pass to confirm that AST output consumed by the renderer and CLI has not changed.
@@ -389,11 +393,12 @@ The refactoring is complete when:
 
 - core block and inline features are defined through the new internal `Spec` model;
 - no directive-type switch in the central inline parser selects `em`, `link`, or `code` behavior;
-- sugar-syntax parsers cannot be configured independently from their required builders through the intended internal registration path;
-- standard block directive types share the common Block Directive syntax parser;
+- sugar-syntax readers cannot be configured independently from their required builders through the intended internal registration path;
+- standard block directive types share the common Block Directive reader;
 - block and inline Directive Types use the same case-insensitive normalization rule;
-- the active `Spec` reaches all block builders and recursive inline parsing;
-- top-level and list-item AST construction use common block dispatch;
+- the active `Spec` reaches all block builders and recursive inline parsing through `Parser`;
+- top-level and list-item AST construction use common `Parser` block dispatch;
+- no separate build-context type is introduced;
 - all existing parser behavior and source-range tests pass;
 - new registration and custom-spec tests pass;
 - architecture and layout documentation describe the resulting implementation accurately;
@@ -401,7 +406,7 @@ The refactoring is complete when:
 
 ## Open Questions
 
-- What terminology best distinguishes a standard directive-type definition from a sugar-syntax feature registration?
+- What registration method names best distinguish a standard directive-type definition from a sugar-syntax reader feature?
 - Should registration validation happen incrementally, when constructing a usable `Spec`, or both?
 - Should registration failures be returned as errors or made impossible through unexported construction helpers?
 - Which internal boundary should own the shared Directive Type normalization operation while ensuring that both registration and lookup always apply it?
