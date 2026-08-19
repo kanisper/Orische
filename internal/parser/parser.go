@@ -102,32 +102,42 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 	}
 
 	for _, node := range parsedDoc.Blocks {
-		builder, ok := p.spec.getBuilder(node.getBuilderKey())
-		if !ok {
-			return nil, &diagnostic.Error{
-				Message: fmt.Sprintf("unsupported block directive type %q", node.getBuilderKey()),
-				Range:   node.getBlockRange(),
-			}
-		}
-
-		builtBlock, err := builder.build(p, node)
+		block, err := p.buildBlock(node)
 		if err != nil {
-			var diag *diagnostic.Error
-			if errors.As(err, &diag) {
-				return nil, err
-			}
-
-			return nil, fmt.Errorf(
-				"build %q block: %w",
-				node.getBuilderKey(),
-				err,
-			)
+			return nil, err
 		}
 
-		doc.Blocks = append(doc.Blocks, builtBlock)
+		doc.Blocks = append(doc.Blocks, block)
 	}
 
 	return doc, nil
+}
+
+func (p *Parser) buildBlock(node parsedBlockNode) (ast.Block, error) {
+	key := node.getBuilderKey()
+	builder, ok := p.spec.getBuilder(key)
+	if !ok {
+		return nil, &diagnostic.Error{
+			Message: fmt.Sprintf("unsupported block directive type %q", key),
+			Range:   node.getBlockRange(),
+		}
+	}
+
+	block, err := builder.build(p, node)
+	if err != nil {
+		var diag *diagnostic.Error
+		if errors.As(err, &diag) {
+			return nil, err
+		}
+
+		return nil, fmt.Errorf(
+			"build %q block: %w",
+			key,
+			err,
+		)
+	}
+
+	return block, nil
 }
 
 func splitLines(input string) []string {
