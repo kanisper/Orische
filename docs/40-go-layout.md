@@ -47,17 +47,18 @@ Implements the `orische` command-line entrypoint. It reads one input file, rende
 
 ## Parser Files
 
-The parser package is organized by responsibility:
+The parser package keeps common parsing machinery separate and groups syntax-specific implementation by syntax:
 
 - `parser.go` — source-to-AST orchestration, active-`Spec` ownership, and common block-builder dispatch
 - `spec.go` — responsibility-oriented block feature registration, inline definition registration, normalization, lookup, and validation
 - `block_context.go` — short-lived document line cursor state
 - `parsed_block.go` — private parsed-block IR
-- `block_*.go` — document block readers that produce private parsed-block IR
-- `builder_*.go` — private-IR-to-AST builders; list-item builders reuse `Parser` dispatch
+- `block_heading.go`, `block_list.go`, `block_paragraph.go`, `block_code.go` — syntax-specific builder keys, readers where applicable, and private-IR-to-AST builders; list-item builders reuse `Parser` dispatch
+- `block_directive.go` — common Block Directive envelope reader
 - `inline.go` — `Parser.parseInlines`, inline-sequence state, and `Text` node construction
 - `inline_context.go` — byte-offset-to-source-position conversion and inline source ranges
-- `inline_directive.go` — common directive-envelope processing, content policies, and core inline definitions
+- `inline_directive.go` — common directive-envelope processing, content policies, and the inline definition contract
+- `inline_emphasis.go`, `inline_link.go`, `inline_code.go` — core syntax-specific inline definitions
 - `spec_registration_test.go`, `inline_spec_test.go`, `active_spec_test.go` — registration consistency and active-`Spec` propagation tests
 - `*_test.go` — package behavior tests
 

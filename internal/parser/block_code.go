@@ -6,6 +6,8 @@ import (
 	"orische/internal/ast"
 )
 
+const blockBuilderKeyCode = "code"
+
 type codeBlockBuilder struct{}
 
 func (*codeBlockBuilder) build(_ *Parser, node parsedBlockNode) (ast.Block, error) {

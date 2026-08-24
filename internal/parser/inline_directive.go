@@ -107,58 +107,6 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	return node, next, true, nil
 }
 
-type emphasisInlineDefinition struct{}
-
-func (*emphasisInlineDefinition) contentPolicy() inlineContentPolicy {
-	return inlineContentNested
-}
-
-func (*emphasisInlineDefinition) validateAttribute(string) (bool, error) {
-	return true, nil
-}
-
-func (*emphasisInlineDefinition) buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error) {
-	return &ast.Emphasis{
-		Content: candidate.NestedContent,
-		Range:   candidate.Range,
-	}, nil
-}
-
-type linkInlineDefinition struct{}
-
-func (*linkInlineDefinition) contentPolicy() inlineContentPolicy {
-	return inlineContentNested
-}
-
-func (*linkInlineDefinition) validateAttribute(attribute string) (bool, error) {
-	return attribute != "", nil
-}
-
-func (*linkInlineDefinition) buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error) {
-	return &ast.Link{
-		URI:     candidate.Attribute,
-		Content: candidate.NestedContent,
-		Range:   candidate.Range,
-	}, nil
-}
-
-type codeInlineDefinition struct{}
-
-func (*codeInlineDefinition) contentPolicy() inlineContentPolicy {
-	return inlineContentLiteral
-}
-
-func (*codeInlineDefinition) validateAttribute(string) (bool, error) {
-	return true, nil
-}
-
-func (*codeInlineDefinition) buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error) {
-	return &ast.CodeSpan{
-		Value: candidate.LiteralContent,
-		Range: candidate.Range,
-	}, nil
-}
-
 func parseInlineHeader(header string) (dirtype string, attr string, ok bool) {
 	if sep := strings.IndexByte(header, ':'); sep >= 0 {
 		dirtype = header[:sep]
