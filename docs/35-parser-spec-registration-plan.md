@@ -29,7 +29,7 @@ No separate build-context type exists. Mutable cursor and scan state remain in s
 
 ### Readers and builders
 
-A `blockReader` recognizes document source and produces private parsed-block IR. A `blockBuilder` converts that IR into an AST block. Block readers never construct final AST nodes.
+A `blockReader` recognizes document source and produces private parsed-block IR. A `blockBuilder` converts that IR into an AST block. Block readers never construct final AST nodes. A `blockSugarReader` is the narrower internal category for a Reader that also declares its IR builder key through `builderKey() string`.
 
 The effective core reader order is fixed:
 
@@ -46,12 +46,12 @@ Block registration is responsibility-oriented:
 
 - `registerBlockDirectiveReader` installs the shared standard-syntax reader exactly once;
 - `registerBlockDirectiveDefinition` associates a Directive Type with a builder;
-- `registerBlockSugar` atomically installs a sugar Reader/Builder pair;
+- `registerBlockSugar` atomically installs a Sugar Reader/Builder pair and derives the registration key from the Reader; it does not accept an independent Directive Type string;
 - `registerParagraphFallback` installs the dedicated final fallback and its builder.
 
-The core specification registers Heading and List as sugar features, `code` as a block directive definition, and Paragraph as the fallback. A syntactically valid unregistered Block Directive is still read successfully and then produces the established unsupported-block diagnostic during AST building.
+The core specification registers Heading and List as the only Sugar Reader features, `code` as a block directive definition, and Paragraph as the fallback. The Block Directive Reader and Paragraph Reader are not Sugar Readers. A syntactically valid unregistered Block Directive is still read successfully and then produces the established unsupported-block diagnostic during AST building.
 
-Invalid or incomplete registration is rejected before mutation. A document `Spec` is validated before source reading, including the required shared Block Directive reader and Paragraph fallback.
+`paragraph` is a case-insensitive reserved key for the Paragraph fallback. Block Directive definitions, Sugar registration, and the generic block-builder registration path reject it; only `registerParagraphFallback` may install that builder. Invalid or incomplete registration is rejected before mutation, including the builder map, Reader list, and fallback field. A failed reserved-key registration therefore leaves the `Spec` ready for a later valid Paragraph fallback registration. A document `Spec` is validated before source reading, including the required shared Block Directive reader and Paragraph fallback.
 
 ## Directive Type Normalization
 
@@ -70,6 +70,8 @@ An `inlineDirectiveDefinition` owns type-specific behavior:
 - attribute validation;
 - a closed nested-content or literal-content policy;
 - AST construction from validated content and the complete directive range.
+
+`validateAttribute` has a three-valued error contract: `(true, nil)` accepts the directive and proceeds to AST construction; `(false, nil)` is semantic rejection and retains the candidate as literal fallback; a non-nil error is an internal failure that propagates as an error, without literal fallback or continued scanning. This refactoring does not change the ordering of validation relative to unterminated-candidate detection.
 
 The core definitions are:
 
@@ -92,8 +94,10 @@ Semantic rejection returns literal fallback without an error. Definition validat
 - Nested nodes and literal `Text` nodes carry their own source spans.
 - A successful block reader leaves the cursor on the last consumed line.
 - A block reader returning `ok=false` does not consume input.
+- A successful Sugar Reader's normalized `builderKey()` must match the normalized key returned by its parsed IR. `parseOneBlock` checks this immediately after the read; a mismatch is an ordinary internal error and does not fall through to Paragraph.
 - Malformed block syntax falls through to Paragraph reading.
 - Unsupported, empty-type, semantically rejected, malformed, and unterminated inline candidates retain their established literal-scanning behavior.
+- A diagnostic returned while building a list-item Paragraph is propagated unchanged, preserving its identity, message, and range. A normal error retains its cause and is wrapped with both `build "paragraph" block` and `build "list" block` context.
 
 ## Verification Coverage
 
@@ -108,6 +112,9 @@ Focused tests cover:
 - nested and literal inline content policies;
 - case-insensitive core inline definitions with value preservation;
 - semantic rejection versus internal construction errors;
+- inline validation errors versus semantic rejection, including stop-on-error behavior;
+- Sugar Reader declared-key/IR-key consistency and Paragraph reserved-key registration atomicity;
+- list-item diagnostic identity and nested normal-error context;
 - malformed-input recovery and later valid candidates;
 - exact one-based, inclusive Unicode source ranges;
 - unchanged renderer and CLI behavior through the repository test suite.

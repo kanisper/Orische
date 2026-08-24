@@ -15,7 +15,7 @@ func TestReadHeading(t *testing.T) {
 	}
 	output, ok, err := (&headingReader{}).read(input)
 	want := &parsedBlock{
-		Type: "Heading",
+		Type: blockBuilderKeyHeading,
 		Attr: "level1",
 		Text: "Heading1",
 		Range: ast.Range{
@@ -41,7 +41,7 @@ func TestReadHeading_Level2(t *testing.T) {
 	}
 	output, ok, err := (&headingReader{}).read(input)
 	want := &parsedBlock{
-		Type: "Heading",
+		Type: blockBuilderKeyHeading,
 		Attr: "level2",
 		Text: "Heading2",
 		Range: ast.Range{
@@ -72,7 +72,7 @@ func TestReadHeading_UnicodeRange(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: "Heading",
+		Type: blockBuilderKeyHeading,
 		Attr: "level1",
 		Text: "あ😀",
 		Range: ast.Range{

@@ -19,7 +19,7 @@ func TestReadParagraph(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: "Paragraph",
+		Type: blockBuilderKeyParagraph,
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2\n:::[code:go]",
 		Range: ast.Range{
@@ -58,7 +58,7 @@ func TestReadParagraph_EndWithBlankLine(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: "Paragraph",
+		Type: blockBuilderKeyParagraph,
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2",
 		Range: ast.Range{
@@ -95,7 +95,7 @@ func TestReadParagraph_UnicodeRange(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: "Paragraph",
+		Type: blockBuilderKeyParagraph,
 		Text: "first line\né😀",
 		Range: ast.Range{
 			Start: ast.Position{Line: 1, Column: 1},

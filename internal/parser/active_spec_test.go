@@ -144,10 +144,10 @@ func TestParserParse_UsesCustomInlineDefinitionAcrossInlineCapableBlocks(t *test
 	if err := spec.registerInlineDirectiveDefinition("mark", definition); err != nil {
 		t.Fatalf("register custom inline definition: %v", err)
 	}
-	if err := spec.registerBlockSugar("heading", &headingReader{}, &headingBuilder{}); err != nil {
+	if err := spec.registerBlockSugar(&headingReader{}, &headingBuilder{}); err != nil {
 		t.Fatalf("register heading sugar: %v", err)
 	}
-	if err := spec.registerBlockSugar("list", &listReader{}, &listBuilder{}); err != nil {
+	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
 	if err := spec.registerParagraphFallback(&paragraphBuilder{}); err != nil {
@@ -223,10 +223,10 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 		wantSpec:   spec,
 		delegate:   &listBuilder{},
 	}
-	if err := spec.registerBlockSugar("probe", readerProbe, &paragraphBuilder{}); err != nil {
+	if err := spec.registerBlockSugar(readerProbe, &paragraphBuilder{}); err != nil {
 		t.Fatalf("register reader probe: %v", err)
 	}
-	if err := spec.registerBlockSugar("list", &listReader{}, listProbe); err != nil {
+	if err := spec.registerBlockSugar(&listReader{}, listProbe); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
 	if err := spec.registerParagraphFallback(paragraphProbe); err != nil {
@@ -461,6 +461,10 @@ type activeSpecReaderProbe struct {
 	calls int
 }
 
+func (*activeSpecReaderProbe) builderKey() string {
+	return "probe"
+}
+
 type activeInlineProbeDefinition struct {
 	calls int
 }
@@ -546,7 +550,7 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 	if err := spec.registerBlockDirectiveDefinition("code", &codeBlockBuilder{}); err != nil {
 		t.Fatalf("register code directive: %v", err)
 	}
-	if err := spec.registerBlockSugar("heading", &headingReader{}, probes["heading"]); err != nil {
+	if err := spec.registerBlockSugar(&headingReader{}, probes["heading"]); err != nil {
 		t.Fatalf("register heading sugar: %v", err)
 	}
 	if err := spec.registerParagraphFallback(probes["paragraph"]); err != nil {

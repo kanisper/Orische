@@ -10,6 +10,10 @@ import (
 
 type listReader struct{}
 
+func (*listReader) builderKey() string {
+	return blockBuilderKeyList
+}
+
 type listLine struct {
 	Ordered      bool
 	RawLevel     int
@@ -151,7 +155,7 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 			list.Items = append(list.Items, parsedListItem{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Attr: "",
 						Text: line.Text,
 						Range: ast.Range{

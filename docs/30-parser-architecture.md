@@ -34,11 +34,14 @@ Block reading records structure and raw inline-capable text. It does not create 
 
 - the shared Block Directive reader is registered exactly once and always precedes sugar readers;
 - a block directive definition associates a normalized Directive Type with its builder;
-- Heading and List are registered as ordered sugar Reader/Builder pairs;
+- a Sugar Reader is a `blockReader` that also declares the builder key it produces through `builderKey() string`;
+- `registerBlockSugar` receives only a Sugar Reader and its builder. It derives the normalized registration key from the Reader, so callers cannot provide an independent Directive Type string;
+- Heading and List are the only Sugar Reader implementations in the core specification and are registered as ordered Reader/Builder pairs;
+- the Block Directive Reader and Paragraph Reader are ordinary `blockReader` implementations, not Sugar Readers;
 - Paragraph is registered as the dedicated fallback Reader/Builder pair;
 - inline directive definitions associate a normalized Directive Type with validation, a content policy, and AST construction.
 
-Sugar and fallback registration install their reader and builder atomically. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading, including the required Block Directive reader and Paragraph fallback.
+`paragraph` is a case-insensitive, fallback-only reserved builder key. Block Directive definitions, Sugar registration, and the generic block-builder registration path reject it. Paragraph fallback registration is the only path that may install the Paragraph builder. Registration validates all inputs before mutating the builder map, reader list, or fallback field, so a rejected registration leaves the `Spec` usable for a later valid fallback registration. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading, including the required Block Directive reader and Paragraph fallback.
 
 Directive Type registration and lookup use the same Unicode-aware `strings.ToLower` normalization. Only the type is normalized; attributes and content retain their original spelling. Block and inline definitions use separate registries, so `code` can be defined in both categories.
 
@@ -62,6 +65,8 @@ A reader returning `ok=false` must not consume input. A reader that scans ahead 
 - `*parsedList` for lists.
 
 The IR keeps raw text until AST building. `getBuilderKey` supplies the raw internal lookup key; `Spec` normalizes the key and selects the AST builder.
+
+When a Sugar Reader succeeds, `parseOneBlock` compares its normalized declared key with the normalized key returned by the parsed IR immediately after the read. A mismatch is an ordinary internal error, not an unsupported-block diagnostic, and parsing does not continue to Paragraph fallback. The check also rejects a successful Reader that returns a nil IR node.
 
 ## List Parsing
 
@@ -89,6 +94,7 @@ Builders convert private IR into pointer-based AST nodes. `Parser.buildBlock` ow
 - Heading and Paragraph builders parse inline content.
 - List builders recursively build item blocks through common dispatch.
 - Code Block builders preserve text literally and do not parse inline syntax.
+- A diagnostic returned by a list-item Paragraph builder is propagated as the same diagnostic instance, without `build "paragraph" block` or `build "list" block` context. A non-diagnostic list-item builder or inline error preserves its cause and receives the nested `build "paragraph" block` and outer `build "list" block` context.
 - Parsed block ranges are copied to their AST block nodes. Inline parsing computes ranges from each block's inline-content origin, and every inline node receives its own source range.
 
 The core builder keys are `heading`, `paragraph`, `list`, and `code`.
@@ -103,7 +109,7 @@ After parsing a header, the active `Spec` selects an inline directive definition
 - links with recursively parsed content;
 - code spans with literal content.
 
-Empty content is valid. Unsupported directives, invalid headers, and links without a URI are retained as literal text through the first available `}`. Other malformed or unterminated candidates resume ordinary scanning, so later valid inline syntax may still be recognized. Code spans end at the first `}` and do not support nesting or escaping.
+Empty content is valid. Attribute validation has three outcomes: `true, nil` accepts the directive and continues AST construction; `false, nil` semantically rejects it and retains it as literal text; a non-nil error is an internal failure and aborts inline parsing without literal fallback or continued scanning. Unsupported directives, invalid headers, and links without a URI are retained as literal text through the first available `}`. Other malformed or unterminated candidates resume ordinary scanning, so later valid inline syntax may still be recognized. Code spans end at the first `}` and do not support nesting or escaping.
 
 Semantic rejection, such as a link with an empty URI, produces literal fallback. Definition validation or construction errors represent internal failures and are returned as errors. Recursive nested content always consults the same active `Parser` and `Spec`.
 

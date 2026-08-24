@@ -106,7 +106,7 @@ func TestReadBlockDirective_NoClosing(t *testing.T) {
 	wantDoc := &parsedDocument{
 		Blocks: []parsedBlockNode{
 			&parsedBlock{
-				Type: "Paragraph",
+				Type: blockBuilderKeyParagraph,
 				Attr: "",
 				Text: ":::[code:go]\nfmt.Println(\"Hello, world!\")",
 				Range: ast.Range{

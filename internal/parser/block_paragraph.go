@@ -26,7 +26,7 @@ func (*paragraphReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	ctx.advance(-1)
 
 	return &parsedBlock{
-		Type: "Paragraph",
+		Type: blockBuilderKeyParagraph,
 		Attr: "",
 		Text: strings.Join(content, "\n"),
 		Range: ast.Range{

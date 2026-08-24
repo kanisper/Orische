@@ -25,7 +25,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Attr: "",
 						Text: "ol level 1 line 1",
 						Range: ast.Range{
@@ -42,7 +42,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Attr: "",
 						Text: "ol level 1 line 2",
 						Range: ast.Range{
@@ -56,7 +56,7 @@ func TestReadList(t *testing.T) {
 							{
 								Blocks: []parsedBlockNode{
 									&parsedBlock{
-										Type: "Paragraph",
+										Type: blockBuilderKeyParagraph,
 										Attr: "",
 										Text: "ul level 2 line 1",
 										Range: ast.Range{
@@ -85,7 +85,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Attr: "",
 						Text: "ol level 1 line 3",
 						Range: ast.Range{
@@ -141,7 +141,7 @@ func TestReadList_UnicodeRange(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Text: "あ😀",
 						Range: ast.Range{
 							Start: ast.Position{Line: 1, Column: 3},
@@ -213,7 +213,7 @@ func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: "Paragraph",
+						Type: blockBuilderKeyParagraph,
 						Attr: "",
 						Text: "parent",
 						Range: ast.Range{
@@ -227,7 +227,7 @@ func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 							{
 								Blocks: []parsedBlockNode{
 									&parsedBlock{
-										Type: "Paragraph",
+										Type: blockBuilderKeyParagraph,
 										Attr: "",
 										Text: "child",
 										Range: ast.Range{

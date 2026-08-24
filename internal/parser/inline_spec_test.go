@@ -210,6 +210,43 @@ func TestParserParseInlines_SemanticRejectionRemainsLiteralAndScanningContinues(
 	}
 }
 
+func TestParserParseInlines_ValidationErrorStopsParsingWithoutLiteralFallback(t *testing.T) {
+	wantErr := errors.New("validation failed")
+	spec := newSpec()
+	laterCalls := 0
+	if err := spec.registerInlineDirectiveDefinition("broken", &testInlineDefinition{
+		policy: inlineContentNested,
+		validate: func(string) (bool, error) {
+			return false, wantErr
+		},
+	}); err != nil {
+		t.Fatalf("register broken definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("later", &testInlineDefinition{
+		policy: inlineContentNested,
+		build: func(candidate inlineDirectiveCandidate) (ast.Inline, error) {
+			laterCalls++
+			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
+		},
+	}); err != nil {
+		t.Fatalf("register later definition: %v", err)
+	}
+
+	got, err := NewParser(spec).parseInlines(":[BROKEN]{invalid} :[LATER]{later}", ast.Position{Line: 1, Column: 1})
+	if got != nil {
+		t.Errorf("parseInlines returned nodes: %#v", got)
+	}
+	if !errors.Is(err, wantErr) {
+		t.Errorf("error = %v, want errors.Is(..., validation sentinel)", err)
+	}
+	if want := `validate inline directive "broken": validation failed`; err == nil || err.Error() != want {
+		t.Errorf("error = %v, want %q", err, want)
+	}
+	if laterCalls != 0 {
+		t.Errorf("later definition build calls = %d, want 0", laterCalls)
+	}
+}
+
 func TestParserParseInlines_UnterminatedCandidateStillAllowsLaterValidCandidate(t *testing.T) {
 	got, err := NewParser(nil).parseInlines(":[em]{broken :[link:/X]{界}", ast.Position{Line: 2, Column: 3})
 	if err != nil {

@@ -10,13 +10,17 @@ import (
 
 type headingReader struct{}
 
+func (*headingReader) builderKey() string {
+	return blockBuilderKeyHeading
+}
+
 func (*headingReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	level, content := parseHeadingLine(ctx.getLine())
 	if level < 1 || level > 6 {
 		return nil, false, nil
 	} else {
 		return &parsedBlock{
-			Type: "Heading",
+			Type: blockBuilderKeyHeading,
 			Attr: "level" + strconv.Itoa(level),
 			Text: content,
 			Range: ast.Range{

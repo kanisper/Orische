@@ -35,7 +35,7 @@ type parsedList struct {
 }
 
 func (pl *parsedList) getBuilderKey() string {
-	return "list"
+	return blockBuilderKeyList
 }
 
 func (pl *parsedList) getBlockRange() ast.Range {

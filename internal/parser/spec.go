@@ -10,7 +10,7 @@ import (
 
 type Spec struct {
 	blockDirectiveReader blockReader
-	sugarReaders         []blockReader
+	sugarReaders         []blockSugarReader
 	paragraphFallback    blockReader
 	builders             map[string]blockBuilder
 	inlineDefinitions    map[string]inlineDirectiveDefinition
@@ -20,13 +20,18 @@ type blockReader interface {
 	read(ctx *blockContext) (parsedBlockNode, bool, error)
 }
 
+type blockSugarReader interface {
+	blockReader
+	builderKey() string
+}
+
 type blockBuilder interface {
 	build(parser *Parser, block parsedBlockNode) (ast.Block, error)
 }
 
 func newSpec() *Spec {
 	return &Spec{
-		sugarReaders:      []blockReader{},
+		sugarReaders:      []blockSugarReader{},
 		builders:          map[string]blockBuilder{},
 		inlineDefinitions: map[string]inlineDirectiveDefinition{},
 	}
@@ -36,9 +41,9 @@ func coreSpec() *Spec {
 	s := newSpec()
 
 	mustRegister(s.registerBlockDirectiveReader())
-	mustRegister(s.registerBlockDirectiveDefinition("code", &codeBlockBuilder{}))
-	mustRegister(s.registerBlockSugar("heading", &headingReader{}, &headingBuilder{}))
-	mustRegister(s.registerBlockSugar("list", &listReader{}, &listBuilder{}))
+	mustRegister(s.registerBlockDirectiveDefinition(blockBuilderKeyCode, &codeBlockBuilder{}))
+	mustRegister(s.registerBlockSugar(&headingReader{}, &headingBuilder{}))
+	mustRegister(s.registerBlockSugar(&listReader{}, &listBuilder{}))
 	mustRegister(s.registerParagraphFallback(&paragraphBuilder{}))
 	mustRegister(s.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}))
 	mustRegister(s.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}))
@@ -60,17 +65,11 @@ func (s *Spec) registerBlockDirectiveDefinition(dirtype string, builder blockBui
 	return s.registerBlockBuilder(dirtype, builder)
 }
 
-func (s *Spec) registerBlockSugar(dirtype string, reader blockReader, builder blockBuilder) error {
-	key := normalizeDirectiveType(dirtype)
-	if key == "paragraph" {
-		return fmt.Errorf("paragraph must be registered as the fallback")
-	}
+func (s *Spec) registerBlockSugar(reader blockSugarReader, builder blockBuilder) error {
 	if isNilRegistration(reader) {
-		return fmt.Errorf("block sugar %q has no reader", key)
+		return fmt.Errorf("block sugar has no reader")
 	}
-	if _, ok := reader.(*paragraphReader); ok {
-		return fmt.Errorf("paragraph reader must be registered as the fallback")
-	}
+	key := normalizeDirectiveType(reader.builderKey())
 	if err := s.registerBlockBuilder(key, builder); err != nil {
 		return err
 	}
@@ -83,16 +82,29 @@ func (s *Spec) registerParagraphFallback(builder blockBuilder) error {
 	if s.paragraphFallback != nil {
 		return fmt.Errorf("paragraph fallback is already registered")
 	}
-	if err := s.registerBlockBuilder("paragraph", builder); err != nil {
+	if err := s.validateBlockBuilder(blockBuilderKeyParagraph, builder); err != nil {
 		return err
 	}
 
+	s.builders[blockBuilderKeyParagraph] = builder
 	s.paragraphFallback = &paragraphReader{}
 	return nil
 }
 
 func (s *Spec) registerBlockBuilder(dirtype string, builder blockBuilder) error {
 	key := normalizeDirectiveType(dirtype)
+	if key == blockBuilderKeyParagraph {
+		return fmt.Errorf("paragraph must be registered as the fallback")
+	}
+	if err := s.validateBlockBuilder(key, builder); err != nil {
+		return err
+	}
+
+	s.builders[key] = builder
+	return nil
+}
+
+func (s *Spec) validateBlockBuilder(key string, builder blockBuilder) error {
 	if key == "" {
 		return fmt.Errorf("block builder type must not be empty")
 	}
@@ -103,7 +115,6 @@ func (s *Spec) registerBlockBuilder(dirtype string, builder blockBuilder) error 
 		return fmt.Errorf("block builder %q is already registered", key)
 	}
 
-	s.builders[key] = builder
 	return nil
 }
 
@@ -112,7 +123,9 @@ func (s *Spec) getReaders() []blockReader {
 	if s.blockDirectiveReader != nil {
 		readers = append(readers, s.blockDirectiveReader)
 	}
-	readers = append(readers, s.sugarReaders...)
+	for _, reader := range s.sugarReaders {
+		readers = append(readers, reader)
+	}
 	if s.paragraphFallback != nil {
 		readers = append(readers, s.paragraphFallback)
 	}

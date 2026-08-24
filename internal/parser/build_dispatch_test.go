@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"orische/internal/ast"
@@ -236,6 +237,83 @@ func TestParserBuildBlock_PreservesBuilderDiagnostic(t *testing.T) {
 	}
 	if err != wantErr {
 		t.Errorf("buildBlock returned %v, want the original diagnostic %v", err, wantErr)
+	}
+}
+
+func TestParserParse_ListItemDiagnosticBuilderErrorPreservesIdentity(t *testing.T) {
+	wantErr := &diagnostic.Error{
+		Message: "paragraph builder diagnostic",
+		Range: ast.Range{
+			Start: ast.Position{Line: 1, Column: 3},
+			End:   ast.Position{Line: 1, Column: 6},
+		},
+	}
+	spec := newSpec()
+	if err := spec.registerBlockDirectiveReader(); err != nil {
+		t.Fatalf("register block directive reader: %v", err)
+	}
+	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
+		t.Fatalf("register list sugar: %v", err)
+	}
+	if err := spec.registerParagraphFallback(blockBuilderFunc(
+		func(*Parser, parsedBlockNode) (ast.Block, error) {
+			return nil, wantErr
+		},
+	)); err != nil {
+		t.Fatalf("register paragraph fallback: %v", err)
+	}
+
+	_, err := NewParser(spec).Parse("* item")
+	if err != wantErr {
+		t.Errorf("Parser.Parse returned %v, want the original diagnostic %v", err, wantErr)
+	}
+	if err == nil {
+		t.Fatal("Parser.Parse returned no error")
+	}
+	diag, ok := err.(*diagnostic.Error)
+	if !ok {
+		t.Fatalf("Parser.Parse returned %T, want *diagnostic.Error", err)
+	}
+	if err.Error() != wantErr.Message {
+		t.Errorf("error message = %q, want %q", err.Error(), wantErr.Message)
+	}
+	if got := diag.Range; got != wantErr.Range {
+		t.Errorf("error range = %#v, want %#v", got, wantErr.Range)
+	}
+	if strings.Contains(err.Error(), `build "paragraph" block`) || strings.Contains(err.Error(), `build "list" block`) {
+		t.Errorf("diagnostic error was wrapped with build context: %q", err)
+	}
+}
+
+func TestParserParse_ListItemBuilderErrorIncludesParagraphAndListContext(t *testing.T) {
+	wantErr := errors.New("paragraph builder failed")
+	spec := newSpec()
+	if err := spec.registerBlockDirectiveReader(); err != nil {
+		t.Fatalf("register block directive reader: %v", err)
+	}
+	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
+		t.Fatalf("register list sugar: %v", err)
+	}
+	if err := spec.registerParagraphFallback(blockBuilderFunc(
+		func(*Parser, parsedBlockNode) (ast.Block, error) {
+			return nil, wantErr
+		},
+	)); err != nil {
+		t.Fatalf("register paragraph fallback: %v", err)
+	}
+
+	_, err := NewParser(spec).Parse("* item")
+	if err == nil {
+		t.Fatal("Parser.Parse returned no error")
+	}
+	if !errors.Is(err, wantErr) {
+		t.Errorf("error = %v, want errors.Is(..., paragraph sentinel)", err)
+	}
+	if !strings.Contains(err.Error(), `build "paragraph" block`) {
+		t.Errorf("error = %q, want paragraph build context", err)
+	}
+	if !strings.Contains(err.Error(), `build "list" block`) {
+		t.Errorf("error = %q, want list build context", err)
 	}
 }
 

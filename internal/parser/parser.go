@@ -93,6 +93,21 @@ func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, bool, error)
 			return nil, false, err
 		}
 		if ok {
+			if block == nil {
+				return nil, false, fmt.Errorf("block reader %T succeeded with a nil parsed block", reader)
+			}
+			if sugarReader, isSugar := reader.(blockSugarReader); isSugar {
+				declaredKey := normalizeDirectiveType(sugarReader.builderKey())
+				actualKey := normalizeDirectiveType(block.getBuilderKey())
+				if declaredKey != actualKey {
+					return nil, false, fmt.Errorf(
+						"block sugar reader %T declared builder key %q but produced %q",
+						reader,
+						declaredKey,
+						actualKey,
+					)
+				}
+			}
 			return block, true, nil
 		}
 	}
