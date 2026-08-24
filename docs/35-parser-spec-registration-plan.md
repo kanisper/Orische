@@ -71,7 +71,7 @@ An `inlineDirectiveDefinition` owns type-specific behavior:
 - a closed nested-content or literal-content policy;
 - AST construction from validated content and the complete directive range.
 
-`validateAttribute` has a three-valued error contract: `(true, nil)` accepts the directive and proceeds to AST construction; `(false, nil)` is semantic rejection and retains the candidate as literal fallback; a non-nil error is an internal failure that propagates as an error, without literal fallback or continued scanning. This refactoring does not change the ordering of validation relative to unterminated-candidate detection.
+The common parser confirms the closing delimiter required by the definition's content policy before calling `validateAttribute`. Unterminated candidates therefore do not invoke definition-specific validation. For structurally closed candidates, validation has a three-valued error contract: `(true, nil)` accepts the directive and proceeds to AST construction; `(false, nil)` is semantic rejection and retains the candidate as literal fallback; a non-nil error is an internal failure that propagates as an error, without literal fallback or continued scanning.
 
 The core definitions are:
 

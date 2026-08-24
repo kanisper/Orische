@@ -181,9 +181,11 @@ func TestCoreInlineDefinitions_MixedCaseMatchesAndPreservesValuesAndRanges(t *te
 
 func TestParserParseInlines_SemanticRejectionRemainsLiteralAndScanningContinues(t *testing.T) {
 	spec := newSpec()
+	validationCalls := 0
 	reject := &testInlineDefinition{
 		policy: inlineContentNested,
 		validate: func(string) (bool, error) {
+			validationCalls++
 			return false, nil
 		},
 	}
@@ -208,15 +210,20 @@ func TestParserParseInlines_SemanticRejectionRemainsLiteralAndScanningContinues(
 	if emphasis, ok := got[1].(*ast.Emphasis); !ok || emphasis.Content[0].(*ast.Text).Value != "日" {
 		t.Errorf("later valid candidate = %#v, want emphasis", got[1])
 	}
+	if validationCalls != 1 {
+		t.Errorf("validation calls = %d, want 1", validationCalls)
+	}
 }
 
 func TestParserParseInlines_ValidationErrorStopsParsingWithoutLiteralFallback(t *testing.T) {
 	wantErr := errors.New("validation failed")
 	spec := newSpec()
+	validationCalls := 0
 	laterCalls := 0
 	if err := spec.registerInlineDirectiveDefinition("broken", &testInlineDefinition{
 		policy: inlineContentNested,
 		validate: func(string) (bool, error) {
+			validationCalls++
 			return false, wantErr
 		},
 	}); err != nil {
@@ -244,6 +251,145 @@ func TestParserParseInlines_ValidationErrorStopsParsingWithoutLiteralFallback(t 
 	}
 	if laterCalls != 0 {
 		t.Errorf("later definition build calls = %d, want 0", laterCalls)
+	}
+	if validationCalls != 1 {
+		t.Errorf("validation calls = %d, want 1", validationCalls)
+	}
+}
+
+func TestParserParseInlines_ValidatesOnlyStructurallyClosedCandidate(t *testing.T) {
+	tests := []struct {
+		name   string
+		policy inlineContentPolicy
+		input  string
+	}{
+		{
+			name:   "nested",
+			policy: inlineContentNested,
+			input:  ":[probe:value]{content}",
+		},
+		{
+			name:   "literal",
+			policy: inlineContentLiteral,
+			input:  ":[probe:value]{content}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validationCalls := 0
+			buildCalls := 0
+			spec := newSpec()
+			if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+				policy: tt.policy,
+				validate: func(string) (bool, error) {
+					validationCalls++
+					return true, nil
+				},
+				build: func(candidate inlineDirectiveCandidate) (ast.Inline, error) {
+					buildCalls++
+					return &ast.CodeSpan{Range: candidate.Range}, nil
+				},
+			}); err != nil {
+				t.Fatalf("register probe definition: %v", err)
+			}
+
+			if _, err := NewParser(spec).parseInlines(tt.input, ast.Position{Line: 1, Column: 1}); err != nil {
+				t.Fatalf("parseInlines returned an error: %v", err)
+			}
+			if validationCalls != 1 {
+				t.Errorf("validation calls = %d, want 1", validationCalls)
+			}
+			if buildCalls != 1 {
+				t.Errorf("build calls = %d, want 1", buildCalls)
+			}
+		})
+	}
+}
+
+func TestParserParseInlines_DoesNotValidateUnterminatedCandidate(t *testing.T) {
+	wantErr := errors.New("unterminated candidate must not be validated")
+	tests := []struct {
+		name   string
+		policy inlineContentPolicy
+	}{
+		{name: "nested", policy: inlineContentNested},
+		{name: "literal", policy: inlineContentLiteral},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validationCalls := 0
+			buildCalls := 0
+			spec := newSpec()
+			if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+				policy: tt.policy,
+				validate: func(string) (bool, error) {
+					validationCalls++
+					return false, wantErr
+				},
+				build: func(candidate inlineDirectiveCandidate) (ast.Inline, error) {
+					buildCalls++
+					return &ast.CodeSpan{Range: candidate.Range}, nil
+				},
+			}); err != nil {
+				t.Fatalf("register probe definition: %v", err)
+			}
+
+			input := ":[probe:value]{unterminated"
+			got, err := NewParser(spec).parseInlines(input, ast.Position{Line: 1, Column: 1})
+			if err != nil {
+				t.Fatalf("parseInlines returned an error: %v", err)
+			}
+			if validationCalls != 0 {
+				t.Errorf("validation calls = %d, want 0", validationCalls)
+			}
+			if buildCalls != 0 {
+				t.Errorf("build calls = %d, want 0", buildCalls)
+			}
+			if len(got) != 1 {
+				t.Fatalf("inline count = %d, want 1", len(got))
+			}
+			text, ok := got[0].(*ast.Text)
+			if !ok || text.Value != input {
+				t.Errorf("literal fallback = %#v, want %q", got[0], input)
+			}
+		})
+	}
+}
+
+func TestParserParseInlines_UnterminatedCandidateSkipsValidationAndFindsLaterDirective(t *testing.T) {
+	wantErr := errors.New("unterminated candidate must not be validated")
+	validationCalls := 0
+	spec := newSpec()
+	if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+		policy: inlineContentNested,
+		validate: func(string) (bool, error) {
+			validationCalls++
+			return false, wantErr
+		},
+	}); err != nil {
+		t.Fatalf("register probe definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+		t.Fatalf("register emphasis definition: %v", err)
+	}
+
+	got, err := NewParser(spec).parseInlines(":[probe:value]{broken :[em]{later}", ast.Position{Line: 1, Column: 1})
+	if err != nil {
+		t.Fatalf("parseInlines returned an error: %v", err)
+	}
+	if validationCalls != 0 {
+		t.Errorf("validation calls = %d, want 0", validationCalls)
+	}
+	if len(got) != 2 {
+		t.Fatalf("inline count = %d, want 2", len(got))
+	}
+	if text, ok := got[0].(*ast.Text); !ok || text.Value != ":[probe:value]{broken " {
+		t.Errorf("literal fallback = %#v, want unterminated prefix as text", got[0])
+	}
+	if emphasis, ok := got[1].(*ast.Emphasis); !ok || emphasis.Content[0].(*ast.Text).Value != "later" {
+		t.Errorf("later valid candidate = %#v, want emphasis", got[1])
 	}
 }
 

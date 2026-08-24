@@ -57,14 +57,6 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		return nil, literalNext, false, nil
 	}
 
-	accepted, err := definition.validateAttribute(attr)
-	if err != nil {
-		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", normalizeDirectiveType(dirtype), err)
-	}
-	if !accepted {
-		return nil, literalNext, false, nil
-	}
-
 	candidate := inlineDirectiveCandidate{Attribute: attr}
 	var next int
 
@@ -93,6 +85,14 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 			normalizeDirectiveType(dirtype),
 			definition.contentPolicy(),
 		)
+	}
+
+	accepted, err := definition.validateAttribute(attr)
+	if err != nil {
+		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", normalizeDirectiveType(dirtype), err)
+	}
+	if !accepted {
+		return nil, literalNext, false, nil
 	}
 
 	candidate.Range = p.ctx.rangeOf(start, next)

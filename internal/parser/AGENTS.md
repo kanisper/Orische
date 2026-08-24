@@ -39,6 +39,7 @@ Registered inline Directive Types are matched case-insensitively. Definitions ow
 Empty inline content is valid, and links require a nonempty URI attribute. Unsupported directives, invalid headers, and links without a URI are emitted as literal source text rather than errors. Other malformed or unterminated candidates resume ordinary scanning, so a later valid inline sequence may still be recognized.
 
 Inline attribute validation has three outcomes: `true, nil` accepts the directive; `false, nil` is semantic rejection and uses literal fallback; a non-nil error is an internal parse failure and does not fall back or continue scanning.
+The common parser must confirm that a candidate is structurally closed before invoking its definition's attribute validator.
 
 When a Sugar Reader succeeds, `parseOneBlock` immediately compares its normalized declared builder key with the normalized key from the parsed IR. A mismatch is an ordinary internal error and must not fall through to Paragraph. During list-item AST construction, diagnostic errors preserve their original identity, message, and range; ordinary errors retain their cause and include both Paragraph and List build context.
 
