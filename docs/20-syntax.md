@@ -157,7 +157,7 @@ Inline candidates use:
 :[type:attribute]{content}
 ```
 
-The first colon separates the type and opaque attribute. Additional colons remain in the attribute. Type matching is case-sensitive.
+The first colon separates the type and opaque attribute. Additional colons remain in the attribute. Registered Directive Types are matched case-insensitively. Type normalization does not alter the attribute or content.
 
 Unsupported directive types, empty directive types, and links without a nonempty URI are emitted as literal source text rather than errors. When such a candidate has a closing `}`, literal fallback consumes through the first `}`. Other malformed or unterminated candidates resume ordinary scanning, so a later valid `:[` sequence may still be parsed. There is no escape syntax.
 

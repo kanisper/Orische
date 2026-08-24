@@ -13,6 +13,7 @@ type Spec struct {
 	sugarReaders         []blockReader
 	paragraphFallback    blockReader
 	builders             map[string]blockBuilder
+	inlineDefinitions    map[string]inlineDirectiveDefinition
 }
 
 type blockReader interface {
@@ -25,8 +26,9 @@ type blockBuilder interface {
 
 func newSpec() *Spec {
 	return &Spec{
-		sugarReaders: []blockReader{},
-		builders:     map[string]blockBuilder{},
+		sugarReaders:      []blockReader{},
+		builders:          map[string]blockBuilder{},
+		inlineDefinitions: map[string]inlineDirectiveDefinition{},
 	}
 }
 
@@ -38,6 +40,9 @@ func coreSpec() *Spec {
 	mustRegister(s.registerBlockSugar("heading", &headingReader{}, &headingBuilder{}))
 	mustRegister(s.registerBlockSugar("list", &listReader{}, &listBuilder{}))
 	mustRegister(s.registerParagraphFallback(&paragraphBuilder{}))
+	mustRegister(s.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}))
+	mustRegister(s.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}))
+	mustRegister(s.registerInlineDirectiveDefinition("code", &codeInlineDefinition{}))
 
 	return s
 }
@@ -117,6 +122,31 @@ func (s *Spec) getReaders() []blockReader {
 func (s *Spec) getBuilder(dirtype string) (blockBuilder, bool) {
 	builder, ok := s.builders[normalizeDirectiveType(dirtype)]
 	return builder, ok
+}
+
+func (s *Spec) registerInlineDirectiveDefinition(dirtype string, definition inlineDirectiveDefinition) error {
+	key := normalizeDirectiveType(dirtype)
+	if key == "" {
+		return fmt.Errorf("inline directive type must not be empty")
+	}
+	if isNilRegistration(definition) {
+		return fmt.Errorf("inline directive definition %q is nil", key)
+	}
+	policy := definition.contentPolicy()
+	if policy != inlineContentNested && policy != inlineContentLiteral {
+		return fmt.Errorf("inline directive definition %q has invalid content policy %d", key, policy)
+	}
+	if _, exists := s.inlineDefinitions[key]; exists {
+		return fmt.Errorf("inline directive definition %q is already registered", key)
+	}
+
+	s.inlineDefinitions[key] = definition
+	return nil
+}
+
+func (s *Spec) getInlineDirectiveDefinition(dirtype string) (inlineDirectiveDefinition, bool) {
+	definition, ok := s.inlineDefinitions[normalizeDirectiveType(dirtype)]
+	return definition, ok
 }
 
 func (s *Spec) validate() error {

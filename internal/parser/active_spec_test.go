@@ -140,6 +140,12 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 	if err := spec.registerBlockDirectiveReader(); err != nil {
 		t.Fatalf("register block directive reader: %v", err)
 	}
+	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+		t.Fatalf("register emphasis definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+		t.Fatalf("register link definition: %v", err)
+	}
 	readerProbe := &activeSpecReaderProbe{}
 
 	parser := NewParser(spec)
@@ -269,6 +275,12 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 
 func TestInlineParseState_RetainsActiveParserDuringRecursion(t *testing.T) {
 	spec := newSpec()
+	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+		t.Fatalf("register emphasis definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+		t.Fatalf("register link definition: %v", err)
+	}
 	parser := NewParser(spec)
 	state := &inlineParseState{
 		parser: parser,
@@ -412,6 +424,15 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 	spec := newSpec()
 	if err := spec.registerBlockDirectiveReader(); err != nil {
 		t.Fatalf("register block directive reader: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+		t.Fatalf("register emphasis definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+		t.Fatalf("register link definition: %v", err)
+	}
+	if err := spec.registerInlineDirectiveDefinition("code", &codeInlineDefinition{}); err != nil {
+		t.Fatalf("register code definition: %v", err)
 	}
 
 	parser := NewParser(spec)
