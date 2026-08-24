@@ -8,6 +8,8 @@ import (
 	"orische/internal/ast"
 )
 
+// Spec owns the ordered block readers and normalized builder/inline-definition
+// registries used by a Parser. Registration is completed before parsing starts.
 type Spec struct {
 	blockDirectiveReader blockReader
 	sugarReaders         []blockSugarReader
@@ -31,12 +33,13 @@ type blockBuilder interface {
 
 func newSpec() *Spec {
 	return &Spec{
-		sugarReaders:      []blockSugarReader{},
 		builders:          map[string]blockBuilder{},
 		inlineDefinitions: map[string]inlineDirectiveDefinition{},
 	}
 }
 
+// coreSpec assembles the built-in language. Registration failures are
+// programmer errors because every entry below is statically defined.
 func coreSpec() *Spec {
 	s := newSpec()
 
@@ -65,12 +68,13 @@ func (s *Spec) registerBlockDirectiveDefinition(dirtype string, builder blockBui
 	return s.registerBlockBuilder(dirtype, builder)
 }
 
+// registerBlockSugar installs the builder before mutating reader order, so a
+// rejected registration leaves the Spec unchanged.
 func (s *Spec) registerBlockSugar(reader blockSugarReader, builder blockBuilder) error {
 	if isNilRegistration(reader) {
 		return fmt.Errorf("block sugar has no reader")
 	}
-	key := normalizeDirectiveType(reader.builderKey())
-	if err := s.registerBlockBuilder(key, builder); err != nil {
+	if err := s.registerBlockBuilder(reader.builderKey(), builder); err != nil {
 		return err
 	}
 
@@ -78,6 +82,8 @@ func (s *Spec) registerBlockSugar(reader blockSugarReader, builder blockBuilder)
 	return nil
 }
 
+// registerParagraphFallback reserves Paragraph for the final reader and
+// installs its reader and builder atomically.
 func (s *Spec) registerParagraphFallback(builder blockBuilder) error {
 	if s.paragraphFallback != nil {
 		return fmt.Errorf("paragraph fallback is already registered")
@@ -118,6 +124,8 @@ func (s *Spec) validateBlockBuilder(key string, builder blockBuilder) error {
 	return nil
 }
 
+// getReaders materializes the fixed precedence: shared directive reader,
+// registered sugar readers, then the mandatory Paragraph fallback.
 func (s *Spec) getReaders() []blockReader {
 	readers := make([]blockReader, 0, len(s.sugarReaders)+2)
 	if s.blockDirectiveReader != nil {
@@ -176,6 +184,7 @@ func normalizeDirectiveType(dirtype string) string {
 	return strings.ToLower(dirtype)
 }
 
+// isNilRegistration catches typed nil pointers stored in interface values.
 func isNilRegistration(value any) bool {
 	if value == nil {
 		return true

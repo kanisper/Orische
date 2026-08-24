@@ -2,7 +2,6 @@ package parser
 
 import (
 	"sort"
-	"strings"
 	"unicode/utf8"
 
 	"orische/internal/ast"
@@ -76,8 +75,4 @@ func (ctx *inlineContext) rangeOf(start, end int) ast.Range {
 		Start: ctx.positionAt(start),
 		End:   ctx.positionAt(end - size),
 	}
-}
-
-func (ctx *inlineContext) hasInlinePrefix(pos int) bool {
-	return strings.HasPrefix(ctx.text[pos:], ":[")
 }

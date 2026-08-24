@@ -18,31 +18,31 @@ func (*headingReader) builderKey() string {
 }
 
 func (*headingReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
-	level, content := parseHeadingLine(ctx.getLine())
+	level, content := parseHeadingLine(ctx.line())
 	if level < 1 || level > 6 {
 		return nil, false, nil
-	} else {
-		return &parsedBlock{
-			Type: blockBuilderKeyHeading,
-			Attr: "level" + strconv.Itoa(level),
-			Text: content,
-			Range: ast.Range{
-				Start: ast.Position{Line: ctx.getPos() + 1, Column: 1},
-				End:   ast.Position{Line: ctx.getPos() + 1, Column: level + 1 + utf8.RuneCountInString(content)},
-			},
-		}, true, nil
 	}
+
+	return &parsedBlock{
+		Type: blockBuilderKeyHeading,
+		Attr: "level" + strconv.Itoa(level),
+		Text: content,
+		Range: ast.Range{
+			Start: ast.Position{Line: ctx.pos + 1, Column: 1},
+			End:   ast.Position{Line: ctx.pos + 1, Column: level + 1 + utf8.RuneCountInString(content)},
+		},
+	}, true, nil
 }
 
 func parseHeadingLine(line string) (int, string) {
-	idx := strings.Index(line, " ")
+	idx := strings.IndexByte(line, ' ')
 	if idx <= 0 {
 		return 0, ""
-	} else if strings.Count(line[:idx], "=") != len(line[:idx]) {
-		return 0, ""
-	} else {
-		return strings.Count(line[:idx], "="), line[idx+1:]
 	}
+	if strings.Trim(line[:idx], "=") != "" {
+		return 0, ""
+	}
+	return idx, line[idx+1:]
 }
 
 type headingBuilder struct{}

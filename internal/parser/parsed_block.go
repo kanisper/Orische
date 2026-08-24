@@ -43,9 +43,8 @@ func (pl *parsedList) getBlockRange() ast.Range {
 }
 
 type parsedListItem struct {
-	RawLevel int
-	Blocks   []parsedBlockNode
-	Range    ast.Range
+	Blocks []parsedBlockNode
+	Range  ast.Range
 }
 
 func (*parsedBlock) isParsedBlockNode() {}

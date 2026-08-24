@@ -21,6 +21,9 @@ type inlineDirectiveCandidate struct {
 	Range          ast.Range
 }
 
+// inlineDirectiveDefinition owns syntax-specific validation, content policy,
+// and AST construction. The common parser owns delimiters, fallback, and range
+// calculation.
 type inlineDirectiveDefinition interface {
 	contentPolicy() inlineContentPolicy
 	validateAttribute(attribute string) (bool, error)
@@ -47,6 +50,7 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		literalNext = contentStart + literalEnd + 1
 	}
 
+	// literalNext bounds fallback for invalid or unsupported headers.
 	dirtype, attr, ok := parseInlineHeader(p.ctx.text[headerStart:headerEnd])
 	if !ok {
 		return nil, literalNext, false, nil
@@ -56,11 +60,13 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	if !ok {
 		return nil, literalNext, false, nil
 	}
+	key := normalizeDirectiveType(dirtype)
+	policy := definition.contentPolicy()
 
 	candidate := inlineDirectiveCandidate{Attribute: attr}
 	var next int
 
-	switch definition.contentPolicy() {
+	switch policy {
 	case inlineContentNested:
 		content, contentNext, closed, err := p.parseSeq(contentStart, true)
 		if err != nil {
@@ -82,14 +88,15 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	default:
 		return nil, start, false, fmt.Errorf(
 			"inline directive %q has invalid content policy %d",
-			normalizeDirectiveType(dirtype),
-			definition.contentPolicy(),
+			key,
+			policy,
 		)
 	}
 
+	// Definitions only validate structurally closed candidates.
 	accepted, err := definition.validateAttribute(attr)
 	if err != nil {
-		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", normalizeDirectiveType(dirtype), err)
+		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", key, err)
 	}
 	if !accepted {
 		return nil, literalNext, false, nil
@@ -98,26 +105,16 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	candidate.Range = p.ctx.rangeOf(start, next)
 	node, err := definition.buildInline(candidate)
 	if err != nil {
-		return nil, start, false, fmt.Errorf("build inline directive %q: %w", normalizeDirectiveType(dirtype), err)
+		return nil, start, false, fmt.Errorf("build inline directive %q: %w", key, err)
 	}
 	if node == nil {
-		return nil, start, false, fmt.Errorf("build inline directive %q: definition returned a nil node", normalizeDirectiveType(dirtype))
+		return nil, start, false, fmt.Errorf("build inline directive %q: definition returned a nil node", key)
 	}
 
 	return node, next, true, nil
 }
 
 func parseInlineHeader(header string) (dirtype string, attr string, ok bool) {
-	if sep := strings.IndexByte(header, ':'); sep >= 0 {
-		dirtype = header[:sep]
-		attr = header[sep+1:]
-	} else {
-		dirtype = header
-		attr = ""
-	}
-
-	if dirtype == "" {
-		return "", "", false
-	}
-	return dirtype, attr, true
+	dirtype, attr, _ = strings.Cut(header, ":")
+	return dirtype, attr, dirtype != ""
 }

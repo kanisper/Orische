@@ -51,11 +51,11 @@ The registration model is private to `internal/parser`. It is not a stable exten
 
 `blockContext.pos` is a zero-based line index. Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes.
 
-On a successful read, a block reader leaves `pos` on the last consumed line. `parseBlocks` then calls `ctx.advance(1)`.
+On a successful read, a block reader leaves `pos` on the last consumed line. `parseBlocks` then increments `pos` once.
 
 A reader returning `ok=false` must not consume input. A reader that scans ahead must restore its starting position before returning false. This is required for paragraph fallback.
 
-`getLine` assumes the context is not at EOF; callers enforce this precondition.
+`blockContext.line` assumes the context is not at EOF; callers enforce this precondition.
 
 ## Parsed-Block IR
 

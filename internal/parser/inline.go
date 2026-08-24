@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	"orische/internal/ast"
 )
 
@@ -16,17 +18,12 @@ func (p *Parser) parseInlines(text string, origin ast.Position) ([]ast.Inline, e
 	}
 
 	nodes, _, _, err := state.parseSeq(0, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodes, nil
+	return nodes, err
 }
 
-// return []ast.Inline  the parsed inline nodes
-// return int           the position after the parsed inline nodes
-// return bool          whether the parsing stopped at a closing brace
-// return error
+// parseSeq parses from start until EOF or, when requested, the first closing
+// brace. next is the byte offset after the consumed input; closed reports
+// whether a closing brace ended the sequence.
 func (p *inlineParseState) parseSeq(
 	start int,
 	stopAtClosingBrace bool,
@@ -55,7 +52,7 @@ func (p *inlineParseState) parseSeq(
 			return nodes, pos + 1, true, nil
 		}
 
-		if p.ctx.hasInlinePrefix(pos) {
+		if strings.HasPrefix(p.ctx.text[pos:], ":[") {
 			node, next, ok, err := p.parseDirective(pos)
 			if err != nil {
 				return nil, 0, false, err

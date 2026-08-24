@@ -25,18 +25,13 @@ type listLine struct {
 }
 
 func (*listReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
-	_, rawLevel, _ := parseListLine(ctx.getLine())
+	_, rawLevel, _ := parseListLine(ctx.line())
 	if rawLevel <= 0 {
 		return nil, false, nil
 	}
 
 	lines := collectListLines(ctx)
-	if len(lines) == 0 {
-		return nil, false, nil
-	}
-
 	index := 0
-
 	list := buildParsedList(lines, &index, 1)
 
 	if index != len(lines) {
@@ -50,12 +45,12 @@ func (*listReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 }
 
 func parseListLine(line string) (ordered bool, level int, text string) {
-	separator_idx := strings.IndexByte(line, ' ')
-	if separator_idx <= 0 {
+	separator := strings.IndexByte(line, ' ')
+	if separator <= 0 {
 		return false, 0, ""
 	}
 
-	markers := line[:separator_idx]
+	markers := line[:separator]
 
 	for i := range markers {
 		if markers[i] != '*' && markers[i] != '#' {
@@ -63,7 +58,7 @@ func parseListLine(line string) (ordered bool, level int, text string) {
 		}
 	}
 
-	return markers[0] == '#', len(markers), line[separator_idx+1:]
+	return markers[0] == '#', len(markers), line[separator+1:]
 }
 
 func collectListLines(ctx *blockContext) []listLine {
@@ -73,11 +68,7 @@ func collectListLines(ctx *blockContext) []listLine {
 	previousLogicalLevel := 0
 
 	for !ctx.isEOF() {
-		if strings.TrimSpace(ctx.getLine()) == "" {
-			break
-		}
-
-		ordered, rawLevel, text := parseListLine(ctx.getLine())
+		ordered, rawLevel, text := parseListLine(ctx.line())
 		if rawLevel == 0 {
 			break
 		}
@@ -89,19 +80,22 @@ func collectListLines(ctx *blockContext) []listLine {
 			RawLevel:     rawLevel,
 			LogicalLevel: logicalLevel,
 			Text:         text,
-			Line:         ctx.getPos() + 1,
+			Line:         ctx.pos + 1,
 		})
 
 		previousRawLevel = rawLevel
 		previousLogicalLevel = logicalLevel
 
-		ctx.advance(1)
+		ctx.pos++
 	}
 
-	ctx.advance(-1)
+	// The document loop advances once after a successful reader.
+	ctx.pos--
 	return lines
 }
 
+// normalizeListLevel maps marker-run changes to logical nesting. Any increase,
+// regardless of its raw size, introduces exactly one logical level.
 func normalizeListLevel(previousRaw int, previousLogical int, currentRaw int) int {
 	if previousRaw == 0 {
 		return 1
@@ -145,6 +139,7 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 		case line.LogicalLevel > level:
 			nested := buildParsedList(lines, index, level+1)
 
+			// A deeper run always belongs to the immediately preceding item.
 			parent := &list.Items[len(list.Items)-1]
 			parent.Blocks = append(parent.Blocks, nested)
 			parent.Range.End = nested.Range.End
@@ -190,42 +185,27 @@ func (*listBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, erro
 		return nil, fmt.Errorf("expected *parsedList, got %T", node)
 	}
 
-	return buildList(parser, list)
-}
-
-func buildList(parser *Parser, pl *parsedList) (*ast.List, error) {
-	list := &ast.List{
-		Ordered: pl.Ordered,
-		Items:   make([]*ast.ListItem, 0, len(pl.Items)),
-		Range:   pl.Range,
+	result := &ast.List{
+		Ordered: list.Ordered,
+		Items:   make([]*ast.ListItem, 0, len(list.Items)),
+		Range:   list.Range,
 	}
 
-	for _, parsedItem := range pl.Items {
-		item, err := buildListItem(parser, parsedItem)
-		if err != nil {
-			return nil, err
+	for _, parsedItem := range list.Items {
+		blocks := make([]ast.Block, 0, len(parsedItem.Blocks))
+		for _, node := range parsedItem.Blocks {
+			block, err := parser.buildBlock(node)
+			if err != nil {
+				return nil, err
+			}
+			blocks = append(blocks, block)
 		}
 
-		list.Items = append(list.Items, item)
+		result.Items = append(result.Items, &ast.ListItem{
+			Blocks: blocks,
+			Range:  parsedItem.Range,
+		})
 	}
 
-	return list, nil
-}
-
-func buildListItem(parser *Parser, parsedItem parsedListItem) (*ast.ListItem, error) {
-	blocks := make([]ast.Block, 0, len(parsedItem.Blocks))
-
-	for _, node := range parsedItem.Blocks {
-		block, err := parser.buildBlock(node)
-		if err != nil {
-			return nil, err
-		}
-
-		blocks = append(blocks, block)
-	}
-
-	return &ast.ListItem{
-		Blocks: blocks,
-		Range:  parsedItem.Range,
-	}, nil
+	return result, nil
 }
