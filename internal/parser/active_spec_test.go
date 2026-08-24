@@ -135,6 +135,68 @@ func TestParserParse_PropagatesActiveSpecToHeadingBuilder(t *testing.T) {
 	}
 }
 
+func TestParserParse_UsesCustomInlineDefinitionAcrossInlineCapableBlocks(t *testing.T) {
+	spec := newSpec()
+	if err := spec.registerBlockDirectiveReader(); err != nil {
+		t.Fatalf("register block directive reader: %v", err)
+	}
+	definition := &activeInlineProbeDefinition{}
+	if err := spec.registerInlineDirectiveDefinition("mark", definition); err != nil {
+		t.Fatalf("register custom inline definition: %v", err)
+	}
+	if err := spec.registerBlockSugar("heading", &headingReader{}, &headingBuilder{}); err != nil {
+		t.Fatalf("register heading sugar: %v", err)
+	}
+	if err := spec.registerBlockSugar("list", &listReader{}, &listBuilder{}); err != nil {
+		t.Fatalf("register list sugar: %v", err)
+	}
+	if err := spec.registerParagraphFallback(&paragraphBuilder{}); err != nil {
+		t.Fatalf("register paragraph fallback: %v", err)
+	}
+
+	input := "= :[mark]{heading}\n\n:[mark]{paragraph}\n\n* :[mark]{item}\n** :[mark]{nested}"
+	got, err := NewParser(spec).Parse(input)
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+	if definition.calls != 4 {
+		t.Errorf("custom inline definition calls = %d, want 4", definition.calls)
+	}
+	if len(got.Blocks) != 3 {
+		t.Fatalf("document blocks = %d, want heading, paragraph, and list", len(got.Blocks))
+	}
+
+	heading, ok := got.Blocks[0].(*ast.Heading)
+	if !ok || len(heading.Content) != 1 {
+		t.Fatalf("heading = %#v, want one custom inline", got.Blocks[0])
+	}
+	assertActiveInlineProbeNode(t, heading.Content[0], "heading")
+	paragraph, ok := got.Blocks[1].(*ast.Paragraph)
+	if !ok || len(paragraph.Content) != 1 {
+		t.Fatalf("paragraph = %#v, want one custom inline", got.Blocks[1])
+	}
+	assertActiveInlineProbeNode(t, paragraph.Content[0], "paragraph")
+
+	list, ok := got.Blocks[2].(*ast.List)
+	if !ok || len(list.Items) != 1 || len(list.Items[0].Blocks) != 2 {
+		t.Fatalf("list = %#v, want one item with paragraph and nested list", got.Blocks[2])
+	}
+	itemParagraph, ok := list.Items[0].Blocks[0].(*ast.Paragraph)
+	if !ok || len(itemParagraph.Content) != 1 {
+		t.Fatalf("list item paragraph = %#v, want one custom inline", list.Items[0].Blocks[0])
+	}
+	assertActiveInlineProbeNode(t, itemParagraph.Content[0], "item")
+	nestedList, ok := list.Items[0].Blocks[1].(*ast.List)
+	if !ok || len(nestedList.Items) != 1 || len(nestedList.Items[0].Blocks) != 1 {
+		t.Fatalf("nested list = %#v, want one item paragraph", list.Items[0].Blocks[1])
+	}
+	nestedParagraph, ok := nestedList.Items[0].Blocks[0].(*ast.Paragraph)
+	if !ok || len(nestedParagraph.Content) != 1 {
+		t.Fatalf("nested paragraph = %#v, want one custom inline", nestedList.Items[0].Blocks[0])
+	}
+	assertActiveInlineProbeNode(t, nestedParagraph.Content[0], "nested")
+}
+
 func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 	spec := newSpec()
 	if err := spec.registerBlockDirectiveReader(); err != nil {
@@ -397,6 +459,36 @@ type activeParserProbeBuilder struct {
 
 type activeSpecReaderProbe struct {
 	calls int
+}
+
+type activeInlineProbeDefinition struct {
+	calls int
+}
+
+func (*activeInlineProbeDefinition) contentPolicy() inlineContentPolicy {
+	return inlineContentNested
+}
+
+func (*activeInlineProbeDefinition) validateAttribute(string) (bool, error) {
+	return true, nil
+}
+
+func (d *activeInlineProbeDefinition) buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error) {
+	d.calls++
+	return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
+}
+
+func assertActiveInlineProbeNode(t *testing.T, inline ast.Inline, wantText string) {
+	t.Helper()
+
+	emphasis, ok := inline.(*ast.Emphasis)
+	if !ok || len(emphasis.Content) != 1 {
+		t.Fatalf("inline = %#v, want custom emphasis", inline)
+	}
+	text, ok := emphasis.Content[0].(*ast.Text)
+	if !ok || text.Value != wantText {
+		t.Errorf("custom inline content = %#v, want text %q", emphasis.Content[0], wantText)
+	}
 }
 
 func (r *activeSpecReaderProbe) read(*blockContext) (parsedBlockNode, bool, error) {

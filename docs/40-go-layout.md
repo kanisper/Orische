@@ -27,7 +27,7 @@ Defines document, block, inline, and range types. AST interfaces are implemented
 - builds AST nodes from IR;
 - parses inline content during AST building.
 
-Syntax registration is implemented internally in `internal/parser/spec.go`.
+Syntax registration is implemented internally in `internal/parser/spec.go`. `Parser` owns the active `Spec` and coordinates common block building and recursive inline parsing. The registration model is private package machinery, not an extension or plugin API.
 
 ### `internal/render/html`
 
@@ -49,13 +49,16 @@ Implements the `orische` command-line entrypoint. It reads one input file, rende
 
 The parser package is organized by responsibility:
 
-- `parser.go`, `block_context.go`, `spec.go` — document orchestration, block-parser context, and registration
+- `parser.go` — source-to-AST orchestration, active-`Spec` ownership, and common block-builder dispatch
+- `spec.go` — responsibility-oriented block feature registration, inline definition registration, normalization, lookup, and validation
+- `block_context.go` — short-lived document line cursor state
 - `parsed_block.go` — private parsed-block IR
 - `block_*.go` — document block readers that produce private parsed-block IR
-- `builder_*.go` — AST builders
+- `builder_*.go` — private-IR-to-AST builders; list-item builders reuse `Parser` dispatch
 - `inline.go` — `Parser.parseInlines`, inline-sequence state, and `Text` node construction
 - `inline_context.go` — byte-offset-to-source-position conversion and inline source ranges
-- `inline_directive.go` — inline header parsing and directive-specific AST construction
+- `inline_directive.go` — common directive-envelope processing, content policies, and core inline definitions
+- `spec_registration_test.go`, `inline_spec_test.go`, `active_spec_test.go` — registration consistency and active-`Spec` propagation tests
 - `*_test.go` — package behavior tests
 
 Validate parser changes with:

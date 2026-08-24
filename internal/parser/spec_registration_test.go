@@ -70,6 +70,9 @@ func TestSpec_BlockRegistrationRejectsIncompleteFeatures(t *testing.T) {
 			if err := tt.register(spec); err == nil {
 				t.Fatal("incomplete registration returned no error")
 			}
+			if readers := spec.getReaders(); len(readers) != 0 {
+				t.Errorf("incomplete registration installed %d readers", len(readers))
+			}
 			if _, ok := spec.getBuilder("heading"); ok {
 				t.Error("incomplete registration installed a heading builder")
 			}

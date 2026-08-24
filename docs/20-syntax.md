@@ -120,6 +120,8 @@ The opener and terminator must start at column 1. The terminator must be exactly
 
 The first colon inside the header separates the type and attribute. Additional colons belong to the opaque attribute string.
 
+Registered Directive Types are matched case-insensitively. Type normalization does not alter the attribute or content.
+
 The type must be nonempty. These are invalid and fall through to paragraph parsing:
 
 ```text

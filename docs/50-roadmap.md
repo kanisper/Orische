@@ -13,6 +13,8 @@ This file records current repository status. It is not a versioned language spec
 - `code` block directives
 - Inline emphasis, code spans, and links
 - Parsed-block IR and AST builders
+- Internal `Spec` registration for block features and inline directive definitions
+- Common `Parser` dispatch for top-level and list-item AST construction
 - Source ranges on all block and inline AST nodes
 - One-based, inclusive source positions with Unicode-code-point columns
 - HTML rendering with escaping and link URI-scheme validation
