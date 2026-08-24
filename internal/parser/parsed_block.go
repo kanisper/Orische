@@ -1,9 +1,6 @@
 package parser
 
-import (
-	"orische/internal/ast"
-	"strings"
-)
+import "orische/internal/ast"
 
 type parsedDocument struct {
 	Blocks []parsedBlockNode
@@ -24,7 +21,7 @@ type parsedBlock struct {
 }
 
 func (pb *parsedBlock) getBuilderKey() string {
-	return strings.ToLower(pb.Type)
+	return pb.Type
 }
 
 func (pb *parsedBlock) getBlockRange() ast.Range {

@@ -222,11 +222,13 @@ func TestParserBuildBlock_PreservesBuilderDiagnostic(t *testing.T) {
 		},
 	}
 	spec := newSpec()
-	spec.addBlockBuilder("diagnostic", blockBuilderFunc(
+	if err := spec.registerBlockDirectiveDefinition("diagnostic", blockBuilderFunc(
 		func(*Parser, parsedBlockNode) (ast.Block, error) {
 			return nil, wantErr
 		},
-	))
+	)); err != nil {
+		t.Fatalf("register diagnostic builder: %v", err)
+	}
 
 	got, err := NewParser(spec).buildBlock(&parsedBlock{Type: "Diagnostic"})
 	if got != nil {

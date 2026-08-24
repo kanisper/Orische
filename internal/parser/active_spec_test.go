@@ -137,9 +137,10 @@ func TestParserParse_PropagatesActiveSpecToHeadingBuilder(t *testing.T) {
 
 func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 	spec := newSpec()
+	if err := spec.registerBlockDirectiveReader(); err != nil {
+		t.Fatalf("register block directive reader: %v", err)
+	}
 	readerProbe := &activeSpecReaderProbe{}
-	spec.addBlockReader(readerProbe)
-	spec.addBlockReader(&listReader{})
 
 	parser := NewParser(spec)
 	paragraphProbe := &activeParserProbeBuilder{
@@ -154,8 +155,15 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 		wantSpec:   spec,
 		delegate:   &listBuilder{},
 	}
-	spec.addBlockBuilder("paragraph", paragraphProbe)
-	spec.addBlockBuilder("list", listProbe)
+	if err := spec.registerBlockSugar("probe", readerProbe, &paragraphBuilder{}); err != nil {
+		t.Fatalf("register reader probe: %v", err)
+	}
+	if err := spec.registerBlockSugar("list", &listReader{}, listProbe); err != nil {
+		t.Fatalf("register list sugar: %v", err)
+	}
+	if err := spec.registerParagraphFallback(paragraphProbe); err != nil {
+		t.Fatalf("register paragraph fallback: %v", err)
+	}
 
 	got, err := parser.Parse("* 日 :[em]{外}\n** 界 :[link:/x]{内}")
 	if err != nil {
@@ -402,8 +410,9 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 	t.Helper()
 
 	spec := newSpec()
-	spec.addBlockReader(&blockDirectiveReader{})
-	spec.addBlockReader(&headingReader{})
+	if err := spec.registerBlockDirectiveReader(); err != nil {
+		t.Fatalf("register block directive reader: %v", err)
+	}
 
 	parser := NewParser(spec)
 	probes := map[string]*activeParserProbeBuilder{
@@ -421,9 +430,15 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 		},
 	}
 
-	spec.addBlockBuilder("paragraph", probes["paragraph"])
-	spec.addBlockBuilder("heading", probes["heading"])
-	spec.addBlockBuilder("code", &codeBlockBuilder{})
+	if err := spec.registerBlockDirectiveDefinition("code", &codeBlockBuilder{}); err != nil {
+		t.Fatalf("register code directive: %v", err)
+	}
+	if err := spec.registerBlockSugar("heading", &headingReader{}, probes["heading"]); err != nil {
+		t.Fatalf("register heading sugar: %v", err)
+	}
+	if err := spec.registerParagraphFallback(probes["paragraph"]); err != nil {
+		t.Fatalf("register paragraph fallback: %v", err)
+	}
 
 	return parser, probes
 }

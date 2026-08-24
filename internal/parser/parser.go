@@ -27,6 +27,10 @@ func Parse(input string) (*ast.Document, error) {
 }
 
 func (p *Parser) Parse(input string) (*ast.Document, error) {
+	if err := p.spec.validate(); err != nil {
+		return nil, fmt.Errorf("invalid parser spec: %w", err)
+	}
+
 	lines := splitLines(input)
 
 	parsed, err := p.parseDocument(lines)
@@ -114,8 +118,9 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 }
 
 func (p *Parser) buildBlock(node parsedBlockNode) (ast.Block, error) {
-	key := node.getBuilderKey()
-	builder, ok := p.spec.getBuilder(key)
+	rawKey := node.getBuilderKey()
+	key := normalizeDirectiveType(rawKey)
+	builder, ok := p.spec.getBuilder(rawKey)
 	if !ok {
 		return nil, &diagnostic.Error{
 			Message: fmt.Sprintf("unsupported block directive type %q", key),
