@@ -27,7 +27,7 @@ Defines document, block, inline, and range types. AST interfaces are implemented
 - builds AST nodes from IR;
 - parses inline content during AST building.
 
-Syntax registration is implemented internally in `internal/parser/spec.go`. `Parser` owns the active `Spec` and coordinates common block building and recursive inline parsing. The registration model is private package machinery, not an extension or plugin API.
+Syntax registration is implemented internally in `internal/parser/spec.go`. Ordinary Block and Inline Definitions own their respective `blockType` and `inlineType` and use symmetric single-definition registration methods. A Block Definition that also implements the reader contract is added to the ordered Sugar reader chain; a builder-only definition is reached through the common Block Directive reader, which remains permanent parser infrastructure rather than a registered feature. Paragraph alone uses dedicated fallback registration to keep its reader last. Inline Sugar is a future extension, not currently implemented. `Parser` owns the active `Spec` and coordinates common block building and recursive inline parsing. The registration model is private package machinery, not an extension or plugin API.
 
 ### `internal/render/html`
 
@@ -50,11 +50,11 @@ Implements the `orische` command-line entrypoint. It reads one input file, rende
 The parser package keeps common parsing machinery separate and groups syntax-specific implementation by syntax:
 
 - `parser.go` — source-to-AST orchestration, active-`Spec` ownership, and common block-builder dispatch
-- `spec.go` — responsibility-oriented block feature registration, inline definition registration, normalization, lookup, and validation
+- `spec.go` — definition-owned Block/Inline Types, symmetric registration, ordered reader selection, normalization, lookup, and validation
 - `block_context.go` — short-lived document line cursor state
 - `parsed_block.go` — private parsed-block IR
-- `block_heading.go`, `block_list.go`, `block_paragraph.go`, `block_code.go` — syntax-specific builder keys, readers where applicable, and private-IR-to-AST builders; list-item builders reuse `Parser` dispatch
-- `block_directive.go` — common Block Directive envelope reader
+- `block_heading.go`, `block_list.go`, `block_paragraph.go`, `block_code.go` — syntax-specific definitions combining readers where applicable with private-IR-to-AST builders; list-item builders reuse `Parser` dispatch
+- `block_directive.go` — permanent common Block Directive envelope reader infrastructure
 - `inline.go` — `Parser.parseInlines`, inline-sequence state, and `Text` node construction
 - `inline_context.go` — byte-offset-to-source-position conversion and inline source ranges
 - `inline_directive.go` — common directive-envelope processing, content policies, and the inline definition contract

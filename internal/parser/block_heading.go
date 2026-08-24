@@ -9,22 +9,22 @@ import (
 	"orische/internal/ast"
 )
 
-const blockBuilderKeyHeading = "heading"
+const blockTypeHeading = "heading"
 
-type headingReader struct{}
+type headingDefinition struct{}
 
-func (*headingReader) builderKey() string {
-	return blockBuilderKeyHeading
+func (*headingDefinition) blockType() string {
+	return blockTypeHeading
 }
 
-func (*headingReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*headingDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	level, content := parseHeadingLine(ctx.line())
 	if level < 1 || level > 6 {
 		return nil, false, nil
 	}
 
 	return &parsedBlock{
-		Type: blockBuilderKeyHeading,
+		Type: blockTypeHeading,
 		Attr: "level" + strconv.Itoa(level),
 		Text: content,
 		Range: ast.Range{
@@ -45,9 +45,7 @@ func parseHeadingLine(line string) (int, string) {
 	return idx, line[idx+1:]
 }
 
-type headingBuilder struct{}
-
-func (*headingBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+func (*headingDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)

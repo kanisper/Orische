@@ -8,11 +8,15 @@ import (
 	"orische/internal/ast"
 )
 
-const blockBuilderKeyParagraph = "paragraph"
+const blockTypeParagraph = "paragraph"
 
-type paragraphReader struct{}
+type paragraphDefinition struct{}
 
-func (*paragraphReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*paragraphDefinition) blockType() string {
+	return blockTypeParagraph
+}
+
+func (*paragraphDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	startLine := ctx.pos + 1
 	var content []string
 
@@ -28,7 +32,7 @@ func (*paragraphReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	ctx.pos--
 
 	return &parsedBlock{
-		Type: blockBuilderKeyParagraph,
+		Type: blockTypeParagraph,
 		Attr: "",
 		Text: strings.Join(content, "\n"),
 		Range: ast.Range{
@@ -38,9 +42,7 @@ func (*paragraphReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	}, true, nil
 }
 
-type paragraphBuilder struct{}
-
-func (*paragraphBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+func (*paragraphDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)

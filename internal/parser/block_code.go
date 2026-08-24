@@ -6,11 +6,15 @@ import (
 	"orische/internal/ast"
 )
 
-const blockBuilderKeyCode = "code"
+const blockTypeCode = "code"
 
-type codeBlockBuilder struct{}
+type codeBlockDefinition struct{}
 
-func (*codeBlockBuilder) build(_ *Parser, node parsedBlockNode) (ast.Block, error) {
+func (*codeBlockDefinition) blockType() string {
+	return blockTypeCode
+}
+
+func (*codeBlockDefinition) build(_ *Parser, node parsedBlockNode) (ast.Block, error) {
 	block, ok := node.(*parsedBlock)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedBlock, got %T", node)

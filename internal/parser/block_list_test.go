@@ -25,7 +25,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Attr: "",
 						Text: "ol level 1 line 1",
 						Range: ast.Range{
@@ -42,7 +42,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Attr: "",
 						Text: "ol level 1 line 2",
 						Range: ast.Range{
@@ -56,7 +56,7 @@ func TestReadList(t *testing.T) {
 							{
 								Blocks: []parsedBlockNode{
 									&parsedBlock{
-										Type: blockBuilderKeyParagraph,
+										Type: blockTypeParagraph,
 										Attr: "",
 										Text: "ul level 2 line 1",
 										Range: ast.Range{
@@ -85,7 +85,7 @@ func TestReadList(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Attr: "",
 						Text: "ol level 1 line 3",
 						Range: ast.Range{
@@ -108,7 +108,7 @@ func TestReadList(t *testing.T) {
 
 	ctx_pos_want := 3
 
-	output, ok, err := (&listReader{}).read(input)
+	output, ok, err := (&listDefinition{}).read(input)
 
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
@@ -127,7 +127,7 @@ func TestReadList(t *testing.T) {
 func TestReadList_UnicodeRange(t *testing.T) {
 	input := &blockContext{lines: []string{"* あ😀"}}
 
-	got, ok, err := (&listReader{}).read(input)
+	got, ok, err := (&listDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestReadList_UnicodeRange(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Text: "あ😀",
 						Range: ast.Range{
 							Start: ast.Position{Line: 1, Column: 3},
@@ -181,7 +181,7 @@ func TestReadList_RejectsInvalidInputWithoutConsuming(t *testing.T) {
 				pos:   1,
 			}
 
-			got, ok, err := (&listReader{}).read(ctx)
+			got, ok, err := (&listDefinition{}).read(ctx)
 			if err != nil {
 				t.Fatalf("read returned an error: %v", err)
 			}
@@ -213,7 +213,7 @@ func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 			{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Attr: "",
 						Text: "parent",
 						Range: ast.Range{
@@ -227,7 +227,7 @@ func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 							{
 								Blocks: []parsedBlockNode{
 									&parsedBlock{
-										Type: blockBuilderKeyParagraph,
+										Type: blockTypeParagraph,
 										Attr: "",
 										Text: "child",
 										Range: ast.Range{
@@ -260,7 +260,7 @@ func TestReadList_NormalizesRawNestingLevelJump(t *testing.T) {
 		},
 	}
 
-	output, ok, err := (&listReader{}).read(input)
+	output, ok, err := (&listDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -474,7 +474,7 @@ func TestBuildList(t *testing.T) {
 		},
 	}
 
-	got, err := (&listBuilder{}).build(NewParser(nil), input)
+	got, err := (&listDefinition{}).build(NewParser(nil), input)
 
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)

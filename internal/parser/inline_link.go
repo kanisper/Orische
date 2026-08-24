@@ -2,7 +2,13 @@ package parser
 
 import "orische/internal/ast"
 
+const inlineTypeLink = "link"
+
 type linkInlineDefinition struct{}
+
+func (*linkInlineDefinition) inlineType() string {
+	return inlineTypeLink
+}
 
 func (*linkInlineDefinition) contentPolicy() inlineContentPolicy {
 	return inlineContentNested

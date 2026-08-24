@@ -9,7 +9,7 @@ type parsedDocument struct {
 
 type parsedBlockNode interface {
 	isParsedBlockNode()
-	getBuilderKey() string
+	blockType() string
 	getBlockRange() ast.Range
 }
 
@@ -20,7 +20,7 @@ type parsedBlock struct {
 	Range ast.Range
 }
 
-func (pb *parsedBlock) getBuilderKey() string {
+func (pb *parsedBlock) blockType() string {
 	return pb.Type
 }
 
@@ -34,8 +34,8 @@ type parsedList struct {
 	Range   ast.Range
 }
 
-func (pl *parsedList) getBuilderKey() string {
-	return blockBuilderKeyList
+func (pl *parsedList) blockType() string {
+	return blockTypeList
 }
 
 func (pl *parsedList) getBlockRange() ast.Range {

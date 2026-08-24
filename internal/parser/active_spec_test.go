@@ -137,20 +137,28 @@ func TestParserParse_PropagatesActiveSpecToHeadingBuilder(t *testing.T) {
 
 func TestParserParse_UsesCustomInlineDefinitionAcrossInlineCapableBlocks(t *testing.T) {
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveReader(); err != nil {
-		t.Fatalf("register block directive reader: %v", err)
-	}
 	definition := &activeInlineProbeDefinition{}
-	if err := spec.registerInlineDirectiveDefinition("mark", definition); err != nil {
+	if err := spec.registerInline(definition); err != nil {
 		t.Fatalf("register custom inline definition: %v", err)
 	}
-	if err := spec.registerBlockSugar(&headingReader{}, &headingBuilder{}); err != nil {
+	if err := spec.registerBlock(&activeSpecBlockSugarDefinition{
+		reader:  &headingDefinition{},
+		builder: &headingDefinition{},
+		typ:     blockTypeHeading,
+	}); err != nil {
 		t.Fatalf("register heading sugar: %v", err)
 	}
-	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
+	if err := spec.registerBlock(&activeSpecBlockSugarDefinition{
+		reader:  &listDefinition{},
+		builder: &listDefinition{},
+		typ:     blockTypeList,
+	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerParagraphFallback(&paragraphBuilder{}); err != nil {
+	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
+		reader:  &paragraphDefinition{},
+		builder: &paragraphDefinition{},
+	}); err != nil {
 		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
@@ -199,13 +207,10 @@ func TestParserParse_UsesCustomInlineDefinitionAcrossInlineCapableBlocks(t *test
 
 func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveReader(); err != nil {
-		t.Fatalf("register block directive reader: %v", err)
-	}
-	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&emphasisInlineDefinition{}); err != nil {
 		t.Fatalf("register emphasis definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&linkInlineDefinition{}); err != nil {
 		t.Fatalf("register link definition: %v", err)
 	}
 	readerProbe := &activeSpecReaderProbe{}
@@ -215,21 +220,32 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 		t:          t,
 		wantParser: parser,
 		wantSpec:   spec,
-		delegate:   &paragraphBuilder{},
+		delegate:   &paragraphDefinition{},
 	}
 	listProbe := &activeParserProbeBuilder{
 		t:          t,
 		wantParser: parser,
 		wantSpec:   spec,
-		delegate:   &listBuilder{},
+		delegate:   &listDefinition{},
 	}
-	if err := spec.registerBlockSugar(readerProbe, &paragraphBuilder{}); err != nil {
+	if err := spec.registerBlock(&activeSpecBlockSugarDefinition{
+		reader:  readerProbe,
+		builder: &paragraphDefinition{},
+		typ:     readerProbe.blockType(),
+	}); err != nil {
 		t.Fatalf("register reader probe: %v", err)
 	}
-	if err := spec.registerBlockSugar(&listReader{}, listProbe); err != nil {
+	if err := spec.registerBlock(&activeSpecBlockSugarDefinition{
+		reader:  &listDefinition{},
+		builder: listProbe,
+		typ:     blockTypeList,
+	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerParagraphFallback(paragraphProbe); err != nil {
+	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
+		reader:  &paragraphDefinition{},
+		builder: paragraphProbe,
+	}); err != nil {
 		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
@@ -337,10 +353,10 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 
 func TestInlineParseState_RetainsActiveParserDuringRecursion(t *testing.T) {
 	spec := newSpec()
-	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&emphasisInlineDefinition{}); err != nil {
 		t.Fatalf("register emphasis definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&linkInlineDefinition{}); err != nil {
 		t.Fatalf("register link definition: %v", err)
 	}
 	parser := NewParser(spec)
@@ -457,16 +473,55 @@ type activeParserProbeBuilder struct {
 	calls      int
 }
 
+type activeSpecBlockSugarDefinition struct {
+	reader  blockReader
+	builder blockBuilder
+	typ     string
+}
+
+func (d *activeSpecBlockSugarDefinition) blockType() string {
+	return d.typ
+}
+
+func (d *activeSpecBlockSugarDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+	return d.reader.read(ctx)
+}
+
+func (d *activeSpecBlockSugarDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+	return d.builder.build(parser, node)
+}
+
+type activeSpecBlockFallbackDefinition struct {
+	reader  blockReader
+	builder blockBuilder
+}
+
+func (*activeSpecBlockFallbackDefinition) blockType() string {
+	return blockTypeParagraph
+}
+
+func (d *activeSpecBlockFallbackDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+	return d.reader.read(ctx)
+}
+
+func (d *activeSpecBlockFallbackDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+	return d.builder.build(parser, node)
+}
+
 type activeSpecReaderProbe struct {
 	calls int
 }
 
-func (*activeSpecReaderProbe) builderKey() string {
+func (*activeSpecReaderProbe) blockType() string {
 	return "probe"
 }
 
 type activeInlineProbeDefinition struct {
 	calls int
+}
+
+func (*activeInlineProbeDefinition) inlineType() string {
+	return "mark"
 }
 
 func (*activeInlineProbeDefinition) contentPolicy() inlineContentPolicy {
@@ -518,16 +573,13 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 	t.Helper()
 
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveReader(); err != nil {
-		t.Fatalf("register block directive reader: %v", err)
-	}
-	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&emphasisInlineDefinition{}); err != nil {
 		t.Fatalf("register emphasis definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("link", &linkInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&linkInlineDefinition{}); err != nil {
 		t.Fatalf("register link definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("code", &codeInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&codeInlineDefinition{}); err != nil {
 		t.Fatalf("register code definition: %v", err)
 	}
 
@@ -537,23 +589,30 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 			t:          t,
 			wantParser: parser,
 			wantSpec:   spec,
-			delegate:   &paragraphBuilder{},
+			delegate:   &paragraphDefinition{},
 		},
 		"heading": {
 			t:          t,
 			wantParser: parser,
 			wantSpec:   spec,
-			delegate:   &headingBuilder{},
+			delegate:   &headingDefinition{},
 		},
 	}
 
-	if err := spec.registerBlockDirectiveDefinition("code", &codeBlockBuilder{}); err != nil {
+	if err := spec.registerBlock(&codeBlockDefinition{}); err != nil {
 		t.Fatalf("register code directive: %v", err)
 	}
-	if err := spec.registerBlockSugar(&headingReader{}, probes["heading"]); err != nil {
+	if err := spec.registerBlock(&activeSpecBlockSugarDefinition{
+		reader:  &headingDefinition{},
+		builder: probes["heading"],
+		typ:     blockTypeHeading,
+	}); err != nil {
 		t.Fatalf("register heading sugar: %v", err)
 	}
-	if err := spec.registerParagraphFallback(probes["paragraph"]); err != nil {
+	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
+		reader:  &paragraphDefinition{},
+		builder: probes["paragraph"],
+	}); err != nil {
 		t.Fatalf("register paragraph fallback: %v", err)
 	}
 

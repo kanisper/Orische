@@ -167,7 +167,7 @@ func TestParserBuildBlock_DispatchesCoreBuilders(t *testing.T) {
 	}
 }
 
-func TestParserBuildBlock_UnknownBuilderKey(t *testing.T) {
+func TestParserBuildBlock_UnknownBlockType(t *testing.T) {
 	blockRange := ast.Range{
 		Start: ast.Position{Line: 2, Column: 3},
 		End:   ast.Position{Line: 4, Column: 5},
@@ -178,7 +178,7 @@ func TestParserBuildBlock_UnknownBuilderKey(t *testing.T) {
 		Range: blockRange,
 	})
 	if err == nil {
-		t.Fatal("buildBlock returned no error for an unknown builder key")
+		t.Fatal("buildBlock returned no error for an unknown block type")
 	}
 	if got != nil {
 		t.Errorf("buildBlock returned a block: %v", got)
@@ -223,11 +223,12 @@ func TestParserBuildBlock_PreservesBuilderDiagnostic(t *testing.T) {
 		},
 	}
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveDefinition("diagnostic", blockBuilderFunc(
-		func(*Parser, parsedBlockNode) (ast.Block, error) {
+	if err := spec.registerBlock(&buildDispatchBlockDefinition{
+		typ: "diagnostic",
+		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
 			return nil, wantErr
-		},
-	)); err != nil {
+		}),
+	}); err != nil {
 		t.Fatalf("register diagnostic builder: %v", err)
 	}
 
@@ -249,17 +250,19 @@ func TestParserParse_ListItemDiagnosticBuilderErrorPreservesIdentity(t *testing.
 		},
 	}
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveReader(); err != nil {
-		t.Fatalf("register block directive reader: %v", err)
-	}
-	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
+	if err := spec.registerBlock(&buildDispatchBlockSugarDefinition{
+		reader:  &listDefinition{},
+		builder: &listDefinition{},
+		typ:     blockTypeList,
+	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerParagraphFallback(blockBuilderFunc(
-		func(*Parser, parsedBlockNode) (ast.Block, error) {
+	if err := spec.registerBlockFallback(&buildDispatchBlockFallbackDefinition{
+		reader: &paragraphDefinition{},
+		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
 			return nil, wantErr
-		},
-	)); err != nil {
+		}),
+	}); err != nil {
 		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
@@ -288,17 +291,19 @@ func TestParserParse_ListItemDiagnosticBuilderErrorPreservesIdentity(t *testing.
 func TestParserParse_ListItemBuilderErrorIncludesParagraphAndListContext(t *testing.T) {
 	wantErr := errors.New("paragraph builder failed")
 	spec := newSpec()
-	if err := spec.registerBlockDirectiveReader(); err != nil {
-		t.Fatalf("register block directive reader: %v", err)
-	}
-	if err := spec.registerBlockSugar(&listReader{}, &listBuilder{}); err != nil {
+	if err := spec.registerBlock(&buildDispatchBlockSugarDefinition{
+		reader:  &listDefinition{},
+		builder: &listDefinition{},
+		typ:     blockTypeList,
+	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerParagraphFallback(blockBuilderFunc(
-		func(*Parser, parsedBlockNode) (ast.Block, error) {
+	if err := spec.registerBlockFallback(&buildDispatchBlockFallbackDefinition{
+		reader: &paragraphDefinition{},
+		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
 			return nil, wantErr
-		},
-	)); err != nil {
+		}),
+	}); err != nil {
 		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
@@ -321,4 +326,52 @@ type blockBuilderFunc func(*Parser, parsedBlockNode) (ast.Block, error)
 
 func (f blockBuilderFunc) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	return f(parser, node)
+}
+
+type buildDispatchBlockDefinition struct {
+	typ     string
+	builder blockBuilder
+}
+
+func (d *buildDispatchBlockDefinition) blockType() string {
+	return d.typ
+}
+
+func (d *buildDispatchBlockDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+	return d.builder.build(parser, node)
+}
+
+type buildDispatchBlockSugarDefinition struct {
+	reader  blockReader
+	builder blockBuilder
+	typ     string
+}
+
+func (d *buildDispatchBlockSugarDefinition) blockType() string {
+	return d.typ
+}
+
+func (d *buildDispatchBlockSugarDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+	return d.reader.read(ctx)
+}
+
+func (d *buildDispatchBlockSugarDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+	return d.builder.build(parser, node)
+}
+
+type buildDispatchBlockFallbackDefinition struct {
+	reader  blockReader
+	builder blockBuilder
+}
+
+func (*buildDispatchBlockFallbackDefinition) blockType() string {
+	return blockTypeParagraph
+}
+
+func (d *buildDispatchBlockFallbackDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+	return d.reader.read(ctx)
+}
+
+func (d *buildDispatchBlockFallbackDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+	return d.builder.build(parser, node)
 }

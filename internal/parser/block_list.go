@@ -8,12 +8,12 @@ import (
 	"orische/internal/ast"
 )
 
-const blockBuilderKeyList = "list"
+const blockTypeList = "list"
 
-type listReader struct{}
+type listDefinition struct{}
 
-func (*listReader) builderKey() string {
-	return blockBuilderKeyList
+func (*listDefinition) blockType() string {
+	return blockTypeList
 }
 
 type listLine struct {
@@ -24,7 +24,7 @@ type listLine struct {
 	Line         int
 }
 
-func (*listReader) read(ctx *blockContext) (parsedBlockNode, bool, error) {
+func (*listDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
 	_, rawLevel, _ := parseListLine(ctx.line())
 	if rawLevel <= 0 {
 		return nil, false, nil
@@ -152,7 +152,7 @@ func buildParsedList(lines []listLine, index *int, level int) *parsedList {
 			list.Items = append(list.Items, parsedListItem{
 				Blocks: []parsedBlockNode{
 					&parsedBlock{
-						Type: blockBuilderKeyParagraph,
+						Type: blockTypeParagraph,
 						Attr: "",
 						Text: line.Text,
 						Range: ast.Range{
@@ -177,9 +177,7 @@ done:
 	return list
 }
 
-type listBuilder struct{}
-
-func (*listBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+func (*listDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	list, ok := node.(*parsedList)
 	if !ok {
 		return nil, fmt.Errorf("expected *parsedList, got %T", node)

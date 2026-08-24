@@ -13,9 +13,9 @@ func TestReadHeading(t *testing.T) {
 		lines: []string{"= Heading1"},
 		pos:   0,
 	}
-	output, ok, err := (&headingReader{}).read(input)
+	output, ok, err := (&headingDefinition{}).read(input)
 	want := &parsedBlock{
-		Type: blockBuilderKeyHeading,
+		Type: blockTypeHeading,
 		Attr: "level1",
 		Text: "Heading1",
 		Range: ast.Range{
@@ -39,9 +39,9 @@ func TestReadHeading_Level2(t *testing.T) {
 		lines: []string{"== Heading2"},
 		pos:   0,
 	}
-	output, ok, err := (&headingReader{}).read(input)
+	output, ok, err := (&headingDefinition{}).read(input)
 	want := &parsedBlock{
-		Type: blockBuilderKeyHeading,
+		Type: blockTypeHeading,
 		Attr: "level2",
 		Text: "Heading2",
 		Range: ast.Range{
@@ -63,7 +63,7 @@ func TestReadHeading_Level2(t *testing.T) {
 func TestReadHeading_UnicodeRange(t *testing.T) {
 	input := &blockContext{lines: []string{"= あ😀"}}
 
-	got, ok, err := (&headingReader{}).read(input)
+	got, ok, err := (&headingDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestReadHeading_UnicodeRange(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: blockBuilderKeyHeading,
+		Type: blockTypeHeading,
 		Attr: "level1",
 		Text: "あ😀",
 		Range: ast.Range{
@@ -91,7 +91,7 @@ func TestReadHeading_LevelOutOfRange(t *testing.T) {
 		pos:   0,
 	}
 
-	output, ok, err := (&headingReader{}).read(input)
+	output, ok, err := (&headingDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestReadHeading_NoSpace(t *testing.T) {
 		lines: []string{"before", "=Heading", "after"},
 		pos:   1,
 	}
-	output, ok, err := (&headingReader{}).read(input)
+	output, ok, err := (&headingDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestReadHeading_NoText(t *testing.T) {
 		lines: []string{"before", "=", "after"},
 		pos:   1,
 	}
-	output, ok, err := (&headingReader{}).read(input)
+	output, ok, err := (&headingDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestBuildHeading(t *testing.T) {
 		},
 	}
 
-	got, err := (&headingBuilder{}).build(NewParser(nil), input)
+	got, err := (&headingDefinition{}).build(NewParser(nil), input)
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)
 	}

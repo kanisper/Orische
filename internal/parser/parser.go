@@ -89,15 +89,15 @@ func (p *Parser) parseOneBlock(ctx *blockContext) (parsedBlockNode, error) {
 			if block == nil {
 				return nil, fmt.Errorf("block reader %T succeeded with a nil parsed block", reader)
 			}
-			if sugarReader, isSugar := reader.(blockSugarReader); isSugar {
-				declaredKey := normalizeDirectiveType(sugarReader.builderKey())
-				actualKey := normalizeDirectiveType(block.getBuilderKey())
-				if declaredKey != actualKey {
+			if sugarDefinition, isSugar := reader.(blockSugarDefinition); isSugar {
+				declaredType := normalizeSyntaxType(sugarDefinition.blockType())
+				actualType := normalizeSyntaxType(block.blockType())
+				if declaredType != actualType {
 					return nil, fmt.Errorf(
-						"block sugar reader %T declared builder key %q but produced %q",
+						"block sugar definition %T declared block type %q but produced %q",
 						reader,
-						declaredKey,
-						actualKey,
+						declaredType,
+						actualType,
 					)
 				}
 			}
@@ -128,17 +128,17 @@ func (p *Parser) buildDocument(parsedDoc *parsedDocument) (*ast.Document, error)
 }
 
 func (p *Parser) buildBlock(node parsedBlockNode) (ast.Block, error) {
-	rawKey := node.getBuilderKey()
-	key := normalizeDirectiveType(rawKey)
-	builder, ok := p.spec.getBuilder(rawKey)
+	rawType := node.blockType()
+	blockType := normalizeSyntaxType(rawType)
+	definition, ok := p.spec.getBlockDefinition(rawType)
 	if !ok {
 		return nil, &diagnostic.Error{
-			Message: fmt.Sprintf("unsupported block directive type %q", key),
+			Message: fmt.Sprintf("unsupported block directive type %q", blockType),
 			Range:   node.getBlockRange(),
 		}
 	}
 
-	block, err := builder.build(p, node)
+	block, err := definition.build(p, node)
 	if err != nil {
 		var diag *diagnostic.Error
 		if errors.As(err, &diag) {
@@ -147,7 +147,7 @@ func (p *Parser) buildBlock(node parsedBlockNode) (ast.Block, error) {
 
 		return nil, fmt.Errorf(
 			"build %q block: %w",
-			key,
+			blockType,
 			err,
 		)
 	}

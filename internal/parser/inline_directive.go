@@ -21,10 +21,10 @@ type inlineDirectiveCandidate struct {
 	Range          ast.Range
 }
 
-// inlineDirectiveDefinition owns syntax-specific validation, content policy,
-// and AST construction. The common parser owns delimiters, fallback, and range
-// calculation.
+// inlineDirectiveDefinition owns directive validation, content policy, and AST
+// construction. The common parser owns delimiters, fallback, and ranges.
 type inlineDirectiveDefinition interface {
+	inlineDefinition
 	contentPolicy() inlineContentPolicy
 	validateAttribute(attribute string) (bool, error)
 	buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error)
@@ -60,7 +60,7 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	if !ok {
 		return nil, literalNext, false, nil
 	}
-	key := normalizeDirectiveType(dirtype)
+	key := normalizeSyntaxType(dirtype)
 	policy := definition.contentPolicy()
 
 	candidate := inlineDirectiveCandidate{Attribute: attr}

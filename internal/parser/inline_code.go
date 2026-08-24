@@ -2,7 +2,13 @@ package parser
 
 import "orische/internal/ast"
 
+const inlineTypeCode = "code"
+
 type codeInlineDefinition struct{}
+
+func (*codeInlineDefinition) inlineType() string {
+	return inlineTypeCode
+}
 
 func (*codeInlineDefinition) contentPolicy() inlineContentPolicy {
 	return inlineContentLiteral

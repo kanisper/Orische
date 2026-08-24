@@ -2,7 +2,13 @@ package parser
 
 import "orische/internal/ast"
 
+const inlineTypeEmphasis = "em"
+
 type emphasisInlineDefinition struct{}
+
+func (*emphasisInlineDefinition) inlineType() string {
+	return inlineTypeEmphasis
+}
 
 func (*emphasisInlineDefinition) contentPolicy() inlineContentPolicy {
 	return inlineContentNested

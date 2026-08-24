@@ -35,7 +35,7 @@ func TestParseDocument(t *testing.T) {
 	want := &parsedDocument{
 		Blocks: []parsedBlockNode{
 			&parsedBlock{
-				Type: blockBuilderKeyHeading,
+				Type: blockTypeHeading,
 				Attr: "level1",
 				Text: "Heading1",
 				Range: ast.Range{
@@ -44,7 +44,7 @@ func TestParseDocument(t *testing.T) {
 				},
 			},
 			&parsedBlock{
-				Type: blockBuilderKeyParagraph,
+				Type: blockTypeParagraph,
 				Attr: "",
 				Text: "paragraph1 line1",
 				Range: ast.Range{
@@ -58,7 +58,7 @@ func TestParseDocument(t *testing.T) {
 					{
 						Blocks: []parsedBlockNode{
 							&parsedBlock{
-								Type: blockBuilderKeyParagraph,
+								Type: blockTypeParagraph,
 								Attr: "",
 								Text: "ol level 1 line 1",
 								Range: ast.Range{
@@ -75,7 +75,7 @@ func TestParseDocument(t *testing.T) {
 					{
 						Blocks: []parsedBlockNode{
 							&parsedBlock{
-								Type: blockBuilderKeyParagraph,
+								Type: blockTypeParagraph,
 								Attr: "",
 								Text: "ol level 1 line 2",
 								Range: ast.Range{
@@ -89,7 +89,7 @@ func TestParseDocument(t *testing.T) {
 									{
 										Blocks: []parsedBlockNode{
 											&parsedBlock{
-												Type: blockBuilderKeyParagraph,
+												Type: blockTypeParagraph,
 												Attr: "",
 												Text: "ul level 2 line 1",
 												Range: ast.Range{
@@ -118,7 +118,7 @@ func TestParseDocument(t *testing.T) {
 					{
 						Blocks: []parsedBlockNode{
 							&parsedBlock{
-								Type: blockBuilderKeyParagraph,
+								Type: blockTypeParagraph,
 								Attr: "",
 								Text: "ol level 1 line 3",
 								Range: ast.Range{
@@ -148,7 +148,7 @@ func TestParseDocument(t *testing.T) {
 				},
 			},
 			&parsedBlock{
-				Type: blockBuilderKeyHeading,
+				Type: blockTypeHeading,
 				Attr: "level2",
 				Text: "Heading2",
 				Range: ast.Range{
@@ -157,7 +157,7 @@ func TestParseDocument(t *testing.T) {
 				},
 			},
 			&parsedBlock{
-				Type: blockBuilderKeyParagraph,
+				Type: blockTypeParagraph,
 				Attr: "",
 				Text: "paragraph2 line1\nparagraph2 line2",
 				Range: ast.Range{

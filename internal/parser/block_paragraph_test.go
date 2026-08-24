@@ -19,7 +19,7 @@ func TestReadParagraph(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: blockBuilderKeyParagraph,
+		Type: blockTypeParagraph,
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2\n:::[code:go]",
 		Range: ast.Range{
@@ -30,7 +30,7 @@ func TestReadParagraph(t *testing.T) {
 
 	ctx_pos_want := 2
 
-	output, ok, err := (&paragraphReader{}).read(input)
+	output, ok, err := (&paragraphDefinition{}).read(input)
 
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
@@ -58,7 +58,7 @@ func TestReadParagraph_EndWithBlankLine(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: blockBuilderKeyParagraph,
+		Type: blockTypeParagraph,
 		Attr: "",
 		Text: "paragraph line 1\nparagraph line 2",
 		Range: ast.Range{
@@ -67,7 +67,7 @@ func TestReadParagraph_EndWithBlankLine(t *testing.T) {
 		},
 	}
 
-	output, ok, err := (&paragraphReader{}).read(input)
+	output, ok, err := (&paragraphDefinition{}).read(input)
 
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
@@ -86,7 +86,7 @@ func TestReadParagraph_UnicodeRange(t *testing.T) {
 		lines: []string{"first line", "é😀"},
 	}
 
-	got, ok, err := (&paragraphReader{}).read(input)
+	got, ok, err := (&paragraphDefinition{}).read(input)
 	if err != nil {
 		t.Fatalf("read returned an error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestReadParagraph_UnicodeRange(t *testing.T) {
 	}
 
 	want := &parsedBlock{
-		Type: blockBuilderKeyParagraph,
+		Type: blockTypeParagraph,
 		Text: "first line\né😀",
 		Range: ast.Range{
 			Start: ast.Position{Line: 1, Column: 1},
@@ -159,7 +159,7 @@ func TestBuildParagraph(t *testing.T) {
 		},
 	}
 
-	got, err := (&paragraphBuilder{}).build(NewParser(nil), input)
+	got, err := (&paragraphDefinition{}).build(NewParser(nil), input)
 	if err != nil {
 		t.Fatalf("build returned an error: %v", err)
 	}

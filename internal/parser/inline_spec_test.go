@@ -14,10 +14,10 @@ func TestSpec_InlineRegistrationRejectsNormalizedDuplicateWithoutOverwrite(t *te
 	first := &testInlineDefinition{policy: inlineContentNested}
 	second := &testInlineDefinition{policy: inlineContentLiteral}
 
-	if err := spec.registerInlineDirectiveDefinition("ÄBC", first); err != nil {
+	if err := spec.registerInline(typedInlineDefinition("ÄBC", first)); err != nil {
 		t.Fatalf("first registration returned an error: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("äbc", second); err == nil {
+	if err := spec.registerInline(typedInlineDefinition("äbc", second)); err == nil {
 		t.Fatal("case-only duplicate registration returned no error")
 	}
 
@@ -32,15 +32,15 @@ func TestSpec_InlineRegistrationRejectsNormalizedDuplicateWithoutOverwrite(t *te
 
 func TestSpec_InlineRegistrationRejectsIncompleteDefinition(t *testing.T) {
 	spec := newSpec()
-	if err := spec.registerInlineDirectiveDefinition("", &testInlineDefinition{}); err == nil {
+	if err := spec.registerInline(typedInlineDefinition("", &testInlineDefinition{})); err == nil {
 		t.Error("empty directive type registration returned no error")
 	}
-	if err := spec.registerInlineDirectiveDefinition("missing", nil); err == nil {
+	if err := spec.registerInline(nil); err == nil {
 		t.Error("nil definition registration returned no error")
 	}
-	if err := spec.registerInlineDirectiveDefinition("invalid-policy", &testInlineDefinition{
+	if err := spec.registerInline(typedInlineDefinition("invalid-policy", &testInlineDefinition{
 		policy: inlineContentPolicy(99),
-	}); err == nil {
+	})); err == nil {
 		t.Error("invalid content policy registration returned no error")
 	}
 	if _, ok := spec.getInlineDirectiveDefinition("missing"); ok {
@@ -49,6 +49,26 @@ func TestSpec_InlineRegistrationRejectsIncompleteDefinition(t *testing.T) {
 	if _, ok := spec.getInlineDirectiveDefinition("invalid-policy"); ok {
 		t.Error("invalid content policy registration installed a definition")
 	}
+}
+
+func TestSpec_InlineRegistrationRejectsDefinitionWithoutParserContract(t *testing.T) {
+	spec := newSpec()
+	definition := &testInlineTypeOnlyDefinition{dirtype: "future-sugar"}
+
+	if err := spec.registerInline(definition); err == nil {
+		t.Fatal("definition without a parser contract returned no error")
+	}
+	if _, ok := spec.getInlineDirectiveDefinition(definition.dirtype); ok {
+		t.Error("rejected definition was installed")
+	}
+}
+
+type testInlineTypeOnlyDefinition struct {
+	dirtype string
+}
+
+func (d *testInlineTypeOnlyDefinition) inlineType() string {
+	return d.dirtype
 }
 
 func TestParserParseInlines_UsesActiveSpecForNestedDefinitions(t *testing.T) {
@@ -62,7 +82,7 @@ func TestParserParseInlines_UsesActiveSpecForNestedDefinitions(t *testing.T) {
 			}, nil
 		},
 	}
-	if err := spec.registerInlineDirectiveDefinition("wrap", definition); err != nil {
+	if err := spec.registerInline(typedInlineDefinition("wrap", definition)); err != nil {
 		t.Fatalf("register wrap definition: %v", err)
 	}
 
@@ -119,15 +139,15 @@ func TestParserParseInlines_LiteralDefinitionDoesNotParseNestedDirectives(t *tes
 			}, nil
 		},
 	}
-	if err := spec.registerInlineDirectiveDefinition("literal", definition); err != nil {
+	if err := spec.registerInline(typedInlineDefinition("literal", definition)); err != nil {
 		t.Fatalf("register literal definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("wrap", &testInlineDefinition{
+	if err := spec.registerInline(typedInlineDefinition("wrap", &testInlineDefinition{
 		policy: inlineContentNested,
 		build: func(candidate inlineDirectiveCandidate) (ast.Inline, error) {
 			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
 		},
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("register wrap definition: %v", err)
 	}
 
@@ -189,10 +209,10 @@ func TestParserParseInlines_SemanticRejectionRemainsLiteralAndScanningContinues(
 			return false, nil
 		},
 	}
-	if err := spec.registerInlineDirectiveDefinition("reject", reject); err != nil {
+	if err := spec.registerInline(typedInlineDefinition("reject", reject)); err != nil {
 		t.Fatalf("register rejecting definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&emphasisInlineDefinition{}); err != nil {
 		t.Fatalf("register emphasis definition: %v", err)
 	}
 
@@ -220,22 +240,22 @@ func TestParserParseInlines_ValidationErrorStopsParsingWithoutLiteralFallback(t 
 	spec := newSpec()
 	validationCalls := 0
 	laterCalls := 0
-	if err := spec.registerInlineDirectiveDefinition("broken", &testInlineDefinition{
+	if err := spec.registerInline(typedInlineDefinition("broken", &testInlineDefinition{
 		policy: inlineContentNested,
 		validate: func(string) (bool, error) {
 			validationCalls++
 			return false, wantErr
 		},
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("register broken definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("later", &testInlineDefinition{
+	if err := spec.registerInline(typedInlineDefinition("later", &testInlineDefinition{
 		policy: inlineContentNested,
 		build: func(candidate inlineDirectiveCandidate) (ast.Inline, error) {
 			laterCalls++
 			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
 		},
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("register later definition: %v", err)
 	}
 
@@ -280,7 +300,7 @@ func TestParserParseInlines_ValidatesOnlyStructurallyClosedCandidate(t *testing.
 			validationCalls := 0
 			buildCalls := 0
 			spec := newSpec()
-			if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+			if err := spec.registerInline(typedInlineDefinition("probe", &testInlineDefinition{
 				policy: tt.policy,
 				validate: func(string) (bool, error) {
 					validationCalls++
@@ -290,7 +310,7 @@ func TestParserParseInlines_ValidatesOnlyStructurallyClosedCandidate(t *testing.
 					buildCalls++
 					return &ast.CodeSpan{Range: candidate.Range}, nil
 				},
-			}); err != nil {
+			})); err != nil {
 				t.Fatalf("register probe definition: %v", err)
 			}
 
@@ -322,7 +342,7 @@ func TestParserParseInlines_DoesNotValidateUnterminatedCandidate(t *testing.T) {
 			validationCalls := 0
 			buildCalls := 0
 			spec := newSpec()
-			if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+			if err := spec.registerInline(typedInlineDefinition("probe", &testInlineDefinition{
 				policy: tt.policy,
 				validate: func(string) (bool, error) {
 					validationCalls++
@@ -332,7 +352,7 @@ func TestParserParseInlines_DoesNotValidateUnterminatedCandidate(t *testing.T) {
 					buildCalls++
 					return &ast.CodeSpan{Range: candidate.Range}, nil
 				},
-			}); err != nil {
+			})); err != nil {
 				t.Fatalf("register probe definition: %v", err)
 			}
 
@@ -362,16 +382,16 @@ func TestParserParseInlines_UnterminatedCandidateSkipsValidationAndFindsLaterDir
 	wantErr := errors.New("unterminated candidate must not be validated")
 	validationCalls := 0
 	spec := newSpec()
-	if err := spec.registerInlineDirectiveDefinition("probe", &testInlineDefinition{
+	if err := spec.registerInline(typedInlineDefinition("probe", &testInlineDefinition{
 		policy: inlineContentNested,
 		validate: func(string) (bool, error) {
 			validationCalls++
 			return false, wantErr
 		},
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("register probe definition: %v", err)
 	}
-	if err := spec.registerInlineDirectiveDefinition("em", &emphasisInlineDefinition{}); err != nil {
+	if err := spec.registerInline(&emphasisInlineDefinition{}); err != nil {
 		t.Fatalf("register emphasis definition: %v", err)
 	}
 
@@ -442,7 +462,7 @@ func TestParserParseInlines_ConstructionErrorIsNotLiteralFallback(t *testing.T) 
 			return nil, wantErr
 		},
 	}
-	if err := spec.registerInlineDirectiveDefinition("broken", definition); err != nil {
+	if err := spec.registerInline(typedInlineDefinition("broken", definition)); err != nil {
 		t.Fatalf("register broken definition: %v", err)
 	}
 
@@ -456,9 +476,19 @@ func TestParserParseInlines_ConstructionErrorIsNotLiteralFallback(t *testing.T) 
 }
 
 type testInlineDefinition struct {
+	dirtype  string
 	policy   inlineContentPolicy
 	validate func(string) (bool, error)
 	build    func(inlineDirectiveCandidate) (ast.Inline, error)
+}
+
+func typedInlineDefinition(dirtype string, definition *testInlineDefinition) *testInlineDefinition {
+	definition.dirtype = dirtype
+	return definition
+}
+
+func (d *testInlineDefinition) inlineType() string {
+	return d.dirtype
 }
 
 func (d *testInlineDefinition) contentPolicy() inlineContentPolicy {

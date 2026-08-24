@@ -20,9 +20,9 @@ Rendering is outside the parser package.
 `parseBlocks` processes nonblank lines. `parseOneBlock` tries readers in this order:
 
 1. `blockDirectiveReader`
-2. `headingReader`
-3. `listReader`
-4. `paragraphReader` fallback
+2. `headingDefinition`
+3. `listDefinition`
+4. `paragraphDefinition` fallback
 
 The fallback is stored separately in `Spec` and appended last by `getReaders`. It must remain last.
 
@@ -30,20 +30,20 @@ Block reading records structure and raw inline-capable text. It does not create 
 
 ## Spec Registration
 
-`Spec` is the internal source of block and inline feature definitions. Its registration operations reflect parser responsibilities:
+`Spec` is the internal source of block and inline feature definitions. Definitions own their type, and the registration surface is symmetric between ordinary Block and Inline features:
 
-- the shared Block Directive reader is registered exactly once and always precedes sugar readers;
-- a block directive definition associates a normalized Directive Type with its builder;
-- a Sugar Reader is a `blockReader` that also declares the builder key it produces through `builderKey() string`;
-- `registerBlockSugar` receives only a Sugar Reader and its builder. It derives the normalized registration key from the Reader, so callers cannot provide an independent Directive Type string;
-- Heading and List are the only Sugar Reader implementations in the core specification and are registered as ordered Reader/Builder pairs;
-- the Block Directive Reader and Paragraph Reader are ordinary `blockReader` implementations, not Sugar Readers;
-- Paragraph is registered as the dedicated fallback Reader/Builder pair;
-- inline directive definitions associate a normalized Directive Type with validation, a content policy, and AST construction.
+- every ordinary Block Definition combines `blockType() string` with AST building and is registered through `registerBlock(definition)`;
+- if a Block Definition also implements `blockReader`, registration appends it to the ordered Sugar reader chain; otherwise it is reached only through the shared Block Directive envelope reader;
+- the shared Block Directive reader is permanent parser infrastructure, not a `Spec` registration target, and always precedes reader-capable Block Definitions;
+- Heading and List are reader-capable Block Definitions and are registered in reader order, while Code is a directive-only Block Definition;
+- Paragraph combines reading and building as the dedicated `blockFallbackDefinition` and remains on the separate `registerBlockFallback` path so it is always final;
+- every Inline Definition declares `inlineType() string` through the base `inlineDefinition` contract and is registered through `registerInline(definition)`;
+- current Inline Directive Definitions additionally own validation, content policy, and inline AST construction; other definition categories are rejected until their parser contract exists;
+- this definition-owned type and single-definition registration shape allows future Inline Sugar to be added without changing the registration API, while not claiming that Inline Sugar syntax exists today.
 
-`paragraph` is a case-insensitive, fallback-only reserved builder key. Block Directive definitions, Sugar registration, and the generic block-builder registration path reject it. Paragraph fallback registration is the only path that may install the Paragraph builder. Registration validates all inputs before mutating the builder map, reader list, or fallback field, so a rejected registration leaves the `Spec` usable for a later valid fallback registration. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading, including the required Block Directive reader and Paragraph fallback.
+`paragraph` is a case-insensitive, fallback-only reserved Block Type. Ordinary Block registration rejects it; Paragraph fallback registration is the only path that may install the Paragraph definition. Registration validates all inputs before mutating the block-definition map, ordered reader list, or fallback field, so a rejected registration leaves the `Spec` usable for a later valid fallback registration. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading, including the required Paragraph fallback; the common Block Directive reader does not require registration.
 
-Directive Type registration and lookup use the same Unicode-aware `strings.ToLower` normalization. Only the type is normalized; attributes and content retain their original spelling. Block and inline definitions use separate registries, so `code` can be defined in both categories.
+Syntax Type registration and lookup use the same Unicode-aware `strings.ToLower` normalization. Only the type is normalized; attributes and content retain their original spelling. Block and inline definitions use separate registries, so `code` can be defined in both categories.
 
 The registration model is private to `internal/parser`. It is not a stable extension or plugin API.
 
@@ -64,9 +64,9 @@ A reader returning `ok=false` must not consume input. A reader that scans ahead 
 - `*parsedBlock` for headings, paragraphs, and directives;
 - `*parsedList` for lists.
 
-The IR keeps raw text until AST building. `getBuilderKey` supplies the raw internal lookup key; `Spec` normalizes the key and selects the AST builder.
+The IR keeps raw text until AST building. `blockType()` supplies the raw internal Block Type; `Spec` normalizes it and selects the AST builder.
 
-When a Sugar Reader succeeds, `parseOneBlock` compares its normalized declared key with the normalized key returned by the parsed IR immediately after the read. A mismatch is an ordinary internal error, not an unsupported-block diagnostic, and parsing does not continue to Paragraph fallback. The check also rejects a successful Reader that returns a nil IR node.
+When an ordered Block Definition succeeds while reading, `parseOneBlock` compares its normalized declared Block Type with the normalized type returned by the parsed IR immediately after the read. A mismatch is an ordinary internal error, not an unsupported-block diagnostic, and parsing does not continue to Paragraph fallback. The check also rejects a successful definition that returns a nil IR node.
 
 ## List Parsing
 
@@ -97,7 +97,7 @@ Builders convert private IR into pointer-based AST nodes. `Parser.buildBlock` ow
 - A diagnostic returned by a list-item Paragraph builder is propagated as the same diagnostic instance, without `build "paragraph" block` or `build "list" block` context. A non-diagnostic list-item builder or inline error preserves its cause and receives the nested `build "paragraph" block` and outer `build "list" block` context.
 - Parsed block ranges are copied to their AST block nodes. Inline parsing computes ranges from each block's inline-content origin, and every inline node receives its own source range.
 
-The core builder keys are `heading`, `paragraph`, `list`, and `code`.
+The core Block Types are declared by `blockTypeHeading`, `blockTypeParagraph`, `blockTypeList`, and `blockTypeCode`. The core Inline Types are declared by `inlineTypeEmphasis`, `inlineTypeLink`, and `inlineTypeCode`.
 
 ## Inline Parsing
 
