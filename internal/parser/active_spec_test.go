@@ -135,6 +135,130 @@ func TestParserParse_PropagatesActiveSpecToHeadingBuilder(t *testing.T) {
 	}
 }
 
+func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
+	spec := newSpec()
+	readerProbe := &activeSpecReaderProbe{}
+	spec.addBlockReader(readerProbe)
+	spec.addBlockReader(&listReader{})
+
+	parser := NewParser(spec)
+	paragraphProbe := &activeParserProbeBuilder{
+		t:          t,
+		wantParser: parser,
+		wantSpec:   spec,
+		delegate:   &paragraphBuilder{},
+	}
+	listProbe := &activeParserProbeBuilder{
+		t:          t,
+		wantParser: parser,
+		wantSpec:   spec,
+		delegate:   &listBuilder{},
+	}
+	spec.addBlockBuilder("paragraph", paragraphProbe)
+	spec.addBlockBuilder("list", listProbe)
+
+	got, err := parser.Parse("* 日 :[em]{外}\n** 界 :[link:/x]{内}")
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+
+	if readerProbe.calls != 1 {
+		t.Errorf("document reader probe calls = %d, want 1", readerProbe.calls)
+	}
+	if listProbe.calls != 2 {
+		t.Errorf("list builder calls = %d, want 2", listProbe.calls)
+	}
+	if paragraphProbe.calls != 2 {
+		t.Errorf("paragraph builder calls = %d, want 2", paragraphProbe.calls)
+	}
+
+	if len(got.Blocks) != 1 {
+		t.Fatalf("document blocks = %d, want 1", len(got.Blocks))
+	}
+	outer, ok := got.Blocks[0].(*ast.List)
+	if !ok {
+		t.Fatalf("document block type = %T, want *ast.List", got.Blocks[0])
+	}
+	if len(outer.Items) != 1 || len(outer.Items[0].Blocks) != 2 {
+		t.Fatalf("outer list shape = %#v, want one item with paragraph and nested list", outer)
+	}
+
+	outerParagraph, ok := outer.Items[0].Blocks[0].(*ast.Paragraph)
+	if !ok {
+		t.Fatalf("outer item block type = %T, want *ast.Paragraph", outer.Items[0].Blocks[0])
+	}
+	wantOuterRange := ast.Range{
+		Start: ast.Position{Line: 1, Column: 3},
+		End:   ast.Position{Line: 1, Column: 12},
+	}
+	if diff := cmp.Diff(wantOuterRange, outerParagraph.Range); diff != "" {
+		t.Errorf("outer paragraph range mismatch (-want +got):\n%s", diff)
+	}
+	outerEmphasis, ok := outerParagraph.Content[1].(*ast.Emphasis)
+	if !ok {
+		t.Fatalf("outer inline type = %T, want *ast.Emphasis", outerParagraph.Content[1])
+	}
+	wantEmphasisRange := ast.Range{
+		Start: ast.Position{Line: 1, Column: 5},
+		End:   ast.Position{Line: 1, Column: 12},
+	}
+	if diff := cmp.Diff(wantEmphasisRange, outerEmphasis.Range); diff != "" {
+		t.Errorf("outer emphasis range mismatch (-want +got):\n%s", diff)
+	}
+	wantOuterTextRange := ast.Range{
+		Start: ast.Position{Line: 1, Column: 11},
+		End:   ast.Position{Line: 1, Column: 11},
+	}
+	outerText, ok := outerEmphasis.Content[0].(*ast.Text)
+	if !ok {
+		t.Fatalf("outer nested inline type = %T, want *ast.Text", outerEmphasis.Content[0])
+	}
+	if diff := cmp.Diff(wantOuterTextRange, outerText.Range); diff != "" {
+		t.Errorf("outer nested text range mismatch (-want +got):\n%s", diff)
+	}
+
+	nested, ok := outer.Items[0].Blocks[1].(*ast.List)
+	if !ok {
+		t.Fatalf("nested block type = %T, want *ast.List", outer.Items[0].Blocks[1])
+	}
+	if len(nested.Items) != 1 || len(nested.Items[0].Blocks) != 1 {
+		t.Fatalf("nested list shape = %#v, want one item with one paragraph", nested)
+	}
+	nestedParagraph, ok := nested.Items[0].Blocks[0].(*ast.Paragraph)
+	if !ok {
+		t.Fatalf("nested item block type = %T, want *ast.Paragraph", nested.Items[0].Blocks[0])
+	}
+	wantNestedRange := ast.Range{
+		Start: ast.Position{Line: 2, Column: 4},
+		End:   ast.Position{Line: 2, Column: 18},
+	}
+	if diff := cmp.Diff(wantNestedRange, nestedParagraph.Range); diff != "" {
+		t.Errorf("nested paragraph range mismatch (-want +got):\n%s", diff)
+	}
+	nestedLink, ok := nestedParagraph.Content[1].(*ast.Link)
+	if !ok {
+		t.Fatalf("nested inline type = %T, want *ast.Link", nestedParagraph.Content[1])
+	}
+	wantLinkRange := ast.Range{
+		Start: ast.Position{Line: 2, Column: 6},
+		End:   ast.Position{Line: 2, Column: 18},
+	}
+	if diff := cmp.Diff(wantLinkRange, nestedLink.Range); diff != "" {
+		t.Errorf("nested link range mismatch (-want +got):\n%s", diff)
+	}
+	wantNestedTextRange := ast.Range{
+		Start: ast.Position{Line: 2, Column: 17},
+		End:   ast.Position{Line: 2, Column: 17},
+	}
+	nestedText, ok := nestedLink.Content[0].(*ast.Text)
+	if !ok {
+		t.Fatalf("nested link content type = %T, want *ast.Text", nestedLink.Content[0])
+	}
+	if diff := cmp.Diff(wantNestedTextRange, nestedText.Range); diff != "" {
+		t.Errorf("nested link text range mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestInlineParseState_RetainsActiveParserDuringRecursion(t *testing.T) {
 	spec := newSpec()
 	parser := NewParser(spec)
@@ -249,6 +373,15 @@ type activeParserProbeBuilder struct {
 	wantSpec   *Spec
 	delegate   blockBuilder
 	calls      int
+}
+
+type activeSpecReaderProbe struct {
+	calls int
+}
+
+func (r *activeSpecReaderProbe) read(*blockContext) (parsedBlockNode, bool, error) {
+	r.calls++
+	return nil, false, nil
 }
 
 func (b *activeParserProbeBuilder) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {

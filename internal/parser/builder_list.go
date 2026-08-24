@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strings"
 
 	"orische/internal/ast"
 )
@@ -41,7 +40,7 @@ func buildListItem(parser *Parser, parsedItem parsedListItem) (*ast.ListItem, er
 	blocks := make([]ast.Block, 0, len(parsedItem.Blocks))
 
 	for _, node := range parsedItem.Blocks {
-		block, err := buildListItemBlock(parser, node, parsedItem.RawLevel)
+		block, err := parser.buildBlock(node)
 		if err != nil {
 			return nil, err
 		}
@@ -53,35 +52,4 @@ func buildListItem(parser *Parser, parsedItem parsedListItem) (*ast.ListItem, er
 		Blocks: blocks,
 		Range:  parsedItem.Range,
 	}, nil
-}
-
-func buildListItemBlock(parser *Parser, node parsedBlockNode, itemRawLevel int) (ast.Block, error) {
-	switch block := node.(type) {
-	case *parsedBlock:
-		if !strings.EqualFold(block.Type, "paragraph") {
-			return nil, fmt.Errorf("unexpected block type in list item: %q", block.Type)
-		}
-
-		origin := block.getBlockRange().Start
-		inlines, err := parser.parseInlines(block.Text, origin)
-		if err != nil {
-			return nil, err
-		}
-
-		return &ast.Paragraph{
-			Content: inlines,
-			Range:   block.Range,
-		}, nil
-
-	case *parsedList:
-		nested, err := buildList(parser, block)
-		if err != nil {
-			return nil, err
-		}
-
-		return nested, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported type of node in list item: %T", node)
-	}
 }
