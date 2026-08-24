@@ -50,6 +50,8 @@ Renderer-specific maintenance rules live in `internal/render/html/AGENTS.md`.
 ## Change Discipline
 
 - Prefer focused changes that preserve existing package boundaries.
-- Add or update tests for syntax and parser behavior changes.
+- For behavioral code changes, add or update focused tests before editing production code. Run the focused tests first and confirm that they fail for the expected reason, then implement the change and rerun both the focused tests and the required validation suite.
 - Keep `docs/20-syntax.md` aligned with accepted syntax.
 - Do not document planned files or packages as if they already exist.
+- Delegate only bounded, independent research or review tasks when delegation will reduce total work or protect the main context. Prefer a lower-cost model with sufficient reasoning effort, pass only the context it needs, and keep integration responsibility with the primary agent.
+- Unless the user requests otherwise, the agent may choose commit timing. Commit only a coherent, verified unit of work, keep unrelated user changes out of the commit, and report the resulting commit identifier.
