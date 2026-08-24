@@ -67,3 +67,46 @@ Validate parser changes with:
 ```sh
 go test ./internal/parser
 ```
+
+## Possible Future Parser Split
+
+The parser should remain a single package while the syntax registration contracts are still evolving. File-level, syntax-oriented organization is the current choice; the layout below is a possible future direction, not an implemented package structure or a stable extension API.
+
+A package split becomes worth considering when several of the following are true:
+
+- the number of built-in block and inline syntax types has grown substantially;
+- adding a syntax type regularly requires changes to common parser machinery;
+- syntax-specific tests are difficult to distinguish from parser-engine tests;
+- another internal package needs to assemble or inspect syntax definitions;
+- the Reader, Builder, inline Definition, parsed-IR, and source-context contracts have stabilized.
+
+The intended split is between neutral feature contracts and built-in syntax implementations:
+
+```text
+internal/parser/
+  parser.go                  # orchestration and active specification
+  spec.go                    # registration, lookup, and validation
+  feature/                   # neutral Reader, Builder, Definition, IR, and context contracts
+  syntax/                    # built-in syntax implementations, one syntax per file
+    core.go                  # built-in registration set
+    block_heading.go
+    block_list.go
+    block_paragraph.go
+    block_code.go
+    inline_emphasis.go
+    inline_link.go
+    inline_code.go
+```
+
+Dependencies should remain acyclic:
+
+```text
+parser  -> feature
+parser  -> syntax -> feature
+feature -> ast
+syntax  -> ast
+```
+
+The `feature` package would contain only the minimum syntax-neutral contracts required to implement and register syntax. Parser orchestration, registration ownership, and scanning behavior would remain outside it. The `syntax` package would contain the built-in implementations and expose their registration set to `parser`; it would not become one subpackage per syntax unless an individual syntax grows large enough to justify that boundary.
+
+Migration should begin by extracting the stable contracts into `feature`, then move the existing implementations into `syntax`. Moving files first would either create an import cycle or require prematurely exporting parser internals. Until those contracts are stable, keep the current single-package layout.
