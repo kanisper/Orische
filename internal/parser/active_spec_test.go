@@ -155,13 +155,6 @@ func TestParserParse_UsesCustomInlineDefinitionAcrossInlineCapableBlocks(t *test
 	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
-		reader:  &paragraphDefinition{},
-		builder: &paragraphDefinition{},
-	}); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
-	}
-
 	input := "= :[mark]{heading}\n\n:[mark]{paragraph}\n\n* :[mark]{item}\n** :[mark]{nested}"
 	got, err := NewParser(spec).Parse(input)
 	if err != nil {
@@ -242,11 +235,8 @@ func TestParserParse_PropagatesActiveSpecThroughListItems(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("register list sugar: %v", err)
 	}
-	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
-		reader:  &paragraphDefinition{},
+	spec.blockDefinitions[blockTypeParagraph] = &activeSpecParagraphDefinition{
 		builder: paragraphProbe,
-	}); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
 	got, err := parser.Parse("* 日 :[em]{外}\n** 界 :[link:/x]{内}")
@@ -491,20 +481,15 @@ func (d *activeSpecBlockSugarDefinition) build(parser *Parser, node parsedBlockN
 	return d.builder.build(parser, node)
 }
 
-type activeSpecBlockFallbackDefinition struct {
-	reader  blockReader
+type activeSpecParagraphDefinition struct {
 	builder blockBuilder
 }
 
-func (*activeSpecBlockFallbackDefinition) blockType() string {
+func (*activeSpecParagraphDefinition) blockType() string {
 	return blockTypeParagraph
 }
 
-func (d *activeSpecBlockFallbackDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
-	return d.reader.read(ctx)
-}
-
-func (d *activeSpecBlockFallbackDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
+func (d *activeSpecParagraphDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
 	return d.builder.build(parser, node)
 }
 
@@ -609,11 +594,8 @@ func newActiveSpecTestParser(t *testing.T) (*Parser, map[string]*activeParserPro
 	}); err != nil {
 		t.Fatalf("register heading sugar: %v", err)
 	}
-	if err := spec.registerBlockFallback(&activeSpecBlockFallbackDefinition{
-		reader:  &paragraphDefinition{},
+	spec.blockDefinitions[blockTypeParagraph] = &activeSpecParagraphDefinition{
 		builder: probes["paragraph"],
-	}); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
 	}
 
 	return parser, probes

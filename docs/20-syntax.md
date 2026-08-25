@@ -199,4 +199,4 @@ The attribute is the URI and must be nonempty. Link content is recursively inlin
 - Invalid list line at block start → paragraph text
 - Unsupported inline directive, invalid header, or link without a URI → literal source text through the first available `}`
 - Other malformed or unterminated inline candidate → ordinary literal scanning resumes; later valid inline syntax may still be recognized
-- Valid block directive without a registered builder → AST build error
+- Valid block directive without a registered definition → AST build error

@@ -29,6 +29,37 @@ func TestCoreSpec_BlockReaderOrder(t *testing.T) {
 	}
 }
 
+func TestNewSpec_HasFixedBlockBoundaryDefinitions(t *testing.T) {
+	spec := newSpec()
+	readers := spec.getReaders()
+
+	if len(readers) != 2 {
+		t.Fatalf("reader count = %d, want directive and paragraph readers", len(readers))
+	}
+	if _, ok := readers[0].(*blockDirectiveReader); !ok {
+		t.Errorf("first reader = %T, want *blockDirectiveReader", readers[0])
+	}
+	if _, ok := readers[1].(*paragraphDefinition); !ok {
+		t.Errorf("last reader = %T, want *paragraphDefinition", readers[1])
+	}
+	if definition, ok := spec.getBlockDefinition(blockTypeParagraph); !ok {
+		t.Error("paragraph definition is not installed")
+	} else if _, ok := definition.(*paragraphDefinition); !ok {
+		t.Errorf("paragraph definition = %T, want *paragraphDefinition", definition)
+	}
+
+	doc, err := NewParser(spec).Parse("plain text")
+	if err != nil {
+		t.Fatalf("Parse with new Spec returned an error: %v", err)
+	}
+	if len(doc.Blocks) != 1 {
+		t.Fatalf("block count = %d, want 1", len(doc.Blocks))
+	}
+	if _, ok := doc.Blocks[0].(*ast.Paragraph); !ok {
+		t.Errorf("block type = %T, want *ast.Paragraph", doc.Blocks[0])
+	}
+}
+
 func TestSpec_RegisterBlockClassifiesDefinitionByReaderCapability(t *testing.T) {
 	definition := &specRegistrationBlockDefinitionProbe{key: "probe"}
 	spec := newSpec()
@@ -41,8 +72,8 @@ func TestSpec_RegisterBlockClassifiesDefinitionByReaderCapability(t *testing.T) 
 	}
 
 	readers := spec.getReaders()
-	if len(readers) != 2 || readers[1] != definition {
-		t.Fatalf("registered readers = %#v, want common directive reader followed only by sugar definition", readers)
+	if len(readers) != 3 || readers[1] != definition {
+		t.Fatalf("registered readers = %#v, want directive, sugar, and paragraph readers", readers)
 	}
 	if _, ok := spec.getBlockDefinition(blockTypeCode); !ok {
 		t.Error("directive definition was not registered")
@@ -69,43 +100,18 @@ func (*specRegistrationBlockDefinitionProbe) build(*Parser, parsedBlockNode) (as
 }
 
 func TestSpec_BlockRegistrationRejectsIncompleteFeatures(t *testing.T) {
-	tests := []struct {
-		name     string
-		register func(*Spec) error
-	}{
-		{
-			name: "block without definition",
-			register: func(spec *Spec) error {
-				return spec.registerBlock(nil)
-			},
-		},
-		{
-			name: "fallback without definition",
-			register: func(spec *Spec) error {
-				return spec.registerBlockFallback(nil)
-			},
-		},
+	spec := newSpec()
+	if err := spec.registerBlock(nil); err == nil {
+		t.Fatal("incomplete registration returned no error")
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			spec := newSpec()
-			if err := tt.register(spec); err == nil {
-				t.Fatal("incomplete registration returned no error")
-			}
-			if readers := spec.getReaders(); len(readers) != 1 {
-				t.Errorf("incomplete registration installed %d feature readers", len(readers)-1)
-			}
-			if _, ok := spec.getBlockDefinition("heading"); ok {
-				t.Error("incomplete registration installed a heading definition")
-			}
-			if _, ok := spec.getBlockDefinition("code"); ok {
-				t.Error("incomplete registration installed a code definition")
-			}
-			if _, ok := spec.getBlockDefinition("paragraph"); ok {
-				t.Error("incomplete registration installed a paragraph definition")
-			}
-		})
+	if readers := spec.getReaders(); len(readers) != 2 {
+		t.Errorf("incomplete registration changed fixed reader count to %d", len(readers))
+	}
+	if _, ok := spec.getBlockDefinition(blockTypeHeading); ok {
+		t.Error("incomplete registration installed a heading definition")
+	}
+	if _, ok := spec.getBlockDefinition(blockTypeCode); ok {
+		t.Error("incomplete registration installed a code definition")
 	}
 }
 
@@ -141,8 +147,8 @@ func TestSpec_BlockRegistrationUsesDefinitionType(t *testing.T) {
 			if got != tt.definition {
 				t.Errorf("definition %q = %T, want %T", tt.key, got, tt.definition)
 			}
-			if len(spec.getReaders()) != 2 || spec.getReaders()[1] != tt.definition {
-				t.Errorf("registered readers = %#v, want directive reader followed by %T", spec.getReaders(), tt.definition)
+			if len(spec.getReaders()) != 3 || spec.getReaders()[1] != tt.definition {
+				t.Errorf("registered readers = %#v, want directive, %T, and paragraph", spec.getReaders(), tt.definition)
 			}
 		})
 	}
@@ -154,8 +160,8 @@ func TestSpec_BlockRegistrationRejectsEmptyDefinitionType(t *testing.T) {
 	if err := spec.registerBlock(definition); err == nil {
 		t.Fatal("empty block type registration returned no error")
 	}
-	if len(spec.getReaders()) != 1 {
-		t.Errorf("empty-key registration installed %d sugar readers", len(spec.getReaders())-1)
+	if len(spec.getReaders()) != 2 {
+		t.Errorf("empty-type registration changed fixed reader count to %d", len(spec.getReaders()))
 	}
 	if _, ok := spec.getBlockDefinition(""); ok {
 		t.Error("empty-type registration installed a definition")
@@ -170,14 +176,13 @@ func TestSpec_BlockRegistrationRejectsReservedParagraphType(t *testing.T) {
 			if err := spec.registerBlock(definition); err == nil {
 				t.Fatal("paragraph sugar registration returned no error")
 			}
-			if len(spec.getReaders()) != 1 {
-				t.Errorf("reserved-key registration installed %d sugar readers", len(spec.getReaders())-1)
+			if len(spec.getReaders()) != 2 {
+				t.Errorf("reserved-type registration changed fixed reader count to %d", len(spec.getReaders()))
 			}
-			if _, ok := spec.getBlockDefinition("paragraph"); ok {
-				t.Error("reserved-type registration installed a paragraph definition")
-			}
-			if err := spec.registerBlockFallback(&paragraphDefinition{}); err != nil {
-				t.Fatalf("register paragraph fallback after rejected sugar: %v", err)
+			if definition, ok := spec.getBlockDefinition(blockTypeParagraph); !ok {
+				t.Error("reserved-type registration removed the fixed paragraph definition")
+			} else if _, ok := definition.(*paragraphDefinition); !ok {
+				t.Errorf("fixed paragraph definition was replaced by %T", definition)
 			}
 		})
 	}
@@ -196,10 +201,6 @@ func TestParserParse_BlockSugarDefinitionTypeMismatchIsInternalError(t *testing.
 	if err := spec.registerBlock(newSpecRegistrationSugarDefinition(reader, &paragraphDefinition{})); err != nil {
 		t.Fatalf("register sugar: %v", err)
 	}
-	if err := spec.registerBlockFallback(&paragraphDefinition{}); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
-	}
-
 	got, err := NewParser(spec).Parse("text")
 	if err == nil {
 		t.Fatal("Parse accepted a mismatched sugar definition block type")
@@ -244,35 +245,6 @@ func TestSpec_BlockRegistrationRejectsNormalizedDuplicatesWithoutOverwrite(t *te
 	}
 }
 
-func TestSpec_BlockRegistrationRejectsDuplicateParagraphFallback(t *testing.T) {
-	spec := newSpec()
-	first := &paragraphDefinition{}
-	if err := spec.registerBlockFallback(first); err != nil {
-		t.Fatalf("first fallback registration returned an error: %v", err)
-	}
-	if err := spec.registerBlockFallback(&paragraphDefinition{}); err == nil {
-		t.Fatal("duplicate fallback registration returned no error")
-	}
-	if got, ok := spec.getBlockDefinition("PARAGRAPH"); !ok || got != first {
-		t.Errorf("duplicate fallback replaced the first definition with %T", got)
-	}
-}
-
-func TestSpec_BlockFallbackRejectsNonParagraphDefinition(t *testing.T) {
-	spec := newSpec()
-	definition := &specRegistrationBlockDefinitionProbe{key: blockTypeHeading}
-
-	if err := spec.registerBlockFallback(definition); err == nil {
-		t.Fatal("non-paragraph fallback registration returned no error")
-	}
-	if _, ok := spec.getBlockDefinition(blockTypeHeading); ok {
-		t.Error("rejected fallback installed a definition")
-	}
-	if len(spec.getReaders()) != 1 {
-		t.Errorf("rejected fallback installed %d feature readers", len(spec.getReaders())-1)
-	}
-}
-
 func TestSpec_BlockRegistrationRejectsParagraphDefinitionWithoutMutation(t *testing.T) {
 	for _, key := range []string{"paragraph", "Paragraph", "PARAGRAPH", "pArAgRaPh"} {
 		t.Run(key, func(t *testing.T) {
@@ -280,11 +252,10 @@ func TestSpec_BlockRegistrationRejectsParagraphDefinitionWithoutMutation(t *test
 			if err := spec.registerBlock(newSpecRegistrationDirectiveDefinition(key, &paragraphDefinition{})); err == nil {
 				t.Fatal("paragraph directive registration returned no error")
 			}
-			if _, ok := spec.getBlockDefinition("paragraph"); ok {
-				t.Error("rejected paragraph registration installed a definition")
-			}
-			if err := spec.registerBlockFallback(&paragraphDefinition{}); err != nil {
-				t.Fatalf("register paragraph fallback after rejected directive: %v", err)
+			if definition, ok := spec.getBlockDefinition(blockTypeParagraph); !ok {
+				t.Error("rejected paragraph registration removed the fixed definition")
+			} else if _, ok := definition.(*paragraphDefinition); !ok {
+				t.Errorf("fixed paragraph definition was replaced by %T", definition)
 			}
 		})
 	}
@@ -295,31 +266,31 @@ func TestSpec_BlockDefinitionRegistrationRejectsReservedParagraphType(t *testing
 	if err := spec.registerBlockDefinition(&paragraphDefinition{}); err == nil {
 		t.Fatal("paragraph block definition registration returned no error")
 	}
-	if _, ok := spec.getBlockDefinition("paragraph"); ok {
-		t.Error("rejected paragraph block definition was installed")
+	if definition, ok := spec.getBlockDefinition(blockTypeParagraph); !ok {
+		t.Error("fixed paragraph definition was removed")
+	} else if _, ok := definition.(*paragraphDefinition); !ok {
+		t.Errorf("fixed paragraph definition was replaced by %T", definition)
 	}
 }
 
-func TestSpec_ParagraphFallbackPreventsLaterDirectiveRegistration(t *testing.T) {
+func TestSpec_FixedParagraphPreventsDirectiveRegistration(t *testing.T) {
 	spec := newSpec()
-	paragraph := &paragraphDefinition{}
-	if err := spec.registerBlockFallback(paragraph); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
-	}
+	paragraph, _ := spec.getBlockDefinition(blockTypeParagraph)
 	if err := spec.registerBlock(newSpecRegistrationDirectiveDefinition("PARAGRAPH", &codeBlockDefinition{})); err == nil {
-		t.Fatal("paragraph directive registration after fallback returned no error")
+		t.Fatal("paragraph directive registration returned no error")
 	}
 	got, ok := spec.getBlockDefinition("paragraph")
 	if !ok {
-		t.Fatal("paragraph fallback definition was removed")
+		t.Fatal("fixed paragraph definition was removed")
 	}
 	if got != paragraph {
-		t.Errorf("paragraph definition = %T, want fallback definition %T", got, paragraph)
+		t.Errorf("paragraph definition = %T, want fixed definition %T", got, paragraph)
 	}
 }
 
-func TestParserParse_RejectsInvalidSpecBeforeReading(t *testing.T) {
+func TestParserParse_RejectsSpecWithoutFixedParagraphDefinitionBeforeReading(t *testing.T) {
 	spec := newSpec()
+	delete(spec.blockDefinitions, blockTypeParagraph)
 	reader := &specRegistrationReaderProbe{}
 	definition := newSpecRegistrationSugarDefinition(reader, &paragraphDefinition{})
 	if err := spec.registerBlock(definition); err != nil {
@@ -328,13 +299,13 @@ func TestParserParse_RejectsInvalidSpecBeforeReading(t *testing.T) {
 
 	got, err := NewParser(spec).Parse("plain text")
 	if err == nil {
-		t.Fatal("Parse accepted a Spec without a Paragraph fallback")
+		t.Fatal("Parse accepted a Spec without the fixed Paragraph definition")
 	}
 	if got != nil {
 		t.Errorf("Parse returned a document: %v", got)
 	}
-	if !strings.Contains(err.Error(), "block fallback") {
-		t.Errorf("error = %q, want missing block fallback", err)
+	if !strings.Contains(err.Error(), "paragraph definition") {
+		t.Errorf("error = %q, want missing paragraph definition", err)
 	}
 	if reader.calls != 0 {
 		t.Errorf("reader calls = %d, want 0", reader.calls)
@@ -349,10 +320,6 @@ func TestSpec_OneDirectiveReaderDispatchesMultipleDefinitions(t *testing.T) {
 	if err := spec.registerBlock(newSpecRegistrationDirectiveDefinition("BETA", &codeBlockDefinition{})); err != nil {
 		t.Fatalf("register beta directive: %v", err)
 	}
-	if err := spec.registerBlockFallback(&paragraphDefinition{}); err != nil {
-		t.Fatalf("register paragraph fallback: %v", err)
-	}
-
 	got, err := NewParser(spec).Parse(":::[ALPHA:a]\nfirst\n:::\n\n:::[beta:b]\nsecond\n:::")
 	if err != nil {
 		t.Fatalf("Parse returned an error: %v", err)

@@ -24,24 +24,24 @@ Rendering is outside the parser package.
 3. `listDefinition`
 4. `paragraphDefinition` fallback
 
-The fallback is stored separately in `Spec` and appended last by `getReaders`. It must remain last.
+The Block Directive reader and Paragraph reader are fixed parser infrastructure. `getReaders` constructs the chain with the Directive reader first, registered Sugar definitions in the middle, and the Paragraph reader last.
 
 Block reading records structure and raw inline-capable text. It does not create final AST blocks or perform inline parsing.
 
 ## Spec Registration
 
-`Spec` is the internal source of block and inline feature definitions. Definitions own their type, and the registration surface is symmetric between ordinary Block and Inline features:
+`Spec` is the internal source of block and inline feature definitions. Definitions own their type, and the registration surface is symmetric between extensible Block and Inline features:
 
-- every ordinary Block Definition combines `blockType() string` with AST building and is registered through `registerBlock(definition)`;
+- every extensible Block Definition combines `blockType() string` with AST building and is registered through `registerBlock(definition)`;
 - if a Block Definition also implements `blockReader`, registration appends it to the ordered Sugar reader chain; otherwise it is reached only through the shared Block Directive envelope reader;
 - the shared Block Directive reader is permanent parser infrastructure, not a `Spec` registration target, and always precedes reader-capable Block Definitions;
 - Heading and List are reader-capable Block Definitions and are registered in reader order, while Code is a directive-only Block Definition;
-- Paragraph combines reading and building as the dedicated `blockFallbackDefinition` and remains on the separate `registerBlockFallback` path so it is always final;
+- Paragraph combines reading and building as a fixed definition installed by `newSpec`; it is present in the block-definition map and always supplies the final reader without registration by `coreSpec`;
 - every Inline Definition declares `inlineType() string` through the base `inlineDefinition` contract and is registered through `registerInline(definition)`;
 - current Inline Directive Definitions additionally own validation, content policy, and inline AST construction; other definition categories are rejected until their parser contract exists;
 - this definition-owned type and single-definition registration shape allows future Inline Sugar to be added without changing the registration API, while not claiming that Inline Sugar syntax exists today.
 
-`paragraph` is a case-insensitive, fallback-only reserved Block Type. Ordinary Block registration rejects it; Paragraph fallback registration is the only path that may install the Paragraph definition. Registration validates all inputs before mutating the block-definition map, ordered reader list, or fallback field, so a rejected registration leaves the `Spec` usable for a later valid fallback registration. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading, including the required Paragraph fallback; the common Block Directive reader does not require registration.
+`paragraph` is a case-insensitive reserved Block Type owned by fixed parser infrastructure. `newSpec` installs the standard Paragraph definition, and general Block registration rejects attempts to replace it. Registration validates all inputs before mutating the block-definition map or ordered Sugar reader list. Duplicate, empty, nil, and case-only-colliding definitions are rejected without replacing an existing definition. A document `Spec` is validated before source reading by checking that its block-definition map contains the Paragraph definition; this also rejects a zero-value or otherwise incomplete `Spec`. The common Block Directive reader does not require registration.
 
 Syntax Type registration and lookup use the same Unicode-aware `strings.ToLower` normalization. Only the type is normalized; attributes and content retain their original spelling. Block and inline definitions use separate registries, so `code` can be defined in both categories.
 
@@ -53,7 +53,7 @@ The registration model is private to `internal/parser`. It is not a stable exten
 
 On a successful read, a block reader leaves `pos` on the last consumed line. `parseBlocks` then increments `pos` once.
 
-A reader returning `ok=false` must not consume input. A reader that scans ahead must restore its starting position before returning false. This is required for paragraph fallback.
+A reader returning `ok=false` must not consume input. A reader that scans ahead must restore its starting position before returning false. This is required for fallback to the fixed Paragraph reader.
 
 `blockContext.line` assumes the context is not at EOF; callers enforce this precondition.
 
@@ -85,7 +85,7 @@ Any raw increase creates exactly one deeper logical level. `buildParsedList` rec
 
 Each list item initially contains a paragraph-like `*parsedBlock`. A nested `*parsedList` is appended to its parent item's blocks.
 
-List-item AST construction uses the same `Parser.buildBlock` dispatch as top-level document construction. Paragraph-like item IR reaches the registered Paragraph builder, and nested-list IR reaches the registered List builder. The dedicated recursive List reader remains independent of the document reader chain.
+List-item AST construction uses the same `Parser.buildBlock` dispatch as top-level document construction. Paragraph-like item IR reaches the standard Paragraph definition installed by `newSpec`, and nested-list IR reaches the registered List builder. The dedicated recursive List reader remains independent of the document reader chain.
 
 ## AST Building and Inline Parsing
 

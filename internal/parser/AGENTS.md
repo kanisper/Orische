@@ -18,11 +18,11 @@ Document block Reader order is:
 
 The Paragraph reader must remain last and must accept every nonblank line when reached.
 
-Every ordinary block feature declares its type through `blockType() string` and is registered with `registerBlock(definition)`. If the definition also implements `blockReader`, registration appends it to the ordered Sugar reader chain; otherwise it is available only through the common Block Directive envelope reader. Heading and List are reader-capable definitions, while Code is directive-only. Paragraph similarly combines reading and building as the dedicated `blockFallbackDefinition`, but remains on the separate `registerBlockFallback` path so it is fixed at the end of the reader chain. `paragraph` is case-insensitive and reserved for fallback registration. Ordinary Block registration must reject it before mutating the block-definition map or reader order; fallback registration must remain atomic.
+Every extensible block feature declares its type through `blockType() string` and is registered with `registerBlock(definition)`. If the definition also implements `blockReader`, registration appends it to the ordered Sugar reader chain; otherwise it is available only through the common Block Directive envelope reader. Heading and List are reader-capable definitions, while Code is directive-only. The Block Directive reader and Paragraph definition are fixed parser infrastructure: `newSpec` installs the standard Paragraph definition in the block-definition map, and `getReaders` always places the Directive reader first and the Paragraph reader last. `paragraph` is case-insensitive and reserved; general Block registration must reject it without mutating the definition map or reader order. Spec validation must verify that the Paragraph definition exists, including for zero-value or otherwise incomplete Specs.
 
 A successful block reader leaves `blockContext.pos` on the last consumed line. `parseBlocks` advances the cursor once after success. A reader returning `ok=false` must leave the cursor unchanged.
 
-Malformed Heading, List, and Block Directive candidates fall through to the Paragraph reader. A syntactically valid directive still requires a registered builder.
+Malformed Heading, List, and Block Directive candidates fall through to the Paragraph reader. A syntactically valid directive still requires a registered definition.
 
 ## Lists
 

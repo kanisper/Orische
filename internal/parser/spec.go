@@ -12,7 +12,6 @@ import (
 // registries used by a Parser. Registration is completed before parsing starts.
 type Spec struct {
 	sugarDefinitions  []blockSugarDefinition
-	paragraphFallback blockFallbackDefinition
 	blockDefinitions  map[string]blockDefinition
 	inlineDefinitions map[string]inlineDefinition
 }
@@ -35,18 +34,16 @@ type blockSugarDefinition interface {
 	blockReader
 }
 
-type blockFallbackDefinition interface {
-	blockDefinition
-	blockReader
-}
-
 type inlineDefinition interface {
 	inlineType() string
 }
 
 func newSpec() *Spec {
+	paragraph := &paragraphDefinition{}
 	return &Spec{
-		blockDefinitions:  map[string]blockDefinition{},
+		blockDefinitions: map[string]blockDefinition{
+			paragraph.blockType(): paragraph,
+		},
 		inlineDefinitions: map[string]inlineDefinition{},
 	}
 }
@@ -59,7 +56,6 @@ func coreSpec() *Spec {
 	mustRegister(s.registerBlock(&codeBlockDefinition{}))
 	mustRegister(s.registerBlock(&headingDefinition{}))
 	mustRegister(s.registerBlock(&listDefinition{}))
-	mustRegister(s.registerBlockFallback(&paragraphDefinition{}))
 	mustRegister(s.registerInline(&emphasisInlineDefinition{}))
 	mustRegister(s.registerInline(&linkInlineDefinition{}))
 	mustRegister(s.registerInline(&codeInlineDefinition{}))
@@ -86,35 +82,13 @@ func (s *Spec) registerBlockDefinition(definition blockDefinition) error {
 	}
 	key := normalizeSyntaxType(definition.blockType())
 	if key == blockTypeParagraph {
-		return fmt.Errorf("paragraph must be registered as the fallback")
+		return fmt.Errorf("paragraph is fixed parser infrastructure")
 	}
 	if err := s.validateBlockDefinition(key, definition); err != nil {
 		return err
 	}
 
 	s.blockDefinitions[key] = definition
-	return nil
-}
-
-// registerBlockFallback reserves Paragraph for the final definition and
-// installs its reading and building behavior atomically.
-func (s *Spec) registerBlockFallback(definition blockFallbackDefinition) error {
-	if isNilRegistration(definition) {
-		return fmt.Errorf("block fallback definition is nil")
-	}
-	if s.paragraphFallback != nil {
-		return fmt.Errorf("block fallback is already registered")
-	}
-	key := normalizeSyntaxType(definition.blockType())
-	if key != blockTypeParagraph {
-		return fmt.Errorf("block fallback type must be %q, got %q", blockTypeParagraph, key)
-	}
-	if err := s.validateBlockDefinition(key, definition); err != nil {
-		return err
-	}
-
-	s.blockDefinitions[key] = definition
-	s.paragraphFallback = definition
 	return nil
 }
 
@@ -133,16 +107,16 @@ func (s *Spec) validateBlockDefinition(key string, definition blockDefinition) e
 }
 
 // getReaders materializes the fixed precedence: shared directive reader,
-// registered sugar definitions, then the mandatory Paragraph fallback.
+// registered sugar definitions, then the fixed Paragraph fallback.
 func (s *Spec) getReaders() []blockReader {
 	readers := make([]blockReader, 0, len(s.sugarDefinitions)+2)
+	// blockDirectiveReader must be first to intercept all block reads.
 	readers = append(readers, &blockDirectiveReader{})
 	for _, definition := range s.sugarDefinitions {
 		readers = append(readers, definition)
 	}
-	if s.paragraphFallback != nil {
-		readers = append(readers, s.paragraphFallback)
-	}
+	// paragraphDefinition must be last to match all remaining blocks.
+	readers = append(readers, &paragraphDefinition{})
 	return readers
 }
 
@@ -185,8 +159,8 @@ func (s *Spec) getInlineDirectiveDefinition(dirtype string) (inlineDirectiveDefi
 }
 
 func (s *Spec) validate() error {
-	if s.paragraphFallback == nil {
-		return fmt.Errorf("block fallback is not registered")
+	if _, ok := s.getBlockDefinition(blockTypeParagraph); !ok {
+		return fmt.Errorf("paragraph definition is not installed")
 	}
 	return nil
 }

@@ -42,11 +42,11 @@ List source uses dedicated recursive reading and never invokes the document read
 
 ### `Spec`
 
-`registerBlock(definition)` handles both directive and sugar definitions. Definitions without a reader use the permanent common Block Directive envelope reader. Reader-capable definitions are also appended to the ordered sugar chain. Paragraph remains separate through `registerBlockFallback` because it must be the final, mandatory reader.
+`registerBlock(definition)` handles both directive and sugar definitions. Definitions without a reader use the permanent common Block Directive envelope reader. Reader-capable definitions are also appended to the ordered sugar chain. The Block Directive reader and Paragraph definition are fixed parser infrastructure rather than registration targets: `newSpec` installs the standard Paragraph definition, and `getReaders` always places its reader last.
 
-The core specification registers Heading and List as reader-capable definitions, Code as a directive definition, and Paragraph as the fallback. A syntactically valid unregistered Block Directive is still read successfully and then produces the established unsupported-block diagnostic during AST building.
+The core specification registers Heading and List as reader-capable definitions, Code as a directive definition, and the inline definitions. It does not register either fixed Block boundary. A syntactically valid unregistered Block Directive is still read successfully and then produces the established unsupported-block diagnostic during AST building.
 
-`paragraph` is a case-insensitive reserved Block Type for the Paragraph fallback. General Block registration rejects it; only `registerBlockFallback` may install that definition. Invalid or incomplete registration is rejected before mutation, including the block-definition map, Reader list, and fallback field. A failed reserved-type registration therefore leaves the `Spec` ready for a later valid Paragraph fallback registration. A document `Spec` is validated before source reading for the required Paragraph fallback; the common Block Directive reader is permanent parser infrastructure.
+`paragraph` is a case-insensitive reserved Block Type for the fixed Paragraph definition. General Block registration rejects attempts to replace it. Invalid or incomplete registration is rejected before mutation of the block-definition map or Reader list. A document `Spec` is validated before source reading by checking that the Paragraph definition exists in the block-definition map, so a zero-value or otherwise corrupted `Spec` is rejected. The common Block Directive reader is likewise permanent parser infrastructure and requires no registration.
 
 ## Syntax Type Normalization
 
@@ -102,15 +102,15 @@ Focused tests cover:
 
 - common top-level and list-item block dispatch;
 - active-`Spec` propagation through builders and recursive inline parsing;
-- deterministic core reader order and final Paragraph fallback;
-- atomic sugar registration and incomplete-spec rejection;
+- deterministic core reader order with fixed Block Directive and Paragraph boundaries;
+- atomic sugar registration and zero-value or incomplete-Spec rejection;
 - duplicate normalized block and inline keys;
 - one Block Directive reader serving multiple definitions;
 - nested and literal inline content policies;
 - case-insensitive core inline definitions with value preservation;
 - semantic rejection versus internal construction errors;
 - inline validation errors versus semantic rejection, including stop-on-error behavior;
-- Sugar Reader declared-key/IR-key consistency and Paragraph reserved-key registration atomicity;
+- Sugar Reader declared-key/IR-key consistency and Paragraph reserved-key rejection atomicity;
 - list-item diagnostic identity and nested normal-error context;
 - malformed-input recovery and later valid candidates;
 - exact one-based, inclusive Unicode source ranges;
