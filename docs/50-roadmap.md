@@ -13,7 +13,8 @@ This file records current repository status. It is not a versioned language spec
 - `code` block directives
 - Inline emphasis, code spans, and links
 - Parsed-block IR and AST builders
-- Internal `Spec` registration for block features and inline directive definitions
+- Internal feature contracts and separated Block/Inline syntax packages
+- Immutable language compilation into parser-private registries
 - Common `Parser` dispatch for top-level and list-item AST construction
 - Source ranges on all block and inline AST nodes
 - One-based, inclusive source positions with Unicode-code-point columns
@@ -24,7 +25,7 @@ This file records current repository status. It is not a versioned language spec
 Parser validation:
 
 ```sh
-go test ./internal/parser
+go test ./internal/parser/...
 ```
 
 ## Under Development

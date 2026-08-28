@@ -5,30 +5,8 @@ import (
 	"strings"
 
 	"orische/internal/ast"
+	"orische/internal/parser/feature"
 )
-
-type inlineContentPolicy uint8
-
-const (
-	inlineContentNested inlineContentPolicy = iota
-	inlineContentLiteral
-)
-
-type inlineDirectiveCandidate struct {
-	Attribute      string
-	NestedContent  []ast.Inline
-	LiteralContent string
-	Range          ast.Range
-}
-
-// inlineDirectiveDefinition owns directive validation, content policy, and AST
-// construction. The common parser owns delimiters, fallback, and ranges.
-type inlineDirectiveDefinition interface {
-	inlineDefinition
-	contentPolicy() inlineContentPolicy
-	validateAttribute(attribute string) (bool, error)
-	buildInline(candidate inlineDirectiveCandidate) (ast.Inline, error)
-}
 
 func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, error) {
 	headerStart := start + 2
@@ -61,13 +39,13 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		return nil, literalNext, false, nil
 	}
 	key := normalizeSyntaxType(dirtype)
-	policy := definition.contentPolicy()
+	policy := definition.ContentPolicy()
 
-	candidate := inlineDirectiveCandidate{Attribute: attr}
+	candidate := feature.InlineDirectiveCandidate{Attribute: attr}
 	var next int
 
 	switch policy {
-	case inlineContentNested:
+	case feature.InlineContentNested:
 		content, contentNext, closed, err := p.parseSeq(contentStart, true)
 		if err != nil {
 			return nil, start, false, err
@@ -78,7 +56,7 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		candidate.NestedContent = content
 		next = contentNext
 
-	case inlineContentLiteral:
+	case feature.InlineContentLiteral:
 		if literalNext == start {
 			return nil, start, false, nil
 		}
@@ -94,7 +72,7 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	}
 
 	// Definitions only validate structurally closed candidates.
-	accepted, err := definition.validateAttribute(attr)
+	accepted, err := definition.ValidateAttribute(attr)
 	if err != nil {
 		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", key, err)
 	}
@@ -103,11 +81,11 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 	}
 
 	candidate.Range = p.ctx.rangeOf(start, next)
-	node, err := definition.buildInline(candidate)
+	node, err := definition.BuildInline(candidate)
 	if err != nil {
 		return nil, start, false, fmt.Errorf("build inline directive %q: %w", key, err)
 	}
-	if node == nil {
+	if isNilRegistration(node) {
 		return nil, start, false, fmt.Errorf("build inline directive %q: definition returned a nil node", key)
 	}
 

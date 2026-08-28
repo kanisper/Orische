@@ -4,51 +4,82 @@
 
 Convert input text into the AST through two internal stages:
 
-1. Parse document blocks into private parsed-block IR.
-2. Build AST nodes and parse inline content where applicable.
+1. Read document blocks into `feature.BlockNode` IR.
+2. Dispatch IR to syntax builders and parse inline content where applicable.
+
+The parser frontend lives in `internal/parser`. Neutral implementation contracts
+live in `internal/parser/feature`; built-in implementations live under
+`internal/parser/syntax`.
+
+## Package Boundaries
+
+- `parser` owns orchestration, fixed readers, compiled registries, dispatch,
+  inline scanning, fallback, ranges, and error wrapping.
+- `feature` owns only syntax-neutral interfaces and shared transport values.
+- `syntax/block` owns Heading, Paragraph, List, and Code Block definitions.
+- `syntax/inline` owns Emphasis, Link, and Code Span definitions.
+- Syntax packages must not import `parser`. Builders use `feature.BuildContext`.
+- These are internal implementation APIs, not a stable plugin API.
 
 ## Block Parsing
 
-Document block Reader order is:
+Document Reader order is:
 
-1. Block directive
-2. Heading
-3. List
-4. Paragraph fallback
+1. fixed Block Directive reader;
+2. registered Sugar readers in `feature.Language.Blocks` order;
+3. fixed Paragraph fallback reader.
 
-The Paragraph reader must remain last and must accept every nonblank line when reached.
+Readers receive an immutable `feature.BlockInput` and return a
+`feature.BlockReadResult`. For no match, `Matched` is false, `Consumed` is zero,
+and `Node` is nil. For a match, `Consumed` is within the available line count and
+`Node` is non-nil. The frontend validates these invariants before advancing.
 
-Every extensible block feature declares its type through `blockType() string` and is registered with `registerBlock(definition)`. If the definition also implements `blockReader`, registration appends it to the ordered Sugar reader chain; otherwise it is available only through the common Block Directive envelope reader. Heading and List are reader-capable definitions, while Code is directive-only. The Block Directive reader and Paragraph definition are fixed parser infrastructure: `newSpec` installs the standard Paragraph definition in the block-definition map, and `getReaders` always places the Directive reader first and the Paragraph reader last. `paragraph` is case-insensitive and reserved; general Block registration must reject it without mutating the definition map or reader order. Spec validation must verify that the Paragraph definition exists, including for zero-value or otherwise incomplete Specs.
+The Block Directive and Paragraph readers are fixed frontend infrastructure.
+The typed Paragraph builder is supplied separately by
+`feature.Language.Paragraph`; `paragraph` is a case-insensitive reserved Block
+Type.
 
-A successful block reader leaves `blockContext.pos` on the last consumed line. `parseBlocks` advances the cursor once after success. A reader returning `ok=false` must leave the cursor unchanged.
-
-Malformed Heading, List, and Block Directive candidates fall through to the Paragraph reader. A syntactically valid directive still requires a registered definition.
+Malformed Heading, List, and Block Directive candidates fall through to the
+Paragraph reader. A syntactically valid directive still requires a registered
+definition.
 
 ## Lists
 
-Lists are read recursively by `listDefinition`; do not call the document block reader chain for list-item content. During AST construction, list-item blocks use the common `Parser.buildBlock` dispatch.
+Lists use dedicated recursive reading rather than the document Reader chain.
+During AST construction, list-item Paragraph and nested List nodes use
+`feature.BuildContext.BuildBlock`, preserving common dispatch and error behavior.
 
-Marker-run length is a raw level. `normalizeListLevel` converts changes into logical levels. Any raw increase adds exactly one logical level, regardless of the increase size. Nesting depth has no explicit limit.
+Marker-run length is a raw level. `normalizeListLevel` converts changes into
+logical levels. Any raw increase adds exactly one logical level, regardless of
+the increase size. Nesting depth has no explicit limit.
 
 ## Inline Parsing
 
-Heading, Paragraph, and list-item Paragraph builders parse inline content through the active `Parser` and `Spec`. Code blocks preserve content literally.
+The frontend owns the `:[...]{...}` envelope, recursion, fallback, scanning, and
+range calculation. Inline definitions own type-specific attribute validation,
+content policy, and AST construction.
 
-Every inline feature implements the base `inlineDefinition` contract, declares its type through `inlineType() string`, and is registered with `registerInline(definition)`. Current features also implement `inlineDirectiveDefinition`, which owns validation, nested-versus-literal content policy, and AST construction; definitions without a current parser contract are rejected before mutation. Registered inline Directive Types are matched case-insensitively, while common scanning owns envelopes, recursion, fallback, and ranges. Inline Sugar syntax is not implemented yet, but it can be added as another definition category without changing the registration API.
+Empty inline content is valid, and links require a nonempty URI attribute.
+Unsupported directives, invalid headers, and links without a URI are emitted as
+literal source text rather than errors. Other malformed or unterminated
+candidates resume ordinary scanning.
 
-Empty inline content is valid, and links require a nonempty URI attribute. Unsupported directives, invalid headers, and links without a URI are emitted as literal source text rather than errors. Other malformed or unterminated candidates resume ordinary scanning, so a later valid inline sequence may still be recognized.
+Attribute validation has three outcomes: `true, nil` accepts; `false, nil` uses
+literal fallback; a non-nil error aborts parsing. The frontend must confirm that
+a candidate is structurally closed before invoking validation.
 
-Inline attribute validation has three outcomes: `true, nil` accepts the directive; `false, nil` is semantic rejection and uses literal fallback; a non-nil error is an internal parse failure and does not fall back or continue scanning.
-The common parser must confirm that a candidate is structurally closed before invoking its definition's attribute validator.
+## AST, Diagnostics, and Ranges
 
-When an ordered Block Definition succeeds while reading, `parseOneBlock` immediately compares its normalized declared Block Type with the normalized type from the parsed IR. A mismatch is an ordinary internal error and must not fall through to Paragraph. During list-item AST construction, diagnostic errors preserve their original identity, message, and range; ordinary errors retain their cause and include both Paragraph and List build context.
+AST block and inline interfaces use pointer implementations. Parser-produced
+non-empty ranges are one-based and inclusive; columns count Unicode code points.
+Every inline AST node carries a range.
 
-## AST and Ranges
-
-AST block and inline interfaces use pointer implementations. Parser-produced non-empty source ranges use one-based, inclusive positions; columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: recognized directive nodes cover their complete delimiter syntax, while nested content and literal text nodes cover their own source spans.
+Sugar definitions must produce a Node whose normalized Block Type matches the
+definition. Builder diagnostics preserve identity, message, and range. Ordinary
+builder errors retain their cause and receive nested build context.
 
 ## Validation
 
 ```sh
-go test ./internal/parser
+go test ./internal/parser/...
 ```

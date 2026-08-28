@@ -2,355 +2,256 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"orische/internal/ast"
 	"orische/internal/diagnostic"
-
-	"github.com/google/go-cmp/cmp"
+	"orische/internal/parser/feature"
+	"orische/internal/parser/syntax"
 )
 
-func TestParserBuildBlock_DispatchesCoreBuilders(t *testing.T) {
-	tests := []struct {
-		name string
-		node parsedBlockNode
-		want ast.Block
-	}{
-		{
-			name: "heading",
-			node: &parsedBlock{
-				Type: "Heading",
-				Attr: "level1",
-				Text: "Heading",
-				Range: ast.Range{
-					Start: ast.Position{Line: 1, Column: 1},
-					End:   ast.Position{Line: 1, Column: 9},
-				},
-			},
-			want: &ast.Heading{
-				Level: 1,
-				Content: []ast.Inline{
-					&ast.Text{
-						Value: "Heading",
-						Range: ast.Range{
-							Start: ast.Position{Line: 1, Column: 3},
-							End:   ast.Position{Line: 1, Column: 9},
-						},
-					},
-				},
-				Range: ast.Range{
-					Start: ast.Position{Line: 1, Column: 1},
-					End:   ast.Position{Line: 1, Column: 9},
-				},
-			},
-		},
-		{
-			name: "paragraph",
-			node: &parsedBlock{
-				Type: "Paragraph",
-				Text: "text",
-				Range: ast.Range{
-					Start: ast.Position{Line: 2, Column: 2},
-					End:   ast.Position{Line: 2, Column: 5},
-				},
-			},
-			want: &ast.Paragraph{
-				Content: []ast.Inline{
-					&ast.Text{
-						Value: "text",
-						Range: ast.Range{
-							Start: ast.Position{Line: 2, Column: 2},
-							End:   ast.Position{Line: 2, Column: 5},
-						},
-					},
-				},
-				Range: ast.Range{
-					Start: ast.Position{Line: 2, Column: 2},
-					End:   ast.Position{Line: 2, Column: 5},
-				},
-			},
-		},
-		{
-			name: "code",
-			node: &parsedBlock{
-				Type: "code",
-				Attr: "go",
-				Text: ":[em]{raw}",
-				Range: ast.Range{
-					Start: ast.Position{Line: 3, Column: 1},
-					End:   ast.Position{Line: 5, Column: 3},
-				},
-			},
-			want: &ast.CodeBlock{
-				Language: "go",
-				Text:     ":[em]{raw}",
-				Range: ast.Range{
-					Start: ast.Position{Line: 3, Column: 1},
-					End:   ast.Position{Line: 5, Column: 3},
-				},
-			},
-		},
-		{
-			name: "list",
-			node: &parsedList{
-				Ordered: true,
-				Items: []parsedListItem{
-					{
-						Blocks: []parsedBlockNode{
-							&parsedBlock{
-								Type: "Paragraph",
-								Text: "item",
-								Range: ast.Range{
-									Start: ast.Position{Line: 6, Column: 3},
-									End:   ast.Position{Line: 6, Column: 6},
-								},
-							},
-						},
-						Range: ast.Range{
-							Start: ast.Position{Line: 6, Column: 1},
-							End:   ast.Position{Line: 6, Column: 6},
-						},
-					},
-				},
-				Range: ast.Range{
-					Start: ast.Position{Line: 6, Column: 1},
-					End:   ast.Position{Line: 6, Column: 6},
-				},
-			},
-			want: &ast.List{
-				Ordered: true,
-				Items: []*ast.ListItem{
-					{
-						Blocks: []ast.Block{
-							&ast.Paragraph{
-								Content: []ast.Inline{
-									&ast.Text{
-										Value: "item",
-										Range: ast.Range{
-											Start: ast.Position{Line: 6, Column: 3},
-											End:   ast.Position{Line: 6, Column: 6},
-										},
-									},
-								},
-								Range: ast.Range{
-									Start: ast.Position{Line: 6, Column: 3},
-									End:   ast.Position{Line: 6, Column: 6},
-								},
-							},
-						},
-						Range: ast.Range{
-							Start: ast.Position{Line: 6, Column: 1},
-							End:   ast.Position{Line: 6, Column: 6},
-						},
-					},
-				},
-				Range: ast.Range{
-					Start: ast.Position{Line: 6, Column: 1},
-					End:   ast.Position{Line: 6, Column: 6},
-				},
-			},
-		},
-	}
+func TestBuildBlockUnknownTypeReturnsDiagnostic(t *testing.T) {
+	p := mustCoreParser(t)
+	rng := ast.Range{Start: ast.Position{Line: 4, Column: 2}, End: ast.Position{Line: 6, Column: 3}}
 
-	parser := NewParser(coreSpec())
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parser.buildBlock(tt.node)
-			if err != nil {
-				t.Fatalf("buildBlock returned an error: %v", err)
-			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("buildBlock returned an unexpected block (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-func TestParserBuildBlock_UnknownBlockType(t *testing.T) {
-	blockRange := ast.Range{
-		Start: ast.Position{Line: 2, Column: 3},
-		End:   ast.Position{Line: 4, Column: 5},
-	}
-
-	got, err := NewParser(coreSpec()).buildBlock(&parsedBlock{
-		Type:  "Unsupported",
-		Range: blockRange,
-	})
-	if err == nil {
-		t.Fatal("buildBlock returned no error for an unknown block type")
-	}
+	got, err := p.buildBlock(&feature.TextBlock{Type: "MiSsInG", Range: rng})
 	if got != nil {
-		t.Errorf("buildBlock returned a block: %v", got)
+		t.Errorf("buildBlock returned a block: %#v", got)
 	}
-
 	var diag *diagnostic.Error
 	if !errors.As(err, &diag) {
-		t.Fatalf("buildBlock returned %T, want *diagnostic.Error", err)
+		t.Fatalf("buildBlock error type = %T, want *diagnostic.Error", err)
 	}
-	if want := `unsupported block directive type "unsupported"`; diag.Message != want {
-		t.Errorf("diagnostic message = %q, want %q", diag.Message, want)
-	}
-	if diff := cmp.Diff(blockRange, diag.Range); diff != "" {
-		t.Errorf("diagnostic range differs (-want +got):\n%s", diff)
+	if diag.Message != `unsupported block directive type "missing"` || diag.Range != rng {
+		t.Errorf("diagnostic = %#v, want normalized type and original range", diag)
 	}
 }
 
-func TestParserBuildBlock_BuilderNodeTypeMismatchIsInternalError(t *testing.T) {
-	got, err := NewParser(coreSpec()).buildBlock(&parsedBlock{Type: "List"})
-	if err == nil {
-		t.Fatal("buildBlock accepted a node incompatible with the selected builder")
+func TestBuildBlockRejectsNilNode(t *testing.T) {
+	p := mustCoreParser(t)
+	var typedNil *feature.TextBlock
+	for _, node := range []feature.BlockNode{nil, typedNil} {
+		got, err := p.buildBlock(node)
+		if got != nil {
+			t.Errorf("buildBlock(%#v) returned a block: %#v", node, got)
+		}
+		if err == nil || !strings.Contains(err.Error(), "build block: node is nil") {
+			t.Errorf("buildBlock(%#v) error = %v, want nil-node error", node, err)
+		}
 	}
-	if got != nil {
-		t.Errorf("buildBlock returned a block: %v", got)
+}
+
+func TestBuildBlockRejectsTypedNilAST(t *testing.T) {
+	language := syntax.Core()
+	language.Blocks = append(language.Blocks, &testTypedNilBlockDefinition{})
+	p, err := NewParser(language)
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
 	}
 
+	got, err := p.buildBlock(&feature.TextBlock{Type: "typed-nil"})
+	if got != nil {
+		t.Errorf("buildBlock returned a block: %#v", got)
+	}
+	if err == nil || !strings.Contains(err.Error(), `build "typed-nil" block: definition returned a nil block`) {
+		t.Errorf("buildBlock error = %v, want typed-nil AST error", err)
+	}
+}
+
+func TestBuildBlockWrongIRTypeIsInternalError(t *testing.T) {
+	p := mustCoreParser(t)
+	got, err := p.buildBlock(&testBlockNode{typ: "code"})
+	if got != nil {
+		t.Errorf("buildBlock returned a block: %#v", got)
+	}
+	if err == nil || !strings.Contains(err.Error(), `build "code" block: expected *feature.TextBlock`) {
+		t.Errorf("buildBlock error = %v, want code IR mismatch context", err)
+	}
 	var diag *diagnostic.Error
 	if errors.As(err, &diag) {
-		t.Fatalf("buildBlock returned a diagnostic for an internal mismatch: %v", err)
-	}
-	if want := `build "list" block: expected *parsedList, got *parser.parsedBlock`; err.Error() != want {
-		t.Errorf("error = %q, want %q", err, want)
+		t.Errorf("IR mismatch returned a diagnostic: %v", err)
 	}
 }
 
-func TestParserBuildBlock_PreservesBuilderDiagnostic(t *testing.T) {
+func TestBuildBlockPreservesDiagnosticIdentity(t *testing.T) {
 	wantErr := &diagnostic.Error{
 		Message: "builder diagnostic",
-		Range: ast.Range{
-			Start: ast.Position{Line: 7, Column: 2},
-			End:   ast.Position{Line: 8, Column: 4},
-		},
+		Range:   ast.Range{Start: ast.Position{Line: 7, Column: 2}, End: ast.Position{Line: 8, Column: 4}},
 	}
-	spec := newSpec()
-	if err := spec.registerBlock(&buildDispatchBlockDefinition{
-		typ: "diagnostic",
-		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
-			return nil, wantErr
-		}),
-	}); err != nil {
-		t.Fatalf("register diagnostic builder: %v", err)
+	language := syntax.Core()
+	language.Blocks = append(language.Blocks, &testErrorDefinition{typ: "diagnostic", err: wantErr})
+	p, err := NewParser(language)
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
 	}
 
-	got, err := NewParser(spec).buildBlock(&parsedBlock{Type: "Diagnostic"})
+	got, err := p.Parse(":::[diagnostic]\ntext\n:::")
 	if got != nil {
-		t.Errorf("buildBlock returned a block: %v", got)
+		t.Errorf("Parse returned a document: %#v", got)
 	}
 	if err != wantErr {
-		t.Errorf("buildBlock returned %v, want the original diagnostic %v", err, wantErr)
+		t.Errorf("Parse error = %v, want original diagnostic %v", err, wantErr)
 	}
 }
 
-func TestParserParse_ListItemDiagnosticBuilderErrorPreservesIdentity(t *testing.T) {
+func TestListBuildPreservesNestedDiagnosticIdentity(t *testing.T) {
 	wantErr := &diagnostic.Error{
-		Message: "paragraph builder diagnostic",
-		Range: ast.Range{
-			Start: ast.Position{Line: 1, Column: 3},
-			End:   ast.Position{Line: 1, Column: 6},
+		Message: "paragraph diagnostic",
+		Range:   ast.Range{Start: ast.Position{Line: 1, Column: 3}, End: ast.Position{Line: 1, Column: 6}},
+	}
+	language := syntax.Core()
+	language.Paragraph = &testErrorDefinition{typ: feature.ParagraphBlockType, err: wantErr}
+	p, err := NewParser(language)
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
+	}
+
+	_, err = p.Parse("* item")
+	if err != wantErr {
+		t.Errorf("Parse error = %v, want original diagnostic %v", err, wantErr)
+	}
+}
+
+func TestListBuildWrapsNestedOrdinaryError(t *testing.T) {
+	wantErr := errors.New("paragraph failed")
+	language := syntax.Core()
+	language.Paragraph = &testErrorDefinition{typ: feature.ParagraphBlockType, err: wantErr}
+	p, err := NewParser(language)
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
+	}
+
+	_, err = p.Parse("* item")
+	if !errors.Is(err, wantErr) {
+		t.Errorf("Parse error = %v, want errors.Is(..., paragraph failure)", err)
+	}
+	if !strings.Contains(err.Error(), `build "paragraph" block`) || !strings.Contains(err.Error(), `build "list" block`) {
+		t.Errorf("Parse error = %q, want paragraph and list build context", err)
+	}
+}
+
+func TestActiveLanguageReachesEveryInlineCapableBuiltInBlock(t *testing.T) {
+	calls := 0
+	mark := &testInlineDirectiveDefinition{
+		typ:    "mark",
+		policy: feature.InlineContentNested,
+		build: func(candidate feature.InlineDirectiveCandidate) (ast.Inline, error) {
+			calls++
+			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
 		},
 	}
-	spec := newSpec()
-	if err := spec.registerBlock(&buildDispatchBlockSugarDefinition{
-		reader:  &listDefinition{},
-		builder: &listDefinition{},
-		typ:     blockTypeList,
-	}); err != nil {
-		t.Fatalf("register list sugar: %v", err)
-	}
-	spec.blockDefinitions[blockTypeParagraph] = &buildDispatchBlockDefinition{
-		typ: blockTypeParagraph,
-		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
-			return nil, wantErr
-		}),
-	}
+	p := mustParserWithAdditionalInlines(t, mark)
 
-	_, err := NewParser(spec).Parse("* item")
-	if err != wantErr {
-		t.Errorf("Parser.Parse returned %v, want the original diagnostic %v", err, wantErr)
+	doc, err := p.Parse("= :[mark]{見出し}\n\n:[mark]{段落}\n\n* :[mark]{外}\n** :[mark]{内}")
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
 	}
-	if err == nil {
-		t.Fatal("Parser.Parse returned no error")
+	if calls != 4 {
+		t.Errorf("custom inline builder calls = %d, want 4", calls)
 	}
-	diag, ok := err.(*diagnostic.Error)
+	heading := doc.Blocks[0].(*ast.Heading)
+	headingMark := heading.Content[0].(*ast.Emphasis)
+	if headingMark.Range.Start != (ast.Position{Line: 1, Column: 3}) {
+		t.Errorf("heading mark starts at %#v, want line 1 column 3", headingMark.Range.Start)
+	}
+	paragraph := doc.Blocks[1].(*ast.Paragraph)
+	paragraphMark := paragraph.Content[0].(*ast.Emphasis)
+	if paragraphMark.Range.Start != (ast.Position{Line: 3, Column: 1}) {
+		t.Errorf("paragraph mark starts at %#v, want line 3 column 1", paragraphMark.Range.Start)
+	}
+	outer := doc.Blocks[2].(*ast.List)
+	outerParagraph := outer.Items[0].Blocks[0].(*ast.Paragraph)
+	outerMark, ok := outerParagraph.Content[0].(*ast.Emphasis)
 	if !ok {
-		t.Fatalf("Parser.Parse returned %T, want *diagnostic.Error", err)
+		t.Errorf("outer inline type = %T, want *ast.Emphasis", outerParagraph.Content[0])
+	} else if outerMark.Range.Start != (ast.Position{Line: 5, Column: 3}) {
+		t.Errorf("outer mark starts at %#v, want line 5 column 3", outerMark.Range.Start)
 	}
-	if err.Error() != wantErr.Message {
-		t.Errorf("error message = %q, want %q", err.Error(), wantErr.Message)
-	}
-	if got := diag.Range; got != wantErr.Range {
-		t.Errorf("error range = %#v, want %#v", got, wantErr.Range)
-	}
-	if strings.Contains(err.Error(), `build "paragraph" block`) || strings.Contains(err.Error(), `build "list" block`) {
-		t.Errorf("diagnostic error was wrapped with build context: %q", err)
-	}
-}
-
-func TestParserParse_ListItemBuilderErrorIncludesParagraphAndListContext(t *testing.T) {
-	wantErr := errors.New("paragraph builder failed")
-	spec := newSpec()
-	if err := spec.registerBlock(&buildDispatchBlockSugarDefinition{
-		reader:  &listDefinition{},
-		builder: &listDefinition{},
-		typ:     blockTypeList,
-	}); err != nil {
-		t.Fatalf("register list sugar: %v", err)
-	}
-	spec.blockDefinitions[blockTypeParagraph] = &buildDispatchBlockDefinition{
-		typ: blockTypeParagraph,
-		builder: blockBuilderFunc(func(*Parser, parsedBlockNode) (ast.Block, error) {
-			return nil, wantErr
-		}),
-	}
-
-	_, err := NewParser(spec).Parse("* item")
-	if err == nil {
-		t.Fatal("Parser.Parse returned no error")
-	}
-	if !errors.Is(err, wantErr) {
-		t.Errorf("error = %v, want errors.Is(..., paragraph sentinel)", err)
-	}
-	if !strings.Contains(err.Error(), `build "paragraph" block`) {
-		t.Errorf("error = %q, want paragraph build context", err)
-	}
-	if !strings.Contains(err.Error(), `build "list" block`) {
-		t.Errorf("error = %q, want list build context", err)
+	nested := outer.Items[0].Blocks[1].(*ast.List)
+	nestedParagraph := nested.Items[0].Blocks[0].(*ast.Paragraph)
+	nestedMark, ok := nestedParagraph.Content[0].(*ast.Emphasis)
+	if !ok {
+		t.Errorf("nested inline type = %T, want *ast.Emphasis", nestedParagraph.Content[0])
+	} else if nestedMark.Range.Start != (ast.Position{Line: 6, Column: 4}) {
+		t.Errorf("nested mark starts at %#v, want line 6 column 4", nestedMark.Range.Start)
 	}
 }
 
-type blockBuilderFunc func(*Parser, parsedBlockNode) (ast.Block, error)
+func TestCodeBlockDoesNotInvokeActiveInlineDefinitions(t *testing.T) {
+	calls := 0
+	emphasis := &testInlineDirectiveDefinition{
+		typ:    "em",
+		policy: feature.InlineContentNested,
+		build: func(candidate feature.InlineDirectiveCandidate) (ast.Inline, error) {
+			calls++
+			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
+		},
+	}
+	language := syntax.Core()
+	language.Inlines = []feature.InlineDirectiveDefinition{emphasis}
+	p, err := NewParser(language)
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
+	}
 
-func (f blockBuilderFunc) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
-	return f(parser, node)
+	doc, err := p.Parse(":::[code:txt]\n:[em]{日}\n:::")
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+	if calls != 0 {
+		t.Errorf("inline builder calls = %d, want 0", calls)
+	}
+	code := doc.Blocks[0].(*ast.CodeBlock)
+	if code.Language != "txt" || code.Text != ":[em]{日}" {
+		t.Errorf("CodeBlock = %#v, want literal inline-like text", code)
+	}
 }
 
-type buildDispatchBlockDefinition struct {
-	typ     string
-	builder blockBuilder
+type testBlockNode struct {
+	typ string
+	rng ast.Range
 }
 
-func (d *buildDispatchBlockDefinition) blockType() string {
+func (n *testBlockNode) BlockType() string {
+	return n.typ
+}
+
+func (n *testBlockNode) BlockRange() ast.Range {
+	return n.rng
+}
+
+type testErrorDefinition struct {
+	typ string
+	err error
+}
+
+type testTypedNilBlockDefinition struct{}
+
+func (*testTypedNilBlockDefinition) BlockType() string {
+	return "typed-nil"
+}
+
+func (*testTypedNilBlockDefinition) BuildBlock(feature.BuildContext, feature.BlockNode) (ast.Block, error) {
+	var block *ast.Paragraph
+	return block, nil
+}
+
+func (d *testErrorDefinition) BlockType() string {
 	return d.typ
 }
 
-func (d *buildDispatchBlockDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
-	return d.builder.build(parser, node)
+func (d *testErrorDefinition) BuildBlock(feature.BuildContext, feature.BlockNode) (ast.Block, error) {
+	if d.err == nil {
+		return nil, fmt.Errorf("test error definition has no error")
+	}
+	return nil, d.err
 }
 
-type buildDispatchBlockSugarDefinition struct {
-	reader  blockReader
-	builder blockBuilder
-	typ     string
-}
-
-func (d *buildDispatchBlockSugarDefinition) blockType() string {
-	return d.typ
-}
-
-func (d *buildDispatchBlockSugarDefinition) read(ctx *blockContext) (parsedBlockNode, bool, error) {
-	return d.reader.read(ctx)
-}
-
-func (d *buildDispatchBlockSugarDefinition) build(parser *Parser, node parsedBlockNode) (ast.Block, error) {
-	return d.builder.build(parser, node)
+func (d *testErrorDefinition) BuildParagraph(feature.BuildContext, feature.BlockNode) (*ast.Paragraph, error) {
+	if d.err == nil {
+		return nil, fmt.Errorf("test error definition has no error")
+	}
+	return nil, d.err
 }

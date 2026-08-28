@@ -67,7 +67,7 @@ func TestParseInline(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
@@ -121,7 +121,7 @@ func TestParseNestedInlines(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
@@ -150,7 +150,7 @@ func TestParseNestedCodespan(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
@@ -187,7 +187,7 @@ func TestParseEmptyInlineContent(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestParseUnsupportedInlineRemainsLiteralText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewParser(nil).parseInlines(tt.input, ast.Position{Line: 2, Column: 3})
+			got, err := mustCoreParser(t).parseInlines(tt.input, ast.Position{Line: 2, Column: 3})
 			if err != nil {
 				t.Fatalf("parse returned an error: %v", err)
 			}
@@ -254,7 +254,7 @@ func TestParseUnsupportedInlineRemainsLiteralWhenNested(t *testing.T) {
 		},
 	}
 
-	got, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	got, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestParseInvalidInlines(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
@@ -314,7 +314,7 @@ func TestParseInlines_ContainingNewLine(t *testing.T) {
 		},
 	}
 
-	output, err := NewParser(nil).parseInlines(input, ast.Position{Line: 1, Column: 1})
+	output, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
@@ -361,7 +361,7 @@ func TestParseInlines_UnicodeRangeWithNonDefaultOrigin(t *testing.T) {
 		},
 	}
 
-	got, err := NewParser(nil).parseInlines(input, origin)
+	got, err := mustCoreParser(t).parseInlines(input, origin)
 	if err != nil {
 		t.Fatalf("parse returned an error: %v", err)
 	}

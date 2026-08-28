@@ -5,182 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"orische/internal/ast"
 	"orische/internal/diagnostic"
-
-	"github.com/google/go-cmp/cmp"
+	"orische/internal/parser/syntax"
 )
-
-func TestParseDocument(t *testing.T) {
-	input := []string{
-		"= Heading1",
-		"",
-		"paragraph1 line1",
-		"",
-		"# ol level 1 line 1",
-		"* ol level 1 line 2",
-		"** ul level 2 line 1",
-		"# ol level 1 line 3",
-		"",
-		":::[code:go]",
-		"fmt.Println(\"Hello\")",
-		":::",
-		"",
-		"== Heading2",
-		"",
-		"paragraph2 line1",
-		"paragraph2 line2",
-	}
-
-	want := &parsedDocument{
-		Blocks: []parsedBlockNode{
-			&parsedBlock{
-				Type: blockTypeHeading,
-				Attr: "level1",
-				Text: "Heading1",
-				Range: ast.Range{
-					Start: ast.Position{Line: 1, Column: 1},
-					End:   ast.Position{Line: 1, Column: 10},
-				},
-			},
-			&parsedBlock{
-				Type: blockTypeParagraph,
-				Attr: "",
-				Text: "paragraph1 line1",
-				Range: ast.Range{
-					Start: ast.Position{Line: 3, Column: 1},
-					End:   ast.Position{Line: 3, Column: 16},
-				},
-			},
-			&parsedList{
-				Ordered: true,
-				Items: []parsedListItem{
-					{
-						Blocks: []parsedBlockNode{
-							&parsedBlock{
-								Type: blockTypeParagraph,
-								Attr: "",
-								Text: "ol level 1 line 1",
-								Range: ast.Range{
-									Start: ast.Position{Line: 5, Column: 3},
-									End:   ast.Position{Line: 5, Column: 19},
-								},
-							},
-						},
-						Range: ast.Range{
-							Start: ast.Position{Line: 5, Column: 1},
-							End:   ast.Position{Line: 5, Column: 19},
-						},
-					},
-					{
-						Blocks: []parsedBlockNode{
-							&parsedBlock{
-								Type: blockTypeParagraph,
-								Attr: "",
-								Text: "ol level 1 line 2",
-								Range: ast.Range{
-									Start: ast.Position{Line: 6, Column: 3},
-									End:   ast.Position{Line: 6, Column: 19},
-								},
-							},
-							&parsedList{
-								Ordered: false,
-								Items: []parsedListItem{
-									{
-										Blocks: []parsedBlockNode{
-											&parsedBlock{
-												Type: blockTypeParagraph,
-												Attr: "",
-												Text: "ul level 2 line 1",
-												Range: ast.Range{
-													Start: ast.Position{Line: 7, Column: 4},
-													End:   ast.Position{Line: 7, Column: 20},
-												},
-											},
-										},
-										Range: ast.Range{
-											Start: ast.Position{Line: 7, Column: 1},
-											End:   ast.Position{Line: 7, Column: 20},
-										},
-									},
-								},
-								Range: ast.Range{
-									Start: ast.Position{Line: 7, Column: 1},
-									End:   ast.Position{Line: 7, Column: 20},
-								},
-							},
-						},
-						Range: ast.Range{
-							Start: ast.Position{Line: 6, Column: 1},
-							End:   ast.Position{Line: 7, Column: 20},
-						},
-					},
-					{
-						Blocks: []parsedBlockNode{
-							&parsedBlock{
-								Type: blockTypeParagraph,
-								Attr: "",
-								Text: "ol level 1 line 3",
-								Range: ast.Range{
-									Start: ast.Position{Line: 8, Column: 3},
-									End:   ast.Position{Line: 8, Column: 19},
-								},
-							},
-						},
-						Range: ast.Range{
-							Start: ast.Position{Line: 8, Column: 1},
-							End:   ast.Position{Line: 8, Column: 19},
-						},
-					},
-				},
-				Range: ast.Range{
-					Start: ast.Position{Line: 5, Column: 1},
-					End:   ast.Position{Line: 8, Column: 19},
-				},
-			},
-			&parsedBlock{
-				Type: "code",
-				Attr: "go",
-				Text: "fmt.Println(\"Hello\")",
-				Range: ast.Range{
-					Start: ast.Position{Line: 10, Column: 1},
-					End:   ast.Position{Line: 12, Column: 3},
-				},
-			},
-			&parsedBlock{
-				Type: blockTypeHeading,
-				Attr: "level2",
-				Text: "Heading2",
-				Range: ast.Range{
-					Start: ast.Position{Line: 14, Column: 1},
-					End:   ast.Position{Line: 14, Column: 11},
-				},
-			},
-			&parsedBlock{
-				Type: blockTypeParagraph,
-				Attr: "",
-				Text: "paragraph2 line1\nparagraph2 line2",
-				Range: ast.Range{
-					Start: ast.Position{Line: 16, Column: 1},
-					End:   ast.Position{Line: 17, Column: 16},
-				},
-			},
-		},
-		Range: ast.Range{
-			Start: ast.Position{Line: 1, Column: 1},
-			End:   ast.Position{Line: 17, Column: 16},
-		},
-	}
-
-	output, err := NewParser(coreSpec()).parseDocument(input)
-
-	if err != nil {
-		t.Fatalf("parse returned an error: %v", err)
-	}
-	if diff := cmp.Diff(want, output); diff != "" {
-		t.Errorf("parse incorrectly.\n(-want +got)\n%s", diff)
-	}
-}
 
 func TestBuildAST(t *testing.T) {
 	buffer := []string{
@@ -405,6 +235,19 @@ func TestBuildAST(t *testing.T) {
 	}
 }
 
+func TestUninitializedParserReturnsError(t *testing.T) {
+	tests := []*Parser{nil, {}}
+	for _, p := range tests {
+		got, err := p.Parse("text")
+		if got != nil {
+			t.Errorf("Parse returned a document: %#v", got)
+		}
+		if err == nil || err.Error() != "parser is not initialized; use NewParser" {
+			t.Errorf("Parse error = %v, want uninitialized parser error", err)
+		}
+	}
+}
+
 func TestUnsupportedDirective(t *testing.T) {
 	input := `:::[Unsupported]
 content
@@ -423,5 +266,100 @@ content
 
 	if diag.Range.Start.Line != 1 {
 		t.Errorf("expected start line: 1, but got: %d", diag.Range.Start.Line)
+	}
+}
+
+func TestDefaultAndExplicitCoreLanguageAreEquivalent(t *testing.T) {
+	input := "= 日 :[em]{見出し}\n\n* :[link:/x]{項目}\n** :[code]{内}\n\n:::[code:go]\n:[em]{literal}\n:::"
+
+	want, err := Parse(input)
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+	p, err := NewParser(syntax.Core())
+	if err != nil {
+		t.Fatalf("NewParser returned an error: %v", err)
+	}
+	got, err := p.Parse(input)
+	if err != nil {
+		t.Fatalf("explicit core Parse returned an error: %v", err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("default and explicit core differ (-default +explicit):\n%s", diff)
+	}
+}
+
+func TestListRunReturnsFollowingLineToFrontend(t *testing.T) {
+	got, err := Parse("* item\nplain")
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+	if len(got.Blocks) != 2 {
+		t.Fatalf("Block count = %d, want list and paragraph", len(got.Blocks))
+	}
+	if _, ok := got.Blocks[0].(*ast.List); !ok {
+		t.Errorf("Block 0 type = %T, want *ast.List", got.Blocks[0])
+	}
+	paragraph, ok := got.Blocks[1].(*ast.Paragraph)
+	if !ok || len(paragraph.Content) != 1 {
+		t.Fatalf("Block 1 = %#v, want one-content Paragraph", got.Blocks[1])
+	}
+	text, ok := paragraph.Content[0].(*ast.Text)
+	if !ok || text.Value != "plain" || text.Range.Start.Line != 2 {
+		t.Errorf("following Paragraph content = %#v, want plain on line 2", paragraph.Content[0])
+	}
+}
+
+func TestMalformedBlockCandidatesFallBackToParagraph(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		text  string
+	}{
+		{name: "unterminated directive", input: ":::[code]\ntext", text: ":::[code]\ntext"},
+		{name: "invalid heading", input: "======= title", text: "======= title"},
+		{name: "invalid list", input: "- item", text: "- item"},
+		{
+			name:  "later block markers inside paragraph",
+			input: "plain\n= heading\n:::[code]\ntext\n:::",
+			text:  "plain\n= heading\n:::[code]\ntext\n:::",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := Parse(tt.input)
+			if err != nil {
+				t.Fatalf("Parse returned an error: %v", err)
+			}
+			if len(doc.Blocks) != 1 {
+				t.Fatalf("Block count = %d, want one Paragraph", len(doc.Blocks))
+			}
+			paragraph, ok := doc.Blocks[0].(*ast.Paragraph)
+			if !ok || len(paragraph.Content) != 1 {
+				t.Fatalf("Block = %#v, want one-content Paragraph", doc.Blocks[0])
+			}
+			text, ok := paragraph.Content[0].(*ast.Text)
+			if !ok || text.Value != tt.text {
+				t.Errorf("Paragraph content = %#v, want %q", paragraph.Content[0], tt.text)
+			}
+		})
+	}
+}
+
+func TestFallbackHandsNextBlankSeparatedBlockToFrontend(t *testing.T) {
+	doc, err := Parse(":::[code]\nunterminated\n\n= valid")
+	if err != nil {
+		t.Fatalf("Parse returned an error: %v", err)
+	}
+	if len(doc.Blocks) != 2 {
+		t.Fatalf("Block count = %d, want fallback Paragraph and Heading", len(doc.Blocks))
+	}
+	if _, ok := doc.Blocks[0].(*ast.Paragraph); !ok {
+		t.Errorf("Block 0 type = %T, want *ast.Paragraph", doc.Blocks[0])
+	}
+	heading, ok := doc.Blocks[1].(*ast.Heading)
+	if !ok || heading.Range.Start.Line != 4 {
+		t.Errorf("Block 1 = %#v, want Heading starting on line 4", doc.Blocks[1])
 	}
 }

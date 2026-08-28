@@ -6,139 +6,102 @@ import (
 	"strings"
 
 	"orische/internal/ast"
+	"orische/internal/parser/feature"
 )
 
-// Spec owns the ordered block readers and normalized block/inline-definition
-// registries used by a Parser. Registration is completed before parsing starts.
-type Spec struct {
-	sugarDefinitions  []blockSugarDefinition
-	blockDefinitions  map[string]blockDefinition
-	inlineDefinitions map[string]inlineDefinition
+// compiledSpec is the parser-private compiled form of a feature.Language.
+type compiledSpec struct {
+	sugarDefinitions  []feature.BlockSugarDefinition
+	blockDefinitions  map[string]feature.BlockDefinition
+	inlineDefinitions map[string]feature.InlineDirectiveDefinition
 }
 
-type blockReader interface {
-	read(ctx *blockContext) (parsedBlockNode, bool, error)
-}
-
-type blockBuilder interface {
-	build(parser *Parser, block parsedBlockNode) (ast.Block, error)
-}
-
-type blockDefinition interface {
-	blockBuilder
-	blockType() string
-}
-
-type blockSugarDefinition interface {
-	blockDefinition
-	blockReader
-}
-
-type inlineDefinition interface {
-	inlineType() string
-}
-
-func newSpec() *Spec {
-	paragraph := &paragraphDefinition{}
-	return &Spec{
-		blockDefinitions: map[string]blockDefinition{
-			paragraph.blockType(): paragraph,
-		},
-		inlineDefinitions: map[string]inlineDefinition{},
-	}
-}
-
-// coreSpec assembles the built-in language. Registration failures are
-// programmer errors because every entry below is statically defined.
-func coreSpec() *Spec {
-	s := newSpec()
-
-	mustRegister(s.registerBlock(&codeBlockDefinition{}))
-	mustRegister(s.registerBlock(&headingDefinition{}))
-	mustRegister(s.registerBlock(&listDefinition{}))
-	mustRegister(s.registerInline(&emphasisInlineDefinition{}))
-	mustRegister(s.registerInline(&linkInlineDefinition{}))
-	mustRegister(s.registerInline(&codeInlineDefinition{}))
-
-	return s
-}
-
-// registerBlock adds reader-capable definitions to the ordered sugar chain.
-// Definitions without a reader use the common Block Directive envelope.
-func (s *Spec) registerBlock(definition blockDefinition) error {
-	if err := s.registerBlockDefinition(definition); err != nil {
-		return err
+func compileSpec(language feature.Language) (*compiledSpec, error) {
+	s := &compiledSpec{
+		blockDefinitions:  make(map[string]feature.BlockDefinition, len(language.Blocks)+1),
+		inlineDefinitions: make(map[string]feature.InlineDirectiveDefinition, len(language.Inlines)),
 	}
 
-	if sugar, ok := definition.(blockSugarDefinition); ok {
-		s.sugarDefinitions = append(s.sugarDefinitions, sugar)
+	if err := s.installParagraph(language.Paragraph); err != nil {
+		return nil, err
 	}
+	for _, definition := range language.Blocks {
+		if err := s.registerBlock(definition); err != nil {
+			return nil, err
+		}
+	}
+	for _, definition := range language.Inlines {
+		if err := s.registerInline(definition); err != nil {
+			return nil, err
+		}
+	}
+
+	return s, nil
+}
+
+func (s *compiledSpec) installParagraph(definition feature.ParagraphDefinition) error {
+	if isNilRegistration(definition) {
+		return fmt.Errorf("paragraph definition is required")
+	}
+
+	key := normalizeSyntaxType(definition.BlockType())
+	if key != feature.ParagraphBlockType {
+		return fmt.Errorf("paragraph definition declares block type %q", key)
+	}
+	if _, ok := definition.(feature.BlockReader); ok {
+		return fmt.Errorf("paragraph definition must not implement BlockReader")
+	}
+
+	s.blockDefinitions[key] = paragraphDefinitionAdapter{definition: definition}
 	return nil
 }
 
-func (s *Spec) registerBlockDefinition(definition blockDefinition) error {
+type paragraphDefinitionAdapter struct {
+	definition feature.ParagraphDefinition
+}
+
+func (a paragraphDefinitionAdapter) BlockType() string {
+	return a.definition.BlockType()
+}
+
+func (a paragraphDefinitionAdapter) BuildBlock(ctx feature.BuildContext, node feature.BlockNode) (ast.Block, error) {
+	return a.definition.BuildParagraph(ctx, node)
+}
+
+func (s *compiledSpec) registerBlock(definition feature.BlockDefinition) error {
 	if isNilRegistration(definition) {
 		return fmt.Errorf("block definition is nil")
 	}
-	key := normalizeSyntaxType(definition.blockType())
-	if key == blockTypeParagraph {
+
+	key := normalizeSyntaxType(definition.BlockType())
+	if key == feature.ParagraphBlockType {
 		return fmt.Errorf("paragraph is fixed parser infrastructure")
 	}
-	if err := s.validateBlockDefinition(key, definition); err != nil {
-		return err
-	}
-
-	s.blockDefinitions[key] = definition
-	return nil
-}
-
-func (s *Spec) validateBlockDefinition(key string, definition blockDefinition) error {
 	if key == "" {
 		return fmt.Errorf("block type must not be empty")
-	}
-	if isNilRegistration(definition) {
-		return fmt.Errorf("block definition %q is nil", key)
 	}
 	if _, exists := s.blockDefinitions[key]; exists {
 		return fmt.Errorf("block definition %q is already registered", key)
 	}
 
+	s.blockDefinitions[key] = definition
+	if sugar, ok := definition.(feature.BlockSugarDefinition); ok {
+		s.sugarDefinitions = append(s.sugarDefinitions, sugar)
+	}
 	return nil
 }
 
-// getReaders materializes the fixed precedence: shared directive reader,
-// registered sugar definitions, then the fixed Paragraph fallback.
-func (s *Spec) getReaders() []blockReader {
-	readers := make([]blockReader, 0, len(s.sugarDefinitions)+2)
-	// blockDirectiveReader must be first to intercept all block reads.
-	readers = append(readers, &blockDirectiveReader{})
-	for _, definition := range s.sugarDefinitions {
-		readers = append(readers, definition)
-	}
-	// paragraphDefinition must be last to match all remaining blocks.
-	readers = append(readers, &paragraphDefinition{})
-	return readers
-}
-
-func (s *Spec) getBlockDefinition(blockType string) (blockDefinition, bool) {
-	definition, ok := s.blockDefinitions[normalizeSyntaxType(blockType)]
-	return definition, ok
-}
-
-func (s *Spec) registerInline(definition inlineDefinition) error {
+func (s *compiledSpec) registerInline(definition feature.InlineDirectiveDefinition) error {
 	if isNilRegistration(definition) {
 		return fmt.Errorf("inline definition is nil")
 	}
-	key := normalizeSyntaxType(definition.inlineType())
+
+	key := normalizeSyntaxType(definition.InlineType())
 	if key == "" {
 		return fmt.Errorf("inline definition type must not be empty")
 	}
-	directive, ok := definition.(inlineDirectiveDefinition)
-	if !ok {
-		return fmt.Errorf("inline definition %q has no parser contract", key)
-	}
-	policy := directive.contentPolicy()
-	if policy != inlineContentNested && policy != inlineContentLiteral {
+	policy := definition.ContentPolicy()
+	if policy != feature.InlineContentNested && policy != feature.InlineContentLiteral {
 		return fmt.Errorf("inline directive definition %q has invalid content policy %d", key, policy)
 	}
 	if _, exists := s.inlineDefinitions[key]; exists {
@@ -149,27 +112,30 @@ func (s *Spec) registerInline(definition inlineDefinition) error {
 	return nil
 }
 
-func (s *Spec) getInlineDirectiveDefinition(dirtype string) (inlineDirectiveDefinition, bool) {
-	definition, ok := s.inlineDefinitions[normalizeSyntaxType(dirtype)]
-	if !ok {
-		return nil, false
+func (s *compiledSpec) getReaders() []feature.BlockReader {
+	readers := make([]feature.BlockReader, 0, len(s.sugarDefinitions)+2)
+	readers = append(readers, &blockDirectiveReader{})
+	for _, definition := range s.sugarDefinitions {
+		readers = append(readers, definition)
 	}
-	directive, ok := definition.(inlineDirectiveDefinition)
-	return directive, ok
+	readers = append(readers, &paragraphReader{})
+	return readers
 }
 
-func (s *Spec) validate() error {
-	if _, ok := s.getBlockDefinition(blockTypeParagraph); !ok {
-		return fmt.Errorf("paragraph definition is not installed")
-	}
-	return nil
+func (s *compiledSpec) getBlockDefinition(blockType string) (feature.BlockDefinition, bool) {
+	definition, ok := s.blockDefinitions[normalizeSyntaxType(blockType)]
+	return definition, ok
+}
+
+func (s *compiledSpec) getInlineDirectiveDefinition(dirtype string) (feature.InlineDirectiveDefinition, bool) {
+	definition, ok := s.inlineDefinitions[normalizeSyntaxType(dirtype)]
+	return definition, ok
 }
 
 func normalizeSyntaxType(syntaxType string) string {
 	return strings.ToLower(syntaxType)
 }
 
-// isNilRegistration catches typed nil pointers stored in interface values.
 func isNilRegistration(value any) bool {
 	if value == nil {
 		return true
@@ -181,11 +147,5 @@ func isNilRegistration(value any) bool {
 		return reflected.IsNil()
 	default:
 		return false
-	}
-}
-
-func mustRegister(err error) {
-	if err != nil {
-		panic(fmt.Sprintf("register core parser feature: %v", err))
 	}
 }

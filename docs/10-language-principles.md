@@ -34,4 +34,6 @@ The implementation separates:
 3. AST building and inline parsing;
 4. rendering.
 
-Syntax registration exists internally. A stable public extension API is not currently provided.
+Built-in syntax implementations are separated from the parser frontend through
+an internal feature API and an immutable language declaration. A stable public
+extension API is not currently provided.

@@ -13,7 +13,7 @@ Treat the parser implementation and tests as the current language behavior. Upda
 ## Repository Map
 
 - `internal/ast/` — AST definitions and pointer-based node contracts
-- `internal/parser/` — block parsing, parsed-block IR, AST builders, and inline parsing
+- `internal/parser/` — parser frontend, neutral feature contracts, built-in syntax implementations, and tests
 - `internal/render/html/` — completed AST-to-HTML renderer and its output/security contracts
 - `cmd/` — command-line entrypoint for converting Orische source files to HTML, with diagnostics and tests
 - `docs/` — current syntax, architecture, layout, and status
@@ -21,22 +21,24 @@ Treat the parser implementation and tests as the current language behavior. Upda
 ## Parser Invariants
 
 - Block reader order is directive, heading, list, then paragraph fallback.
-- Block readers produce private parsed-block IR, not final AST nodes.
+- Block readers produce `feature.BlockNode` IR, not final AST nodes. Shared text-backed IR uses `feature.TextBlock`; syntax-specific IR may remain private to its syntax package.
 - Inline parsing occurs during AST building for inline-capable blocks.
 - Code block content is not inline-parsed.
 - Lists use dedicated recursive reading rather than the document block reader chain.
 - AST block and inline interfaces are implemented by pointer types.
 - Parser-produced non-empty source ranges are one-based and inclusive; columns count Unicode code points, not UTF-8 bytes.
 - Every inline AST node carries a range. Directive-node ranges include the complete `:[...]{...}` syntax; nested content and literal text nodes carry their own source spans.
-- On success, a block reader leaves `ctx.pos` on the last consumed line. The caller advances it once.
-- A block reader that returns `ok=false` must not consume input.
+- Block readers receive immutable `feature.BlockInput` and report `Matched`, `Consumed`, and `Node` in `feature.BlockReadResult`.
+- A non-match returns zero consumption and no node. A match returns a non-nil node and a positive consumed-line count within the available input.
+- Syntax packages do not import the parser frontend; recursive builders use `feature.BuildContext`.
+- `feature.Language.Paragraph` uses the dedicated typed Paragraph builder contract.
 
 ## Validation
 
 For parser changes, run:
 
 ```sh
-go test ./internal/parser
+go test ./internal/parser/...
 ```
 
 For HTML renderer changes, run:
