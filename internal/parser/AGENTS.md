@@ -16,7 +16,7 @@ live in `internal/parser/feature`; built-in implementations live under
 - `parser` owns orchestration, fixed readers, compiled registries, dispatch,
   inline scanning, fallback, ranges, and error wrapping.
 - `feature` owns only syntax-neutral interfaces and shared transport values.
-- `syntax/block` owns Heading, Paragraph, List, and Code Block definitions.
+- `syntax/block` owns Heading, List, and Code Block definitions.
 - `syntax/inline` owns Emphasis, Link, and Code Span definitions.
 - Syntax packages must not import `parser`. Builders use `feature.BuildContext`.
 - These are internal implementation APIs, not a stable plugin API.
@@ -34,10 +34,10 @@ Readers receive an immutable `feature.BlockInput` and return a
 and `Node` is nil. For a match, `Consumed` is within the available line count and
 `Node` is non-nil. The frontend validates these invariants before advancing.
 
-The Block Directive and Paragraph readers are fixed frontend infrastructure.
-The typed Paragraph builder is supplied separately by
-`feature.Language.Paragraph`; `paragraph` is a case-insensitive reserved Block
-Type.
+The Block Directive reader, Paragraph reader, and Paragraph definition are fixed
+frontend infrastructure. The parser installs the Paragraph definition before
+definitions from `feature.Language.Blocks`. A case-insensitive `paragraph` entry
+in that slice is therefore rejected by the normal duplicate-definition check.
 
 Malformed Heading, List, and Block Directive candidates fall through to the
 Paragraph reader. A syntactically valid directive still requires a registered

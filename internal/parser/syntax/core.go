@@ -9,8 +9,7 @@ import (
 
 func Core() feature.Language {
 	return feature.Language{
-		Paragraph: blocksyntax.Paragraph(),
-		Blocks:    blocksyntax.Definitions(),
-		Inlines:   inlinesyntax.Definitions(),
+		Blocks:  blocksyntax.Definitions(),
+		Inlines: inlinesyntax.Definitions(),
 	}
 }

@@ -248,47 +248,20 @@ func TestListDefinitionRejectsWithoutConsumption(t *testing.T) {
 	}
 }
 
-func TestParagraphAndCodeBuilders(t *testing.T) {
-	paragraphNode := &feature.TextBlock{
-		Type:          feature.ParagraphBlockType,
-		Text:          "text",
-		ContentOrigin: ast.Position{Line: 2, Column: 3},
-		Range:         ast.Range{Start: ast.Position{Line: 2, Column: 3}, End: ast.Position{Line: 2, Column: 6}},
-	}
-	wantInline := []ast.Inline{&ast.Text{Value: "text", Range: paragraphNode.Range}}
-	ctx := &testBuildContext{
-		parseInlines: func(text string, origin ast.Position) ([]ast.Inline, error) {
-			if text != paragraphNode.Text || origin != paragraphNode.Range.Start {
-				t.Errorf("ParseInlines(%q, %#v), want paragraph text and start", text, origin)
-			}
-			return wantInline, nil
-		},
-	}
-
-	gotParagraph, err := (&paragraphDefinition{}).BuildParagraph(ctx, paragraphNode)
-	if err != nil {
-		t.Fatalf("paragraph BuildBlock returned an error: %v", err)
-	}
-	wantParagraph := &ast.Paragraph{Content: wantInline, Range: paragraphNode.Range}
-	if diff := cmp.Diff(wantParagraph, gotParagraph); diff != "" {
-		t.Errorf("paragraph mismatch (-want +got):\n%s", diff)
-	}
-
-	codeNode := &feature.TextBlock{Type: typeCode, Attr: "go", Text: "x := 1", Range: paragraphNode.Range}
-	gotCode, err := (&codeDefinition{}).BuildBlock(ctx, codeNode)
+func TestCodeBuilder(t *testing.T) {
+	rng := ast.Range{Start: ast.Position{Line: 2, Column: 3}, End: ast.Position{Line: 2, Column: 6}}
+	codeNode := &feature.TextBlock{Type: typeCode, Attr: "go", Text: "x := 1", Range: rng}
+	gotCode, err := (&codeDefinition{}).BuildBlock(&testBuildContext{}, codeNode)
 	if err != nil {
 		t.Fatalf("code BuildBlock returned an error: %v", err)
 	}
-	wantCode := &ast.CodeBlock{Language: "go", Text: "x := 1", Range: paragraphNode.Range}
+	wantCode := &ast.CodeBlock{Language: "go", Text: "x := 1", Range: rng}
 	if diff := cmp.Diff(wantCode, gotCode); diff != "" {
 		t.Errorf("code mismatch (-want +got):\n%s", diff)
 	}
 }
 
 func TestCoreBlockDefinitions(t *testing.T) {
-	if got := Paragraph().BlockType(); got != feature.ParagraphBlockType {
-		t.Errorf("Paragraph type = %q, want %q", got, feature.ParagraphBlockType)
-	}
 	definitions := Definitions()
 	wantTypes := []string{"code", "heading", "list"}
 	if len(definitions) != len(wantTypes) {
@@ -388,14 +361,6 @@ func TestListDefinitionBuildBlockUsesRecursiveCapability(t *testing.T) {
 func TestBlockBuildersRejectForeignIR(t *testing.T) {
 	node := &foreignBlockNode{}
 	ctx := &testBuildContext{}
-	gotParagraph, err := (&paragraphDefinition{}).BuildParagraph(ctx, node)
-	if gotParagraph != nil {
-		t.Errorf("paragraph builder returned a block: %#v", gotParagraph)
-	}
-	if err == nil {
-		t.Error("paragraph builder returned no error")
-	}
-
 	definitions := []feature.BlockDefinition{
 		&codeDefinition{},
 		&headingDefinition{},

@@ -29,6 +29,7 @@ by pointer types and are closed with private marker methods.
 - exposes the source-to-AST entrypoints;
 - compiles `feature.Language` into private registries;
 - owns fixed Directive and Paragraph Readers;
+- installs the fixed Paragraph definition outside `feature.Language`;
 - validates Reader results and advances the document position;
 - dispatches Block builders and preserves diagnostic contracts;
 - owns common inline scanning, recursion, fallback, and range calculation.
@@ -47,9 +48,10 @@ It does not import the parser frontend or built-in syntax.
 
 ### `internal/parser/syntax`
 
-Assembles the built-in `feature.Language`. `syntax/block` implements Heading,
-Paragraph, List, and Code Block. `syntax/inline` implements Emphasis, Link, and
-Code Span.
+Assembles the replaceable built-in definitions in `feature.Language`.
+`syntax/block` implements Heading, List, and Code Block; `syntax/inline`
+implements Emphasis, Link, and Code Span. The parser owns Paragraph as its fixed
+fallback definition.
 
 One package is used per syntax category, not per individual syntax. A separate
 package for an individual syntax is justified only if that implementation grows
@@ -76,6 +78,7 @@ syntax/* -> ast
 - Syntax packages must not import `parser`.
 - `feature` must not own frontend behavior or built-in policy.
 - Fixed envelope and fallback Readers remain in `parser`.
+- The fixed Paragraph definition is compiled before replaceable Language blocks.
 - List-item source parsing must not call the document Reader chain.
 - Nested AST construction must use `BuildContext.BuildBlock`.
 - Feature contracts are internal implementation APIs, not public plugin APIs.

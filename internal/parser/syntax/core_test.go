@@ -3,16 +3,11 @@ package syntax_test
 import (
 	"testing"
 
-	"orische/internal/parser/feature"
 	"orische/internal/parser/syntax"
 )
 
 func TestCoreAssemblesBuiltInLanguage(t *testing.T) {
 	language := syntax.Core()
-	if language.Paragraph == nil || language.Paragraph.BlockType() != feature.ParagraphBlockType {
-		t.Fatalf("Paragraph = %#v, want paragraph definition", language.Paragraph)
-	}
-
 	wantBlocks := []string{"code", "heading", "list"}
 	if len(language.Blocks) != len(wantBlocks) {
 		t.Fatalf("Block count = %d, want %d", len(language.Blocks), len(wantBlocks))

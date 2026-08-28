@@ -15,7 +15,6 @@ import (
 
 func TestParserPackageBoundary_AcceptsExternalBlockDefinition(t *testing.T) {
 	language := feature.Language{
-		Paragraph: &boundaryParagraphDefinition{},
 		Blocks: []feature.BlockDefinition{
 			&boundarySugarDefinition{},
 		},
@@ -73,7 +72,6 @@ func TestParserPackageBoundary_AcceptsExternalBlockDefinition(t *testing.T) {
 
 func TestParserPackageBoundary_DirectiveReceivesContentOrigin(t *testing.T) {
 	language := feature.Language{
-		Paragraph: &boundaryParagraphDefinition{},
 		Blocks: []feature.BlockDefinition{
 			&boundaryInlineBlockDefinition{},
 		},
@@ -168,7 +166,6 @@ func TestParserPackageBoundary_RejectsInvalidReaderResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			language := feature.Language{
-				Paragraph: &boundaryParagraphDefinition{},
 				Blocks: []feature.BlockDefinition{
 					&boundaryResultDefinition{result: tt.result},
 				},
@@ -195,7 +192,6 @@ func TestParserPackageBoundary_RejectsInvalidReaderResults(t *testing.T) {
 
 func TestParserPackageBoundary_AdvancesByConsumedLineCount(t *testing.T) {
 	language := feature.Language{
-		Paragraph: &boundaryParagraphDefinition{},
 		Blocks: []feature.BlockDefinition{
 			&boundaryMultilineDefinition{},
 		},
@@ -230,7 +226,6 @@ func TestParserPackageBoundary_ReaderErrorAndTypeMismatchDoNotFallback(t *testin
 	t.Run("reader error", func(t *testing.T) {
 		wantErr := errors.New("reader failure")
 		language := feature.Language{
-			Paragraph: &boundaryParagraphDefinition{},
 			Blocks: []feature.BlockDefinition{
 				&boundaryErrorReaderDefinition{err: wantErr},
 			},
@@ -250,7 +245,6 @@ func TestParserPackageBoundary_ReaderErrorAndTypeMismatchDoNotFallback(t *testin
 
 	t.Run("node type mismatch", func(t *testing.T) {
 		language := feature.Language{
-			Paragraph: &boundaryParagraphDefinition{},
 			Blocks: []feature.BlockDefinition{
 				&boundaryResultDefinition{
 					result: feature.BlockReadResult{
@@ -275,55 +269,22 @@ func TestParserPackageBoundary_ReaderErrorAndTypeMismatchDoNotFallback(t *testin
 	})
 }
 
-func TestParserPackageBoundary_ValidatesLanguageBeforeParsing(t *testing.T) {
-	tests := []struct {
-		name     string
-		language feature.Language
-		want     string
-	}{
-		{
-			name: "missing paragraph",
-			want: "paragraph definition is required",
-		},
-		{
-			name: "wrong paragraph type",
-			language: feature.Language{
-				Paragraph: &boundaryWrongParagraphDefinition{typ: "other"},
-			},
-			want: `paragraph definition declares block type "other"`,
-		},
-		{
-			name: "paragraph also implements reader",
-			language: feature.Language{
-				Paragraph: &boundaryResultDefinition{typ: feature.ParagraphBlockType},
-			},
-			want: "paragraph definition must not implement BlockReader",
-		},
-		{
-			name: "reserved paragraph in general definitions",
-			language: feature.Language{
-				Paragraph: &boundaryParagraphDefinition{},
-				Blocks: []feature.BlockDefinition{
-					&boundaryDirectiveDefinition{typ: "PARAGRAPH"},
-				},
-			},
-			want: "paragraph is fixed parser infrastructure",
+func TestParserPackageBoundary_RejectsFixedParagraphReplacement(t *testing.T) {
+	language := feature.Language{
+		Blocks: []feature.BlockDefinition{
+			&boundaryDirectiveDefinition{typ: "PARAGRAPH"},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parser.NewParser(tt.language)
-			if err == nil {
-				t.Fatal("NewParser returned no error")
-			}
-			if got != nil {
-				t.Errorf("NewParser returned a parser: %#v", got)
-			}
-			if !strings.Contains(err.Error(), tt.want) {
-				t.Errorf("NewParser error = %q, want it to contain %q", err, tt.want)
-			}
-		})
+	got, err := parser.NewParser(language)
+	if err == nil {
+		t.Fatal("NewParser returned no error")
+	}
+	if got != nil {
+		t.Errorf("NewParser returned a parser: %#v", got)
+	}
+	if want := `block definition "paragraph" is already registered`; !strings.Contains(err.Error(), want) {
+		t.Errorf("NewParser error = %q, want it to contain %q", err, want)
 	}
 }
 
@@ -339,25 +300,6 @@ func (n *boundaryBlockNode) BlockType() string {
 
 func (n *boundaryBlockNode) BlockRange() ast.Range {
 	return n.rng
-}
-
-type boundaryParagraphDefinition struct{}
-
-func (*boundaryParagraphDefinition) BlockType() string {
-	return feature.ParagraphBlockType
-}
-
-func (*boundaryParagraphDefinition) BuildParagraph(_ feature.BuildContext, node feature.BlockNode) (*ast.Paragraph, error) {
-	block, ok := node.(*feature.TextBlock)
-	if !ok {
-		return nil, fmt.Errorf("expected *feature.TextBlock, got %T", node)
-	}
-
-	content := make([]ast.Inline, 0, 1)
-	if block.Text != "" {
-		content = append(content, &ast.Text{Value: block.Text, Range: block.Range})
-	}
-	return &ast.Paragraph{Content: content, Range: block.Range}, nil
 }
 
 type boundarySugarDefinition struct{}
@@ -461,24 +403,8 @@ func (*boundaryResultDefinition) BuildBlock(feature.BuildContext, feature.BlockN
 	return nil, nil
 }
 
-func (*boundaryResultDefinition) BuildParagraph(feature.BuildContext, feature.BlockNode) (*ast.Paragraph, error) {
-	return nil, nil
-}
-
 type boundaryDirectiveDefinition struct {
 	typ string
-}
-
-type boundaryWrongParagraphDefinition struct {
-	typ string
-}
-
-func (d *boundaryWrongParagraphDefinition) BlockType() string {
-	return d.typ
-}
-
-func (*boundaryWrongParagraphDefinition) BuildParagraph(feature.BuildContext, feature.BlockNode) (*ast.Paragraph, error) {
-	return nil, nil
 }
 
 type boundaryMultilineDefinition struct{}
@@ -541,7 +467,6 @@ func (*boundaryDirectiveDefinition) BuildBlock(feature.BuildContext, feature.Blo
 
 var (
 	_ feature.BlockNode                 = (*boundaryBlockNode)(nil)
-	_ feature.ParagraphDefinition       = (*boundaryParagraphDefinition)(nil)
 	_ feature.BlockSugarDefinition      = (*boundarySugarDefinition)(nil)
 	_ feature.BlockDefinition           = (*boundaryInlineBlockDefinition)(nil)
 	_ feature.InlineDirectiveDefinition = (*boundaryInlineDefinition)(nil)

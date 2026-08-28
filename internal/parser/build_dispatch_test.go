@@ -102,28 +102,41 @@ func TestListBuildPreservesNestedDiagnosticIdentity(t *testing.T) {
 		Range:   ast.Range{Start: ast.Position{Line: 1, Column: 3}, End: ast.Position{Line: 1, Column: 6}},
 	}
 	language := syntax.Core()
-	language.Paragraph = &testErrorDefinition{typ: feature.ParagraphBlockType, err: wantErr}
+	language.Inlines = append(language.Inlines, &testInlineDirectiveDefinition{
+		typ:    "fail",
+		policy: feature.InlineContentNested,
+		build: func(feature.InlineDirectiveCandidate) (ast.Inline, error) {
+			return nil, wantErr
+		},
+	})
 	p, err := NewParser(language)
 	if err != nil {
 		t.Fatalf("NewParser returned an error: %v", err)
 	}
 
-	_, err = p.Parse("* item")
-	if err != wantErr {
-		t.Errorf("Parse error = %v, want original diagnostic %v", err, wantErr)
+	_, err = p.Parse("* :[fail]{item}")
+	var gotErr *diagnostic.Error
+	if !errors.As(err, &gotErr) || gotErr != wantErr {
+		t.Errorf("Parse error = %v, want original diagnostic %v in error chain", err, wantErr)
 	}
 }
 
 func TestListBuildWrapsNestedOrdinaryError(t *testing.T) {
 	wantErr := errors.New("paragraph failed")
 	language := syntax.Core()
-	language.Paragraph = &testErrorDefinition{typ: feature.ParagraphBlockType, err: wantErr}
+	language.Inlines = append(language.Inlines, &testInlineDirectiveDefinition{
+		typ:    "fail",
+		policy: feature.InlineContentNested,
+		build: func(feature.InlineDirectiveCandidate) (ast.Inline, error) {
+			return nil, wantErr
+		},
+	})
 	p, err := NewParser(language)
 	if err != nil {
 		t.Fatalf("NewParser returned an error: %v", err)
 	}
 
-	_, err = p.Parse("* item")
+	_, err = p.Parse("* :[fail]{item}")
 	if !errors.Is(err, wantErr) {
 		t.Errorf("Parse error = %v, want errors.Is(..., paragraph failure)", err)
 	}
@@ -243,13 +256,6 @@ func (d *testErrorDefinition) BlockType() string {
 }
 
 func (d *testErrorDefinition) BuildBlock(feature.BuildContext, feature.BlockNode) (ast.Block, error) {
-	if d.err == nil {
-		return nil, fmt.Errorf("test error definition has no error")
-	}
-	return nil, d.err
-}
-
-func (d *testErrorDefinition) BuildParagraph(feature.BuildContext, feature.BlockNode) (*ast.Paragraph, error) {
 	if d.err == nil {
 		return nil, fmt.Errorf("test error definition has no error")
 	}

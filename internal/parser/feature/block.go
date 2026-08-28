@@ -75,12 +75,6 @@ type BlockDefinition interface {
 	BuildBlock(BuildContext, BlockNode) (ast.Block, error)
 }
 
-// ParagraphDefinition builds the AST node for the fixed Paragraph fallback.
-type ParagraphDefinition interface {
-	BlockType() string
-	BuildParagraph(BuildContext, BlockNode) (*ast.Paragraph, error)
-}
-
 // BlockSugarDefinition combines source recognition with AST construction.
 type BlockSugarDefinition interface {
 	BlockDefinition

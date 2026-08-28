@@ -31,7 +31,8 @@ Treat the parser implementation and tests as the current language behavior. Upda
 - Block readers receive immutable `feature.BlockInput` and report `Matched`, `Consumed`, and `Node` in `feature.BlockReadResult`.
 - A non-match returns zero consumption and no node. A match returns a non-nil node and a positive consumed-line count within the available input.
 - Syntax packages do not import the parser frontend; recursive builders use `feature.BuildContext`.
-- `feature.Language.Paragraph` uses the dedicated typed Paragraph builder contract.
+- The Paragraph reader and definition are fixed parser infrastructure;
+  `feature.Language` declares only replaceable Block and Inline definitions.
 
 ## Validation
 

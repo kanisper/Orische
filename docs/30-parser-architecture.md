@@ -31,7 +31,8 @@ syntax/* -> ast
 neutral contracts and transport values but does not own scanning, registration,
 dispatch, or built-in syntax.
 
-`internal/parser/syntax` assembles the built-in `feature.Language`.
+`internal/parser/syntax` assembles the replaceable built-in definitions in
+`feature.Language`.
 `syntax/block` and `syntax/inline` implement the built-in language without
 importing the parser frontend.
 
@@ -43,16 +44,15 @@ the existing AST nodes but cannot independently introduce a new AST node type.
 
 `feature.Language` declares:
 
-- one required typed Paragraph builder;
 - ordered general Block Definitions;
 - Inline Directive Definitions.
 
-`NewParser` validates and compiles this declaration into private maps and an
-ordered Sugar-reader slice. `Parser` requires this constructor; its zero value
-returns an initialization error. Language compilation rejects nil and empty
-definitions, normalized duplicates, an invalid Paragraph definition, and
-invalid Inline content policies. The caller's slices are not retained as
-registries.
+`NewParser` installs the fixed Paragraph definition, then validates and compiles
+the declaration into private maps and an ordered Sugar-reader slice. `Parser`
+requires this constructor; its zero value returns an initialization error.
+Language compilation rejects nil and empty definitions, normalized duplicates,
+including attempts to register `paragraph`, and invalid Inline content policies.
+The caller's slices are not retained as registries.
 
 Syntax Type registration and lookup use Unicode-aware `strings.ToLower`.
 Normalization applies only to the Type. Attributes and content retain their
@@ -71,9 +71,10 @@ The effective order is fixed:
 2. Reader-capable definitions in `Language.Blocks` order;
 3. common Paragraph fallback reader.
 
-The Directive and Paragraph readers belong to the frontend. The Paragraph AST
-builder belongs to `syntax/block` and is supplied through `Language.Paragraph`.
-The `paragraph` Type is reserved and cannot appear in the general Block list.
+The Directive reader, Paragraph reader, and Paragraph AST builder belong to the
+frontend. The parser installs the Paragraph definition independently of
+`feature.Language` before general Block definitions. Paragraph is therefore
+always available to common Block dispatch and cannot be omitted or replaced.
 
 A Reader receives a read-only `feature.BlockInput` at the current document
 position. It returns `feature.BlockReadResult`:

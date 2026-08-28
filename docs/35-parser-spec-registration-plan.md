@@ -26,10 +26,11 @@ Definitions are supplied as a `feature.Language` to `NewParser`. The frontend
 validates all definitions and compiles private registries before parsing. It
 does not expose post-construction registration methods.
 
-Paragraph is represented explicitly because its Reader is fixed frontend
-infrastructure while its AST builder is a syntax implementation. Its typed
-definition returns `*ast.Paragraph`, must declare `paragraph`, and must not
-implement `BlockReader`.
+Paragraph is excluded from `feature.Language`. Its Reader remains fixed frontend
+infrastructure alongside its private Definition, which the parser registers
+before the replaceable Block definitions. The Paragraph definition uses the
+ordinary Block contract; attempts to register the same normalized Type fail
+through the normal duplicate-definition check.
 
 ### Transactional block reading
 
@@ -79,7 +80,7 @@ The boundary tests verify:
 - Block and Inline Directive Definitions can be implemented outside package `parser`;
 - external Block builders can call active inline parsing;
 - invalid Reader result combinations are rejected;
-- invalid, duplicate, nil, and reserved definitions fail at construction;
+- invalid, duplicate, nil, and fixed-Paragraph collisions fail at construction;
 - caller mutation of Language slices does not replace compiled registries;
 - active definitions propagate through recursive inline parsing and nested lists;
 - diagnostic identity and nested ordinary-error context are preserved;

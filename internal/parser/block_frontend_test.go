@@ -94,6 +94,33 @@ func TestParagraphReader(t *testing.T) {
 	}
 }
 
+func TestParagraphDefinitionBuildsWithActiveInlineCapability(t *testing.T) {
+	node := &feature.TextBlock{
+		Type:          feature.ParagraphBlockType,
+		Text:          "text",
+		ContentOrigin: ast.Position{Line: 2, Column: 3},
+		Range:         ast.Range{Start: ast.Position{Line: 2, Column: 3}, End: ast.Position{Line: 2, Column: 6}},
+	}
+	wantContent := []ast.Inline{&ast.Text{Value: node.Text, Range: node.Range}}
+	ctx := &stubBuildContext{
+		parseInlines: func(text string, origin ast.Position) ([]ast.Inline, error) {
+			if text != node.Text || origin != node.ContentOrigin {
+				t.Errorf("ParseInlines(%q, %#v), want paragraph text and content origin", text, origin)
+			}
+			return wantContent, nil
+		},
+	}
+
+	got, err := (&paragraphDefinition{}).BuildBlock(ctx, node)
+	if err != nil {
+		t.Fatalf("BuildBlock returned an error: %v", err)
+	}
+	want := &ast.Paragraph{Content: wantContent, Range: node.Range}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("paragraph mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestCoreReaderPrecedence(t *testing.T) {
 	p := mustCoreParser(t)
 	readers := p.spec.getReaders()
@@ -112,4 +139,16 @@ func TestCoreReaderPrecedence(t *testing.T) {
 	if _, ok := readers[3].(*paragraphReader); !ok {
 		t.Errorf("reader 3 type = %T, want *paragraphReader", readers[3])
 	}
+}
+
+type stubBuildContext struct {
+	parseInlines func(string, ast.Position) ([]ast.Inline, error)
+}
+
+func (c *stubBuildContext) ParseInlines(text string, origin ast.Position) ([]ast.Inline, error) {
+	return c.parseInlines(text, origin)
+}
+
+func (*stubBuildContext) BuildBlock(feature.BlockNode) (ast.Block, error) {
+	panic("unexpected BuildBlock call")
 }

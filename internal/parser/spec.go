@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 
-	"orische/internal/ast"
 	"orische/internal/parser/feature"
 )
 
@@ -22,8 +21,8 @@ func compileSpec(language feature.Language) (*compiledSpec, error) {
 		inlineDefinitions: make(map[string]feature.InlineDirectiveDefinition, len(language.Inlines)),
 	}
 
-	if err := s.installParagraph(language.Paragraph); err != nil {
-		return nil, err
+	if err := s.registerBlock(&paragraphDefinition{}); err != nil {
+		return nil, fmt.Errorf("register fixed paragraph definition: %w", err)
 	}
 	for _, definition := range language.Blocks {
 		if err := s.registerBlock(definition); err != nil {
@@ -39,44 +38,12 @@ func compileSpec(language feature.Language) (*compiledSpec, error) {
 	return s, nil
 }
 
-func (s *compiledSpec) installParagraph(definition feature.ParagraphDefinition) error {
-	if isNilRegistration(definition) {
-		return fmt.Errorf("paragraph definition is required")
-	}
-
-	key := normalizeSyntaxType(definition.BlockType())
-	if key != feature.ParagraphBlockType {
-		return fmt.Errorf("paragraph definition declares block type %q", key)
-	}
-	if _, ok := definition.(feature.BlockReader); ok {
-		return fmt.Errorf("paragraph definition must not implement BlockReader")
-	}
-
-	s.blockDefinitions[key] = paragraphDefinitionAdapter{definition: definition}
-	return nil
-}
-
-type paragraphDefinitionAdapter struct {
-	definition feature.ParagraphDefinition
-}
-
-func (a paragraphDefinitionAdapter) BlockType() string {
-	return a.definition.BlockType()
-}
-
-func (a paragraphDefinitionAdapter) BuildBlock(ctx feature.BuildContext, node feature.BlockNode) (ast.Block, error) {
-	return a.definition.BuildParagraph(ctx, node)
-}
-
 func (s *compiledSpec) registerBlock(definition feature.BlockDefinition) error {
 	if isNilRegistration(definition) {
 		return fmt.Errorf("block definition is nil")
 	}
 
 	key := normalizeSyntaxType(definition.BlockType())
-	if key == feature.ParagraphBlockType {
-		return fmt.Errorf("paragraph is fixed parser infrastructure")
-	}
 	if key == "" {
 		return fmt.Errorf("block type must not be empty")
 	}
@@ -114,10 +81,14 @@ func (s *compiledSpec) registerInline(definition feature.InlineDirectiveDefiniti
 
 func (s *compiledSpec) getReaders() []feature.BlockReader {
 	readers := make([]feature.BlockReader, 0, len(s.sugarDefinitions)+2)
+
+	// Block directives use a fixed envelope reader and take precedence over
+	// every registered Sugar Reader.
 	readers = append(readers, &blockDirectiveReader{})
 	for _, definition := range s.sugarDefinitions {
 		readers = append(readers, definition)
 	}
+	// Paragraph is the mandatory fallback and must remain last.
 	readers = append(readers, &paragraphReader{})
 	return readers
 }

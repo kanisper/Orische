@@ -157,8 +157,7 @@ func TestBlockDirectiveDispatchNormalizesOnlyType(t *testing.T) {
 }
 
 func TestMinimalLanguageUsesFixedFrontendReaders(t *testing.T) {
-	core := syntax.Core()
-	p, err := NewParser(feature.Language{Paragraph: core.Paragraph})
+	p, err := NewParser(feature.Language{})
 	if err != nil {
 		t.Fatalf("NewParser returned an error: %v", err)
 	}
@@ -181,13 +180,11 @@ func TestMinimalLanguageUsesFixedFrontendReaders(t *testing.T) {
 }
 
 func TestDefinitionNamespacesUseUnicodeCaseNormalization(t *testing.T) {
-	core := syntax.Core()
 	inline := &testInlineDirectiveDefinition{
 		typ:    "äbc",
 		policy: feature.InlineContentLiteral,
 	}
 	language := feature.Language{
-		Paragraph: core.Paragraph,
 		Blocks: []feature.BlockDefinition{
 			&testDirectiveDefinition{typ: "ÄBC"},
 		},

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -106,4 +107,24 @@ func (*paragraphReader) ReadBlock(input feature.BlockInput) (feature.BlockReadRe
 			},
 		},
 	}, nil
+}
+
+type paragraphDefinition struct{}
+
+func (*paragraphDefinition) BlockType() string {
+	return feature.ParagraphBlockType
+}
+
+func (*paragraphDefinition) BuildBlock(ctx feature.BuildContext, node feature.BlockNode) (ast.Block, error) {
+	block, ok := node.(*feature.TextBlock)
+	if !ok {
+		return nil, fmt.Errorf("expected *feature.TextBlock, got %T", node)
+	}
+
+	content, err := ctx.ParseInlines(block.Text, block.ContentOrigin)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Paragraph{Content: content, Range: block.Range}, nil
 }
