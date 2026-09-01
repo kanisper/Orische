@@ -4,7 +4,8 @@ This document describes current parser behavior. Tests and implementation take p
 
 ## General Block Rules
 
-Input is parsed line by line. LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are treated as the same logical newline. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
+Input is parsed line by line. LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are treated as the same logical newline. Physical line endings are normalized to logical newlines before block content is constructed. Therefore, syntax described as literal preserves its text without further syntax interpretation, but does not preserve the original LF, CRLF, or CR encoding.
+Blank or whitespace-only lines separate blocks and do not produce AST nodes.
 
 Block readers run in this order:
 
@@ -93,7 +94,7 @@ fmt.Println("hello")
 :::
 ```
 
-For `code`, the attribute becomes `CodeBlock.Language`. Content is preserved literally and is not inline-parsed.
+For `code`, the attribute becomes `CodeBlock.Language`. Content is not inline-parsed and is otherwise preserved literally. Physical line endings are represented as `\n` logical newlines in `CodeBlock.Text`, regardless of whether the source used LF, CRLF, or CR.
 
 A syntactically valid Directive with an unregistered type causes an AST build error.
 
@@ -262,7 +263,7 @@ Emphasis content is recursively inline-parsed. An Emphasis attribute is accepted
 :[code]{}
 ```
 
-Code content is literal and ends at the first `}`. Nested inline syntax is not parsed inside Code Span. A Code Span attribute is accepted but ignored.
+Code content is literal and ends at the first `}`. Nested inline syntax is not parsed inside Code Span. Physical newlines follow the general logical-newline normalization rules.
 
 ### Link
 
