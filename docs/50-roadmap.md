@@ -10,7 +10,7 @@ This file records current repository status. It is not a versioned language spec
 - Paragraphs
 - Ordered and unordered lists
 - Recursive list nesting with raw-to-logical level normalization
-- `code` block directives
+- `heading`, `paragraph`, and `code` block directives
 - Inline emphasis, code spans, and links
 - Private parsed-block handoff and AST builders
 - Private parser `spec` for built-in directive and inline behavior

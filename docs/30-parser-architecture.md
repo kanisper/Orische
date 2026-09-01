@@ -34,7 +34,7 @@ and inline definitions. This is an internal data structure, not a plugin API.
 
 `newSpec` installs the built-in definitions:
 
-- the `code` Block Directive builder;
+- the `heading`, `paragraph`, and `code` Block Directive builders;
 - Heading and List sugar readers, in precedence order;
 - the `em`, `link`, and `code` inline definitions.
 
@@ -74,9 +74,11 @@ building; they are not a public intermediate representation.
 
 `Parser.buildBlock` dispatches those concrete nodes. It performs normalized
 Block Directive lookup, creates unsupported-directive diagnostics, and wraps
-ordinary builder errors with the block type. Paragraph and Heading parse their
-text with the parser's inline scanner. Code Block preserves its content
-literally. Every built block retains the range recorded while reading.
+ordinary builder errors with the block type. Paragraph and Heading Directive
+builders reuse the same final construction methods as Paragraph fallback and
+Heading sugar, respectively. Paragraph and Heading parse their text with the
+parser's inline scanner. Code Block preserves its content literally. Every
+built block retains the range recorded while reading.
 
 ## Lists
 

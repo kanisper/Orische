@@ -7,6 +7,8 @@ import (
 	"orische/internal/ast"
 )
 
+const typeParagraph = "paragraph"
+
 type blockContext struct {
 	lines []string
 	start int
@@ -106,4 +108,12 @@ func (p *Parser) buildParagraph(block *paragraphNode) (ast.Block, error) {
 	}
 
 	return &ast.Paragraph{Content: content, Range: block.rng}, nil
+}
+
+func buildParagraphDirective(p *Parser, block *blockDirectiveNode) (ast.Block, error) {
+	return p.buildParagraph(&paragraphNode{
+		text:          block.text,
+		contentOrigin: block.contentOrigin,
+		rng:           block.rng,
+	})
 }

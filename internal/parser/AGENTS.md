@@ -19,7 +19,8 @@ responsibility for readability; there are no parser feature or syntax packages.
 - inline definitions for directive content policy, validation, and AST building.
 
 `spec` is parser configuration, not a public language or plugin API. `newSpec`
-installs the built-in `code`, `em`, `link`, and `code` behavior. Keep the
+installs the built-in `heading`, `paragraph`, and `code` Block Directive
+builders and the `em`, `link`, and `code` inline definitions. Keep the
 definition-specific logic close to the syntax file that uses it.
 
 Block readers hand private concrete nodes to `Parser.buildBlock`. The private

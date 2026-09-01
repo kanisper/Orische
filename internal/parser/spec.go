@@ -14,6 +14,8 @@ func newSpec() *spec {
 	s := &spec{
 		directives: map[string]blockDirectiveBuilder{
 			typeCodeBlock: buildCodeBlock,
+			typeHeading:   buildHeadingDirective,
+			typeParagraph: buildParagraphDirective,
 		},
 		sugars: []blockSugar{
 			readHeading,

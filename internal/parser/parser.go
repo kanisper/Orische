@@ -140,7 +140,7 @@ func (p *Parser) buildBlock(node parsedBlock) (ast.Block, error) {
 
 	case *paragraphNode:
 		block, err := p.buildParagraph(node)
-		return finishBlockBuild("paragraph", block, err)
+		return finishBlockBuild(typeParagraph, block, err)
 
 	default:
 		return nil, fmt.Errorf("build block: unknown node %T", node)

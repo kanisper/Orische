@@ -31,9 +31,10 @@ by pointer types and are closed with private marker methods.
 - dispatches Block Directive builders and preserves diagnostic contracts;
 - owns common inline scanning, recursion, fallback, and range calculation.
 
-The `spec` is a small internal configuration structure. It stores the `code`
-Block Directive builder, sugar readers in precedence order, and the `em`, `link`,
-and `code` inline definitions. It is not exposed as a language or plugin API.
+The `spec` is a small internal configuration structure. It stores the `heading`,
+`paragraph`, and `code` Block Directive builders, sugar readers in precedence
+order, and the `em`, `link`, and `code` inline definitions. It is not exposed as
+a language or plugin API.
 
 ### `internal/render/html`
 
@@ -67,7 +68,7 @@ internal/parser  --->  internal/ast
 - `parser.go` - entrypoints, document orchestration, dispatch, and AST building
 - `spec.go` - private parser configuration and type lookup
 - `block_frontend.go` - block context and fixed Block Directive/Paragraph readers
-- `block_heading.go` - Heading sugar reader and builder
+- `block_heading.go` - Heading sugar reader and shared Directive/sugar builder
 - `block_list.go` - List reading, normalization, recursion, and builder
 - `block_code.go` - `code` Block Directive builder
 - `inline.go` - inline sequence scanner and Text construction

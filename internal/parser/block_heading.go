@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -51,6 +53,36 @@ func parseHeadingLine(line string) (int, string) {
 		return 0, ""
 	}
 	return idx, line[idx+1:]
+}
+
+func buildHeadingDirective(p *Parser, block *blockDirectiveNode) (ast.Block, error) {
+	level, err := parseHeadingAttribute(block.attribute)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.buildHeading(&headingNode{
+		level:         level,
+		text:          block.text,
+		contentOrigin: block.contentOrigin,
+		rng:           block.rng,
+	})
+}
+
+func parseHeadingAttribute(attribute string) (int, error) {
+	const levelPrefix = "level"
+	if !strings.HasPrefix(attribute, levelPrefix) || len(attribute) == len(levelPrefix) {
+		return 0, fmt.Errorf("invalid heading attribute %q", attribute)
+	}
+
+	level, err := strconv.Atoi(attribute[len(levelPrefix):])
+	if err != nil {
+		return 0, fmt.Errorf("invalid heading attribute %q: %w", attribute, err)
+	}
+	if level < 1 || level > 6 {
+		return 0, fmt.Errorf("invalid heading attribute %q", attribute)
+	}
+	return level, nil
 }
 
 func (p *Parser) buildHeading(block *headingNode) (ast.Block, error) {

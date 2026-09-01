@@ -136,7 +136,34 @@ content
 
 A missing terminator also causes the entire nonblank candidate to fall through to paragraph parsing.
 
-The core parser currently has an AST builder only for the `code` directive:
+The core parser has AST builders for `heading`, `paragraph`, and `code` Block
+Directives.
+
+### Heading Directive
+
+```text
+:::[heading:level2]
+Heading text
+:::
+```
+
+The attribute must be `level1` through `level6`. Content is recursively
+inline-parsed. A structurally valid Heading Directive with a missing or invalid
+level attribute produces an AST build error rather than paragraph fallback.
+The resulting Heading range covers the complete directive block.
+
+### Paragraph Directive
+
+```text
+:::[paragraph]
+Paragraph text.
+:::
+```
+
+Content is recursively inline-parsed. A Paragraph attribute is accepted but
+ignored. The resulting Paragraph range covers the complete directive block.
+
+### Code Directive
 
 ```text
 :::[code]
@@ -148,7 +175,9 @@ fmt.Println("hello")
 :::
 ```
 
-For `code`, the attribute becomes `CodeBlock.Language`. Content is preserved literally and is not inline-parsed. A syntactically valid directive with an unregistered type causes an AST build error.
+For `code`, the attribute becomes `CodeBlock.Language`. Content is preserved
+literally and is not inline-parsed. A syntactically valid directive with an
+unregistered type causes an AST build error.
 
 ## Inline Elements
 
