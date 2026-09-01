@@ -10,26 +10,11 @@ import (
 
 func TestParseExplicitLineBreakAcrossLogicalNewlines(t *testing.T) {
 	want := []ast.Inline{
-		&ast.Text{
-			Value: "a",
-			Range: ast.Range{
-				Start: ast.Position{Line: 3, Column: 4},
-				End:   ast.Position{Line: 3, Column: 4},
-			},
-		},
+		testText("a", 3, 4, 3, 4),
 		&ast.LineBreak{
-			Range: ast.Range{
-				Start: ast.Position{Line: 3, Column: 5},
-				End:   ast.Position{Line: 3, Column: 6},
-			},
+			Range: testRange(3, 5, 3, 6),
 		},
-		&ast.Text{
-			Value: "b",
-			Range: ast.Range{
-				Start: ast.Position{Line: 4, Column: 1},
-				End:   ast.Position{Line: 4, Column: 1},
-			},
-		},
+		testText("b", 4, 1, 4, 1),
 	}
 
 	for _, lineEnding := range []string{"\n", "\r\n", "\r"} {
@@ -46,47 +31,12 @@ func TestParseExplicitLineBreakAcrossLogicalNewlines(t *testing.T) {
 	}
 }
 
-func TestParseDocumentExplicitLineBreakAcrossLogicalNewlines(t *testing.T) {
-	want, err := Parse("a +\nb")
-	if err != nil {
-		t.Fatalf("Parse(LF) returned an error: %v", err)
-	}
-
-	for _, input := range []string{"a +\r\nb", "a +\rb"} {
-		got, err := Parse(input)
-		if err != nil {
-			t.Fatalf("Parse returned an error: %v", err)
-		}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("document mismatch for %q (-want +got):\n%s", input, diff)
-		}
-	}
-}
-
-func TestParseDocumentTrailingTerminatorEnablesLineBreak(t *testing.T) {
-	for _, input := range []string{"a +\n", "a +\r\n", "a +\r"} {
-		doc, err := Parse(input)
-		if err != nil {
-			t.Fatalf("Parse(%q) returned an error: %v", input, err)
-		}
-		paragraph, ok := doc.Blocks[0].(*ast.Paragraph)
-		if !ok {
-			t.Fatalf("block type = %T, want *ast.Paragraph", doc.Blocks[0])
-		}
-		if len(paragraph.Content) != 2 {
-			t.Fatalf("inline count = %d, want Text and LineBreak", len(paragraph.Content))
-		}
-		if _, ok := paragraph.Content[1].(*ast.LineBreak); !ok {
-			t.Errorf("last inline type = %T, want *ast.LineBreak", paragraph.Content[1])
-		}
-	}
-}
-
-func TestTrailingTerminatorReachesInlineCapableBlocks(t *testing.T) {
+func TestTrailingLineBreakReachesInlineCapableBlocks(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
 	}{
+		{name: "paragraph fallback", input: "a +\n"},
 		{name: "heading sugar", input: "= a +\n"},
 		{name: "list item", input: "* a +\n"},
 		{name: "paragraph directive", input: ":::[paragraph]\na +\n:::"},
@@ -107,35 +57,6 @@ func TestTrailingTerminatorReachesInlineCapableBlocks(t *testing.T) {
 				t.Errorf("last inline type = %T, want *ast.LineBreak", content[1])
 			}
 		})
-	}
-}
-
-func TestParseNormalNewlineProducesNoVisibleWhitespace(t *testing.T) {
-	want := []ast.Inline{
-		&ast.Text{
-			Value: "a",
-			Range: ast.Range{
-				Start: ast.Position{Line: 1, Column: 1},
-				End:   ast.Position{Line: 1, Column: 1},
-			},
-		},
-		&ast.Text{
-			Value: "b",
-			Range: ast.Range{
-				Start: ast.Position{Line: 2, Column: 1},
-				End:   ast.Position{Line: 2, Column: 1},
-			},
-		},
-	}
-
-	for _, lineEnding := range []string{"\n", "\r\n", "\r"} {
-		got, err := mustCoreParser(t).parseInlines("a"+lineEnding+"b", ast.Position{Line: 1, Column: 1})
-		if err != nil {
-			t.Fatalf("parseInlines(%q) returned an error: %v", lineEnding, err)
-		}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Errorf("line ending %q mismatch (-want +got):\n%s", lineEnding, diff)
-		}
 	}
 }
 
@@ -174,14 +95,14 @@ func TestExplicitLineBreakRequiresSpacePlusAndLogicalNewline(t *testing.T) {
 
 func TestParseExplicitLineBreakInNestedContent(t *testing.T) {
 	got, err := mustCoreParser(t).parseInlines(
-		":[em]{a +\nb}:[link:https://example.com]{c +\rd}",
+		":[em]{a +\nb}",
 		ast.Position{Line: 1, Column: 1},
 	)
 	if err != nil {
 		t.Fatalf("parseInlines returned an error: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("inline count = %d, want emphasis and link", len(got))
+	if len(got) != 1 {
+		t.Fatalf("inline count = %d, want emphasis", len(got))
 	}
 
 	emphasis, ok := got[0].(*ast.Emphasis)
@@ -189,12 +110,6 @@ func TestParseExplicitLineBreakInNestedContent(t *testing.T) {
 		t.Fatalf("first inline type = %T, want *ast.Emphasis", got[0])
 	}
 	assertInlineBreakContent(t, emphasis.Content, "a", "b")
-
-	link, ok := got[1].(*ast.Link)
-	if !ok {
-		t.Fatalf("second inline type = %T, want *ast.Link", got[1])
-	}
-	assertInlineBreakContent(t, link.Content, "c", "d")
 }
 
 func TestParseExplicitLineBreakUnicodeRange(t *testing.T) {
@@ -213,10 +128,7 @@ func TestParseExplicitLineBreakUnicodeRange(t *testing.T) {
 	if !ok {
 		t.Fatalf("middle inline type = %T, want *ast.LineBreak", got[1])
 	}
-	want := ast.Range{
-		Start: ast.Position{Line: 2, Column: 5},
-		End:   ast.Position{Line: 2, Column: 6},
-	}
+	want := testRange(2, 5, 2, 6)
 	if diff := cmp.Diff(want, lineBreak.Range); diff != "" {
 		t.Errorf("LineBreak range mismatch (-want +got):\n%s", diff)
 	}

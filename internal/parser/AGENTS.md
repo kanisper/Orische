@@ -76,6 +76,12 @@ AST block and inline interfaces use pointer implementations. Parser-produced non
 
 Builder diagnostics preserve identity, message, and range. Ordinary builder errors retain their cause and receive block context. Code Block content remains literal and does not invoke inline parsing.
 
+## Testing
+
+Verify each behavior primarily at the lowest useful semantic boundary. Avoid repeating the same syntax matrix at the inline parser, document parser, renderer, and CLI layers; integration tests should cover representative connections between those layers.
+
+Keep short inline and block inputs in `*_test.go`. Reserve `testdata` for document-sized fixtures and golden files. Small private test-only AST constructors may reduce repeated structural noise, but do not grow them into a general fixture framework or DSL.
+
 ## Validation
 
 ```sh
