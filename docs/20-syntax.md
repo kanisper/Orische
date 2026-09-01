@@ -4,7 +4,7 @@ This document describes current parser behavior. Tests and implementation take p
 
 ## General Block Rules
 
-Input is parsed line by line. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
+Input is parsed line by line. LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are treated as the same logical newline. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
 
 Block readers run in this order:
 
@@ -127,7 +127,7 @@ First line
 Second line
 ```
 
-Lines are joined with `\n`, and their other whitespace is preserved. A blank or whitespace-only line ends the Paragraph.
+Lines are joined with `\n`, and their other whitespace is preserved. A blank or whitespace-only line ends the Paragraph. This also normalizes the accepted logical newline forms in Paragraph content.
 
 The explicit Paragraph form is also available through `:::[paragraph] ... :::`.
 
