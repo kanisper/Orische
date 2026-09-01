@@ -2,16 +2,18 @@ package parser
 
 import (
 	"testing"
-
-	"orische/internal/parser/syntax"
 )
 
 func mustCoreParser(t testing.TB) *Parser {
 	t.Helper()
+	return NewParser()
+}
 
-	p, err := NewParser(syntax.Core())
-	if err != nil {
-		t.Fatalf("NewParser(syntax.Core()) returned an error: %v", err)
+func parserWithInlineDefinitions(t testing.TB, definitions map[string]inlineDefinition) *Parser {
+	t.Helper()
+	p := NewParser()
+	for typ, definition := range definitions {
+		p.spec.inlineDefinitions[normalizeSyntaxType(typ)] = definition
 	}
 	return p
 }

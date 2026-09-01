@@ -2,21 +2,17 @@ package parser
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 	"testing"
 
 	"orische/internal/ast"
 	"orische/internal/diagnostic"
-	"orische/internal/parser/feature"
-	"orische/internal/parser/syntax"
 )
 
-func TestBuildBlockUnknownTypeReturnsDiagnostic(t *testing.T) {
+func TestBuildBlockUnknownDirectiveReturnsDiagnostic(t *testing.T) {
 	p := mustCoreParser(t)
 	rng := ast.Range{Start: ast.Position{Line: 4, Column: 2}, End: ast.Position{Line: 6, Column: 3}}
 
-	got, err := p.buildBlock(&feature.TextBlock{Type: "MiSsInG", Range: rng})
+	got, err := p.buildBlock(&blockDirectiveNode{dirtype: "MiSsInG", rng: rng})
 	if got != nil {
 		t.Errorf("buildBlock returned a block: %#v", got)
 	}
@@ -29,133 +25,16 @@ func TestBuildBlockUnknownTypeReturnsDiagnostic(t *testing.T) {
 	}
 }
 
-func TestBuildBlockRejectsNilNode(t *testing.T) {
-	p := mustCoreParser(t)
-	var typedNil *feature.TextBlock
-	for _, node := range []feature.BlockNode{nil, typedNil} {
-		got, err := p.buildBlock(node)
-		if got != nil {
-			t.Errorf("buildBlock(%#v) returned a block: %#v", node, got)
-		}
-		if err == nil || !strings.Contains(err.Error(), "build block: node is nil") {
-			t.Errorf("buildBlock(%#v) error = %v, want nil-node error", node, err)
-		}
-	}
-}
-
-func TestBuildBlockRejectsTypedNilAST(t *testing.T) {
-	language := syntax.Core()
-	language.Blocks = append(language.Blocks, &testTypedNilBlockDefinition{})
-	p, err := NewParser(language)
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
-
-	got, err := p.buildBlock(&feature.TextBlock{Type: "typed-nil"})
-	if got != nil {
-		t.Errorf("buildBlock returned a block: %#v", got)
-	}
-	if err == nil || !strings.Contains(err.Error(), `build "typed-nil" block: definition returned a nil block`) {
-		t.Errorf("buildBlock error = %v, want typed-nil AST error", err)
-	}
-}
-
-func TestBuildBlockWrongIRTypeIsInternalError(t *testing.T) {
-	p := mustCoreParser(t)
-	got, err := p.buildBlock(&testBlockNode{typ: "code"})
-	if got != nil {
-		t.Errorf("buildBlock returned a block: %#v", got)
-	}
-	if err == nil || !strings.Contains(err.Error(), `build "code" block: expected *feature.TextBlock`) {
-		t.Errorf("buildBlock error = %v, want code IR mismatch context", err)
-	}
-	var diag *diagnostic.Error
-	if errors.As(err, &diag) {
-		t.Errorf("IR mismatch returned a diagnostic: %v", err)
-	}
-}
-
-func TestBuildBlockPreservesDiagnosticIdentity(t *testing.T) {
-	wantErr := &diagnostic.Error{
-		Message: "builder diagnostic",
-		Range:   ast.Range{Start: ast.Position{Line: 7, Column: 2}, End: ast.Position{Line: 8, Column: 4}},
-	}
-	language := syntax.Core()
-	language.Blocks = append(language.Blocks, &testErrorDefinition{typ: "diagnostic", err: wantErr})
-	p, err := NewParser(language)
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
-
-	got, err := p.Parse(":::[diagnostic]\ntext\n:::")
-	if got != nil {
-		t.Errorf("Parse returned a document: %#v", got)
-	}
-	if err != wantErr {
-		t.Errorf("Parse error = %v, want original diagnostic %v", err, wantErr)
-	}
-}
-
-func TestListBuildPreservesNestedDiagnosticIdentity(t *testing.T) {
-	wantErr := &diagnostic.Error{
-		Message: "paragraph diagnostic",
-		Range:   ast.Range{Start: ast.Position{Line: 1, Column: 3}, End: ast.Position{Line: 1, Column: 6}},
-	}
-	language := syntax.Core()
-	language.Inlines = append(language.Inlines, &testInlineDirectiveDefinition{
-		typ:    "fail",
-		policy: feature.InlineContentNested,
-		build: func(feature.InlineDirectiveCandidate) (ast.Inline, error) {
-			return nil, wantErr
-		},
-	})
-	p, err := NewParser(language)
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
-
-	_, err = p.Parse("* :[fail]{item}")
-	var gotErr *diagnostic.Error
-	if !errors.As(err, &gotErr) || gotErr != wantErr {
-		t.Errorf("Parse error = %v, want original diagnostic %v in error chain", err, wantErr)
-	}
-}
-
-func TestListBuildWrapsNestedOrdinaryError(t *testing.T) {
-	wantErr := errors.New("paragraph failed")
-	language := syntax.Core()
-	language.Inlines = append(language.Inlines, &testInlineDirectiveDefinition{
-		typ:    "fail",
-		policy: feature.InlineContentNested,
-		build: func(feature.InlineDirectiveCandidate) (ast.Inline, error) {
-			return nil, wantErr
-		},
-	})
-	p, err := NewParser(language)
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
-
-	_, err = p.Parse("* :[fail]{item}")
-	if !errors.Is(err, wantErr) {
-		t.Errorf("Parse error = %v, want errors.Is(..., paragraph failure)", err)
-	}
-	if !strings.Contains(err.Error(), `build "paragraph" block`) || !strings.Contains(err.Error(), `build "list" block`) {
-		t.Errorf("Parse error = %q, want paragraph and list build context", err)
-	}
-}
-
-func TestActiveLanguageReachesEveryInlineCapableBuiltInBlock(t *testing.T) {
+func TestConfiguredInlineDefinitionsReachInlineCapableBlocks(t *testing.T) {
 	calls := 0
-	mark := &testInlineDirectiveDefinition{
-		typ:    "mark",
-		policy: feature.InlineContentNested,
-		build: func(candidate feature.InlineDirectiveCandidate) (ast.Inline, error) {
+	mark := inlineDefinition{
+		policy: inlineContentNested,
+		build: func(candidate inlineCandidate) ast.Inline {
 			calls++
-			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
+			return &ast.Emphasis{Content: candidate.nestedContent, Range: candidate.rng}
 		},
 	}
-	p := mustParserWithAdditionalInlines(t, mark)
+	p := parserWithInlineDefinitions(t, map[string]inlineDefinition{"mark": mark})
 
 	doc, err := p.Parse("= :[mark]{見出し}\n\n:[mark]{段落}\n\n* :[mark]{外}\n** :[mark]{内}")
 	if err != nil {
@@ -192,22 +71,16 @@ func TestActiveLanguageReachesEveryInlineCapableBuiltInBlock(t *testing.T) {
 	}
 }
 
-func TestCodeBlockDoesNotInvokeActiveInlineDefinitions(t *testing.T) {
+func TestCodeBlockPreservesInlineMarkersLiterally(t *testing.T) {
 	calls := 0
-	emphasis := &testInlineDirectiveDefinition{
-		typ:    "em",
-		policy: feature.InlineContentNested,
-		build: func(candidate feature.InlineDirectiveCandidate) (ast.Inline, error) {
+	emphasis := inlineDefinition{
+		policy: inlineContentNested,
+		build: func(candidate inlineCandidate) ast.Inline {
 			calls++
-			return &ast.Emphasis{Content: candidate.NestedContent, Range: candidate.Range}, nil
+			return &ast.Emphasis{Content: candidate.nestedContent, Range: candidate.rng}
 		},
 	}
-	language := syntax.Core()
-	language.Inlines = []feature.InlineDirectiveDefinition{emphasis}
-	p, err := NewParser(language)
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
+	p := parserWithInlineDefinitions(t, map[string]inlineDefinition{"em": emphasis})
 
 	doc, err := p.Parse(":::[code:txt]\n:[em]{日}\n:::")
 	if err != nil {
@@ -220,44 +93,4 @@ func TestCodeBlockDoesNotInvokeActiveInlineDefinitions(t *testing.T) {
 	if code.Language != "txt" || code.Text != ":[em]{日}" {
 		t.Errorf("CodeBlock = %#v, want literal inline-like text", code)
 	}
-}
-
-type testBlockNode struct {
-	typ string
-	rng ast.Range
-}
-
-func (n *testBlockNode) BlockType() string {
-	return n.typ
-}
-
-func (n *testBlockNode) BlockRange() ast.Range {
-	return n.rng
-}
-
-type testErrorDefinition struct {
-	typ string
-	err error
-}
-
-type testTypedNilBlockDefinition struct{}
-
-func (*testTypedNilBlockDefinition) BlockType() string {
-	return "typed-nil"
-}
-
-func (*testTypedNilBlockDefinition) BuildBlock(feature.BuildContext, feature.BlockNode) (ast.Block, error) {
-	var block *ast.Paragraph
-	return block, nil
-}
-
-func (d *testErrorDefinition) BlockType() string {
-	return d.typ
-}
-
-func (d *testErrorDefinition) BuildBlock(feature.BuildContext, feature.BlockNode) (ast.Block, error) {
-	if d.err == nil {
-		return nil, fmt.Errorf("test error definition has no error")
-	}
-	return nil, d.err
 }

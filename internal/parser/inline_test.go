@@ -131,6 +131,33 @@ func TestParseNestedInlines(t *testing.T) {
 	}
 }
 
+func TestInlineTypesAreCaseInsensitiveWithoutNormalizingValues(t *testing.T) {
+	origin := ast.Position{Line: 2, Column: 3}
+	lower := ":[em:Ä]{日 :[link:/X:Y]{界}} :[code:Go]{値}"
+	mixed := ":[Em:Ä]{日 :[LiNk:/X:Y]{界}} :[CoDe:Go]{値}"
+
+	want, err := mustCoreParser(t).parseInlines(lower, origin)
+	if err != nil {
+		t.Fatalf("lowercase parse returned an error: %v", err)
+	}
+	got, err := mustCoreParser(t).parseInlines(mixed, origin)
+	if err != nil {
+		t.Fatalf("mixed-case parse returned an error: %v", err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("mixed-case directives changed values or ranges (-lower +mixed):\n%s", diff)
+	}
+
+	link := got[0].(*ast.Emphasis).Content[1].(*ast.Link)
+	if link.URI != "/X:Y" {
+		t.Errorf("Link URI = %q, want original /X:Y", link.URI)
+	}
+	code := got[2].(*ast.CodeSpan)
+	if code.Value != "値" {
+		t.Errorf("Code value = %q, want original content", code.Value)
+	}
+}
+
 func TestParseNestedCodespan(t *testing.T) {
 	input := ":[code]{codespan :[em]{this directive should be escaped}}"
 	want := []ast.Inline{

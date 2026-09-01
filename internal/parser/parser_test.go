@@ -9,7 +9,6 @@ import (
 
 	"orische/internal/ast"
 	"orische/internal/diagnostic"
-	"orische/internal/parser/syntax"
 )
 
 func TestBuildAST(t *testing.T) {
@@ -269,23 +268,59 @@ content
 	}
 }
 
-func TestDefaultAndExplicitCoreLanguageAreEquivalent(t *testing.T) {
+func TestDefaultParserUsesCoreInlineDefinitions(t *testing.T) {
 	input := "= 日 :[em]{見出し}\n\n* :[link:/x]{項目}\n** :[code]{内}\n\n:::[code:go]\n:[em]{literal}\n:::"
 
 	want, err := Parse(input)
 	if err != nil {
 		t.Fatalf("Parse returned an error: %v", err)
 	}
-	p, err := NewParser(syntax.Core())
-	if err != nil {
-		t.Fatalf("NewParser returned an error: %v", err)
-	}
+	p := NewParser()
 	got, err := p.Parse(input)
 	if err != nil {
 		t.Fatalf("explicit core Parse returned an error: %v", err)
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("default and explicit core differ (-default +explicit):\n%s", diff)
+	}
+}
+
+func TestParseOneBlockUsesDirectiveSugarParagraphOrder(t *testing.T) {
+	p := mustCoreParser(t)
+
+	node, consumed, err := p.parseOneBlock(&blockContext{
+		lines: []string{":::[code]", "= source", ":::"},
+	})
+	if err != nil {
+		t.Fatalf("parseOneBlock returned an error: %v", err)
+	}
+	if consumed != 3 {
+		t.Fatalf("directive consumed %d lines, want 3", consumed)
+	}
+	if _, ok := node.(*blockDirectiveNode); !ok {
+		t.Fatalf("directive node type = %T, want *blockDirectiveNode", node)
+	}
+
+	node, consumed, err = p.parseOneBlock(&blockContext{lines: []string{"== heading"}})
+	if err != nil {
+		t.Fatalf("parseOneBlock returned an error: %v", err)
+	}
+	if consumed != 1 {
+		t.Fatalf("heading consumed %d lines, want 1", consumed)
+	}
+	if _, ok := node.(*headingNode); !ok {
+		t.Fatalf("heading node type = %T, want *headingNode", node)
+	}
+
+	node, consumed, err = p.parseOneBlock(&blockContext{lines: []string{"plain"}})
+	if err != nil {
+		t.Fatalf("parseOneBlock returned an error: %v", err)
+	}
+	if consumed != 1 {
+		t.Fatalf("paragraph consumed %d lines, want 1", consumed)
+	}
+	if _, ok := node.(*paragraphNode); !ok {
+		t.Fatalf("paragraph node type = %T, want *paragraphNode", node)
 	}
 }
 

@@ -1,21 +1,13 @@
-package block
+package parser
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"orische/internal/ast"
-	"orische/internal/parser/feature"
 )
 
 const typeList = "list"
-
-type listDefinition struct{}
-
-func (*listDefinition) BlockType() string {
-	return typeList
-}
 
 type listLine struct {
 	ordered      bool
@@ -31,44 +23,29 @@ type listNode struct {
 	rng     ast.Range
 }
 
-func (*listNode) BlockType() string {
-	return typeList
-}
-
-func (n *listNode) BlockRange() ast.Range {
+func (n *listNode) blockRange() ast.Range {
 	return n.rng
 }
 
 type listItemNode struct {
-	blocks []feature.BlockNode
+	blocks []parsedBlock
 	rng    ast.Range
 }
 
-func (*listDefinition) ReadBlock(input feature.BlockInput) (feature.BlockReadResult, error) {
-	first, ok := input.Line(0)
+func readList(input *blockContext) (parsedBlock, int) {
+	first, ok := input.line(0)
 	if !ok {
-		return feature.BlockReadResult{}, nil
+		return nil, 0
 	}
-	_, rawLevel, _ := parseListLine(first.Text)
+	_, rawLevel, _ := parseListLine(first.text)
 	if rawLevel <= 0 {
-		return feature.BlockReadResult{}, nil
+		return nil, 0
 	}
 
 	lines := collectListLines(input)
 	index := 0
 	list := buildListNode(lines, &index, 1)
-	if index != len(lines) {
-		return feature.BlockReadResult{}, fmt.Errorf(
-			"list reader: %d unconsumed list lines",
-			len(lines)-index,
-		)
-	}
-
-	return feature.BlockReadResult{
-		Matched:  true,
-		Consumed: len(lines),
-		Node:     list,
-	}, nil
+	return list, len(lines)
 }
 
 func parseListLine(line string) (ordered bool, level int, text string) {
@@ -87,17 +64,17 @@ func parseListLine(line string) (ordered bool, level int, text string) {
 	return markers[0] == '#', len(markers), line[separator+1:]
 }
 
-func collectListLines(input feature.BlockInput) []listLine {
+func collectListLines(input *blockContext) []listLine {
 	var lines []listLine
 	previousRawLevel := 0
 	previousLogicalLevel := 0
 
-	for offset := 0; offset < input.Len(); offset++ {
-		line, ok := input.Line(offset)
+	for offset := 0; offset < input.len(); offset++ {
+		line, ok := input.line(offset)
 		if !ok {
 			break
 		}
-		ordered, rawLevel, text := parseListLine(line.Text)
+		ordered, rawLevel, text := parseListLine(line.text)
 		if rawLevel == 0 {
 			break
 		}
@@ -108,7 +85,7 @@ func collectListLines(input feature.BlockInput) []listLine {
 			rawLevel:     rawLevel,
 			logicalLevel: logicalLevel,
 			text:         text,
-			line:         line.Number,
+			line:         line.number,
 		})
 		previousRawLevel = rawLevel
 		previousLogicalLevel = logicalLevel
@@ -163,12 +140,11 @@ func buildListNode(lines []listLine, index *int, level int) *listNode {
 		default:
 			endColumn := line.rawLevel + 1 + utf8.RuneCountInString(line.text)
 			list.items = append(list.items, listItemNode{
-				blocks: []feature.BlockNode{
-					&feature.TextBlock{
-						Type:          feature.ParagraphBlockType,
-						Text:          line.text,
-						ContentOrigin: ast.Position{Line: line.line, Column: line.rawLevel + 2},
-						Range: ast.Range{
+				blocks: []parsedBlock{
+					&paragraphNode{
+						text:          line.text,
+						contentOrigin: ast.Position{Line: line.line, Column: line.rawLevel + 2},
+						rng: ast.Range{
 							Start: ast.Position{Line: line.line, Column: line.rawLevel + 2},
 							End:   ast.Position{Line: line.line, Column: endColumn},
 						},
@@ -187,12 +163,7 @@ func buildListNode(lines []listLine, index *int, level int) *listNode {
 	return list
 }
 
-func (*listDefinition) BuildBlock(ctx feature.BuildContext, node feature.BlockNode) (ast.Block, error) {
-	list, ok := node.(*listNode)
-	if !ok {
-		return nil, fmt.Errorf("expected *block.listNode, got %T", node)
-	}
-
+func (p *Parser) buildList(list *listNode) (ast.Block, error) {
 	result := &ast.List{
 		Ordered: list.ordered,
 		Items:   make([]*ast.ListItem, 0, len(list.items)),
@@ -202,7 +173,7 @@ func (*listDefinition) BuildBlock(ctx feature.BuildContext, node feature.BlockNo
 	for _, parsedItem := range list.items {
 		blocks := make([]ast.Block, 0, len(parsedItem.blocks))
 		for _, child := range parsedItem.blocks {
-			built, err := ctx.BuildBlock(child)
+			built, err := p.buildBlock(child)
 			if err != nil {
 				return nil, err
 			}

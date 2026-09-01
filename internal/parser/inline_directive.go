@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"orische/internal/ast"
-	"orische/internal/parser/feature"
 )
 
 func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, error) {
@@ -39,13 +38,13 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		return nil, literalNext, false, nil
 	}
 	key := normalizeSyntaxType(dirtype)
-	policy := definition.ContentPolicy()
+	policy := definition.policy
 
-	candidate := feature.InlineDirectiveCandidate{Attribute: attr}
+	candidate := inlineCandidate{attribute: attr}
 	var next int
 
 	switch policy {
-	case feature.InlineContentNested:
+	case inlineContentNested:
 		content, contentNext, closed, err := p.parseSeq(contentStart, true)
 		if err != nil {
 			return nil, start, false, err
@@ -53,14 +52,14 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		if !closed {
 			return nil, start, false, nil
 		}
-		candidate.NestedContent = content
+		candidate.nestedContent = content
 		next = contentNext
 
-	case feature.InlineContentLiteral:
+	case inlineContentLiteral:
 		if literalNext == start {
 			return nil, start, false, nil
 		}
-		candidate.LiteralContent = p.ctx.text[contentStart : literalNext-1]
+		candidate.literalContent = p.ctx.text[contentStart : literalNext-1]
 		next = literalNext
 
 	default:
@@ -71,21 +70,18 @@ func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, err
 		)
 	}
 
-	// Definitions only validate structurally closed candidates.
-	accepted, err := definition.ValidateAttribute(attr)
-	if err != nil {
-		return nil, start, false, fmt.Errorf("validate inline directive %q: %w", key, err)
-	}
-	if !accepted {
+	// Definitions only validate structurally closed candidates. An absent
+	// validator accepts every attribute.
+	if definition.validate != nil && !definition.validate(attr) {
 		return nil, literalNext, false, nil
 	}
 
-	candidate.Range = p.ctx.rangeOf(start, next)
-	node, err := definition.BuildInline(candidate)
-	if err != nil {
-		return nil, start, false, fmt.Errorf("build inline directive %q: %w", key, err)
+	candidate.rng = p.ctx.rangeOf(start, next)
+	if definition.build == nil {
+		return nil, start, false, fmt.Errorf("build inline directive %q: definition has no builder", key)
 	}
-	if isNilRegistration(node) {
+	node := definition.build(candidate)
+	if node == nil {
 		return nil, start, false, fmt.Errorf("build inline directive %q: definition returned a nil node", key)
 	}
 

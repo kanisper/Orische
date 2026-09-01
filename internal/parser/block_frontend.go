@@ -1,72 +1,69 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
 	"orische/internal/ast"
-	"orische/internal/parser/feature"
 )
 
-type blockInput struct {
+type blockContext struct {
 	lines []string
 	start int
 }
 
-func (i *blockInput) Len() int {
+func (i *blockContext) len() int {
 	return len(i.lines) - i.start
 }
 
-func (i *blockInput) Line(offset int) (feature.BlockLine, bool) {
-	index := i.start + offset
-	if offset < 0 || index < i.start || index >= len(i.lines) {
-		return feature.BlockLine{}, false
-	}
-	return feature.BlockLine{Number: index + 1, Text: i.lines[index]}, true
+type blockLine struct {
+	number int
+	text   string
 }
 
-type blockDirectiveReader struct{}
-
-func (*blockDirectiveReader) ReadBlock(input feature.BlockInput) (feature.BlockReadResult, error) {
-	opener, ok := input.Line(0)
-	if !ok {
-		return feature.BlockReadResult{}, nil
+func (i *blockContext) line(offset int) (blockLine, bool) {
+	index := i.start + offset
+	if offset < 0 || index < i.start || index >= len(i.lines) {
+		return blockLine{}, false
 	}
-	dirtype, attr, ok := parseBlockDirective(opener.Text)
+	return blockLine{number: index + 1, text: i.lines[index]}, true
+}
+
+func readBlockDirective(input *blockContext) (*blockDirectiveNode, int) {
+	opener, ok := input.line(0)
 	if !ok {
-		return feature.BlockReadResult{}, nil
+		return nil, 0
+	}
+	dirtype, attr, ok := parseBlockDirectiveHeader(opener.text)
+	if !ok {
+		return nil, 0
 	}
 
 	content := make([]string, 0)
-	for offset := 1; offset < input.Len(); offset++ {
-		line, ok := input.Line(offset)
+	for offset := 1; offset < input.len(); offset++ {
+		line, ok := input.line(offset)
 		if !ok {
 			break
 		}
-		if line.Text == ":::" {
-			return feature.BlockReadResult{
-				Matched:  true,
-				Consumed: offset + 1,
-				Node: &feature.TextBlock{
-					Type:          dirtype,
-					Attr:          attr,
-					Text:          strings.Join(content, "\n"),
-					ContentOrigin: ast.Position{Line: opener.Number + 1, Column: 1},
-					Range: ast.Range{
-						Start: ast.Position{Line: opener.Number, Column: 1},
-						End:   ast.Position{Line: line.Number, Column: 3},
-					},
+		if line.text == ":::" {
+			return &blockDirectiveNode{
+				dirtype:       dirtype,
+				attribute:     attr,
+				text:          strings.Join(content, "\n"),
+				contentOrigin: ast.Position{Line: opener.number + 1, Column: 1},
+				rng: ast.Range{
+					Start: ast.Position{Line: opener.number, Column: 1},
+					End:   ast.Position{Line: line.number, Column: 3},
 				},
-			}, nil
+			}, offset + 1
 		}
-		content = append(content, line.Text)
+		content = append(content, line.text)
 	}
 
-	return feature.BlockReadResult{}, nil
+	return nil, 0
 }
 
-func parseBlockDirective(line string) (string, string, bool) {
+func parseBlockDirectiveHeader(line string) (string, string, bool) {
 	if !strings.HasPrefix(line, ":::[") || !strings.HasSuffix(line, "]") {
 		return "", "", false
 	}
@@ -75,56 +72,38 @@ func parseBlockDirective(line string) (string, string, bool) {
 	return dirtype, attr, dirtype != ""
 }
 
-type paragraphReader struct{}
-
-func (*paragraphReader) ReadBlock(input feature.BlockInput) (feature.BlockReadResult, error) {
-	first, ok := input.Line(0)
-	if !ok || strings.TrimSpace(first.Text) == "" {
-		return feature.BlockReadResult{}, nil
+func readParagraph(input *blockContext) (*paragraphNode, int) {
+	first, ok := input.line(0)
+	if !ok || strings.TrimSpace(first.text) == "" {
+		return nil, 0
 	}
 
-	content := make([]string, 0, input.Len())
+	content := make([]string, 0, input.len())
 	last := first
-	for offset := 0; offset < input.Len(); offset++ {
-		line, ok := input.Line(offset)
-		if !ok || strings.TrimSpace(line.Text) == "" {
+	for offset := 0; offset < input.len(); offset++ {
+		line, ok := input.line(offset)
+		if !ok || strings.TrimSpace(line.text) == "" {
 			break
 		}
-		content = append(content, line.Text)
+		content = append(content, line.text)
 		last = line
 	}
 
-	return feature.BlockReadResult{
-		Matched:  true,
-		Consumed: len(content),
-		Node: &feature.TextBlock{
-			Type:          feature.ParagraphBlockType,
-			Text:          strings.Join(content, "\n"),
-			ContentOrigin: ast.Position{Line: first.Number, Column: 1},
-			Range: ast.Range{
-				Start: ast.Position{Line: first.Number, Column: 1},
-				End:   ast.Position{Line: last.Number, Column: utf8.RuneCountInString(last.Text)},
-			},
+	return &paragraphNode{
+		text:          strings.Join(content, "\n"),
+		contentOrigin: ast.Position{Line: first.number, Column: 1},
+		rng: ast.Range{
+			Start: ast.Position{Line: first.number, Column: 1},
+			End:   ast.Position{Line: last.number, Column: utf8.RuneCountInString(last.text)},
 		},
-	}, nil
+	}, len(content)
 }
 
-type paragraphDefinition struct{}
-
-func (*paragraphDefinition) BlockType() string {
-	return feature.ParagraphBlockType
-}
-
-func (*paragraphDefinition) BuildBlock(ctx feature.BuildContext, node feature.BlockNode) (ast.Block, error) {
-	block, ok := node.(*feature.TextBlock)
-	if !ok {
-		return nil, fmt.Errorf("expected *feature.TextBlock, got %T", node)
-	}
-
-	content, err := ctx.ParseInlines(block.Text, block.ContentOrigin)
+func (p *Parser) buildParagraph(block *paragraphNode) (ast.Block, error) {
+	content, err := p.parseInlines(block.text, block.contentOrigin)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ast.Paragraph{Content: content, Range: block.Range}, nil
+	return &ast.Paragraph{Content: content, Range: block.rng}, nil
 }

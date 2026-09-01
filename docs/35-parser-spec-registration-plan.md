@@ -1,93 +1,60 @@
-# Parser Feature Boundary Implementation Record
+# Superseded Parser Registration Record
 
 ## Status
 
-The parser package-boundary refactoring is implemented. This document records
-the resulting internal API and the constraints preserved during the change.
-Tests and implementation remain the source of truth.
+This is a historical record of the parser refactoring from #1 through #7. It
+describes the intermediate framework-oriented design and is superseded by the
+simplified implementation described in [`30-parser-architecture.md`](30-parser-architecture.md).
+The names of the old packages and contracts below are intentionally retained
+so the implementation history remains understandable; they do not describe
+current APIs or package paths.
 
-## Outcome
+## Historical Design
 
-The former single-package registration machinery was divided into:
+The intermediate design introduced a `feature.Language` declaration, a
+compiled specification, neutral `feature` contracts, and separate `syntax`
+packages. It used those boundaries to validate and assemble built-in Block and
+Inline definitions while keeping the parser frontend independent of syntax
+implementations.
 
-- `feature`, containing neutral implementation contracts;
-- `syntax/block` and `syntax/inline`, containing built-in definitions;
-- `syntax`, assembling the built-in language;
-- `parser`, compiling a language and orchestrating source-to-AST processing.
+That design preserved several useful ideas:
 
-No stable extension API, dynamic plugin mechanism, or new accepted syntax was
-introduced.
+- a parser-owned specification selected Block and Inline behavior;
+- Block Directive, Heading, List, and Paragraph had explicit precedence;
+- lists used dedicated recursive reading;
+- inline directives shared one envelope and delegated semantics to definitions;
+- nested parsing reused the active parser configuration;
+- diagnostics, fallback behavior, and Unicode-aware ranges remained explicit.
 
-## Contract Decisions
+## Superseding Decisions
 
-### Immutable language construction
+Stages #11 through #13 moved those ideas into one `package parser`:
 
-Definitions are supplied as a `feature.Language` to `NewParser`. The frontend
-validates all definitions and compiles private registries before parsing. It
-does not expose post-construction registration methods.
+- `feature.Language` and its construction path became the private `spec` made
+  by `newSpec`;
+- separate `feature` and `syntax` packages became files grouped by parser
+  responsibility;
+- generic cross-package IR became concrete private parsed-block nodes;
+- capability-based build contexts became direct methods on `Parser`;
+- defensive registration validation disappeared with the external-shaped
+  registration surface;
+- Paragraph and Block Directive remain fixed parser infrastructure, while
+  Heading, List, and inline definitions remain built-in parser code.
 
-Paragraph is excluded from `feature.Language`. Its Reader remains fixed frontend
-infrastructure alongside its private Definition, which the parser registers
-before the replaceable Block definitions. The Paragraph definition uses the
-ordinary Block contract; attempts to register the same normalized Type fail
-through the normal duplicate-definition check.
+The current parser still uses a small `spec` because directive lookup, sugar
+precedence, and inline definition semantics are useful. It is not a language
+compiler, a replaceable implementation registry, or a plugin boundary. See
+`30-parser-architecture.md` and `40-go-layout.md` for the current design.
 
-### Transactional block reading
+## Behavior Retained
 
-Readers no longer receive a mutable parser cursor. `BlockInput` exposes lines by
-relative offset, and a successful Reader returns a positive consumed-line count.
-The frontend rejects inconsistent results before advancing.
+The simplification does not change accepted syntax or user-visible behavior.
+The following remain protected by the parser tests:
 
-This replaces the former contract that a Reader restore `blockContext.pos` after
-rejection. No-match is now structurally unable to consume frontend state.
-
-### Capability-based building
-
-Builders no longer receive `*Parser`. `BuildContext` exposes only recursive
-inline parsing and Block building. This is enough for Heading, Paragraph, and
-List while preventing syntax packages from depending on parser internals.
-
-### IR ownership
-
-`feature.TextBlock` is shared because fixed frontend readers create nodes that
-syntax builders consume. It carries the raw text's source origin separately from
-the complete Block range. List IR remains private to `syntax/block`; only the
-neutral `BlockNode` interface crosses the boundary.
-
-### Inline ownership
-
-The common inline parser continues to own delimiters, recursion, fallback, and
-ranges. Definitions own content policy, semantic attribute validation, and AST
-construction. Structurally incomplete candidates are never validated.
-
-## Preserved Behavior
-
-- Block Reader precedence remains Directive, Heading, List, Paragraph.
-- Malformed Block candidates still fall through to Paragraph.
-- Lists retain dedicated recursive reading and raw-level normalization.
-- List-item construction still uses common Block dispatch.
-- Heading, Paragraph, and list-item Paragraph content use the active Inline set.
-- Code Block content remains literal.
-- Type lookup remains case-insensitive while values preserve spelling.
-- Inline semantic rejection and malformed-candidate fallback are unchanged.
-- Unicode code-point range calculation is unchanged.
-- Builder diagnostics preserve identity; ordinary errors accumulate context.
-
-## Validation Coverage
-
-The boundary tests verify:
-
-- Block and Inline Directive Definitions can be implemented outside package `parser`;
-- external Block builders can call active inline parsing;
-- invalid Reader result combinations are rejected;
-- invalid, duplicate, nil, and fixed-Paragraph collisions fail at construction;
-- caller mutation of Language slices does not replace compiled registries;
-- active definitions propagate through recursive inline parsing and nested lists;
-- diagnostic identity and nested ordinary-error context are preserved;
-- built-in syntax behavior and ranges remain unchanged.
-
-Run:
-
-```sh
-go test ./internal/parser/...
-```
+- Block Directive, Heading, List, then Paragraph precedence;
+- malformed block fallback and unsupported valid-directive diagnostics;
+- recursive list construction and raw-to-logical level normalization;
+- definition-driven nested and literal inline parsing;
+- inline fallback and semantic rejection;
+- AST construction, diagnostics, and nested error context;
+- one-based inclusive ranges with Unicode-code-point columns.

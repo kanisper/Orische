@@ -6,15 +6,14 @@ This file records current repository status. It is not a versioned language spec
 
 - AST definitions
 - Document block reader chain
-- Headings with levels 1–6
+- Headings with levels 1-6
 - Paragraphs
 - Ordered and unordered lists
 - Recursive list nesting with raw-to-logical level normalization
 - `code` block directives
 - Inline emphasis, code spans, and links
-- Parsed-block IR and AST builders
-- Internal feature contracts and separated Block/Inline syntax packages
-- Immutable language compilation into parser-private registries
+- Private parsed-block handoff and AST builders
+- Private parser `spec` for built-in directive and inline behavior
 - Common `Parser` dispatch for top-level and list-item AST construction
 - Source ranges on all block and inline AST nodes
 - One-based, inclusive source positions with Unicode-code-point columns
@@ -36,12 +35,12 @@ go test ./internal/parser/...
 ## Not Implemented
 
 - Stable public extension API
+- Dynamic plugin loading
 - Structured attributes such as `key=value`
 - Additional output formats
 
 ## Possible Future Work
 
-- Additional block and inline directive types
+- Additional built-in block and inline directive types
 - Escaping rules
 - Performance measurement and optimization
-- Plugin or registration APIs after package boundaries stabilize

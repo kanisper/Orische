@@ -2,81 +2,82 @@
 
 ## Responsibility
 
-Convert input text into the AST through two internal stages:
+Convert input text into the AST through two local stages:
 
-1. Read document blocks into `feature.BlockNode` IR.
-2. Dispatch IR to syntax builders and parse inline content where applicable.
+1. read document blocks into private parsed-block nodes;
+2. build AST blocks and parse inline content where applicable.
 
-The parser frontend lives in `internal/parser`. Neutral implementation contracts
-live in `internal/parser/feature`; built-in implementations live under
-`internal/parser/syntax`.
+All implementation files are in `package parser`. Files are split by syntax and
+responsibility for readability; there are no parser feature or syntax packages.
 
-## Package Boundaries
+## Internal State
 
-- `parser` owns orchestration, fixed readers, compiled registries, dispatch,
-  inline scanning, fallback, ranges, and error wrapping.
-- `feature` owns only syntax-neutral interfaces and shared transport values.
-- `syntax/block` owns Heading, List, and Code Block definitions.
-- `syntax/inline` owns Emphasis, Link, and Code Span definitions.
-- Syntax packages must not import `parser`. Builders use `feature.BuildContext`.
-- These are internal implementation APIs, not a stable plugin API.
+`Parser` owns a private `spec` containing:
+
+- Block Directive builders;
+- ordered Heading and List sugar readers;
+- inline definitions for directive content policy, validation, and AST building.
+
+`spec` is parser configuration, not a public language or plugin API. `newSpec`
+installs the built-in `code`, `em`, `link`, and `code` behavior. Keep the
+definition-specific logic close to the syntax file that uses it.
+
+Block readers hand private concrete nodes to `Parser.buildBlock`. The private
+`parsedBlock` interface carries only the source range needed by orchestration;
+syntax-specific fields remain on concrete node types. Avoid introducing generic
+contracts when a private concrete type expresses the state directly.
 
 ## Block Parsing
 
-Document Reader order is:
+Block reader order is:
 
-1. fixed Block Directive reader;
-2. registered Sugar readers in `feature.Language.Blocks` order;
-3. fixed Paragraph fallback reader.
+1. common Block Directive reader;
+2. Heading and List sugar readers in `spec.sugars` order;
+3. Paragraph fallback reader.
 
-Readers receive an immutable `feature.BlockInput` and return a
-`feature.BlockReadResult`. For no match, `Matched` is false, `Consumed` is zero,
-and `Node` is nil. For a match, `Consumed` is within the available line count and
-`Node` is non-nil. The frontend validates these invariants before advancing.
-
-The Block Directive reader, Paragraph reader, and Paragraph definition are fixed
-frontend infrastructure. The parser installs the Paragraph definition before
-definitions from `feature.Language.Blocks`. A case-insensitive `paragraph` entry
-in that slice is therefore rejected by the normal duplicate-definition check.
+The Block Directive reader, Paragraph reader, and Paragraph builder are fixed
+parser infrastructure. A reader receives immutable-by-convention `blockContext`
+and returns a node plus a positive consumed-line count on a match. A non-match
+returns a nil node and zero consumption.
 
 Malformed Heading, List, and Block Directive candidates fall through to the
-Paragraph reader. A syntactically valid directive still requires a registered
-definition.
+Paragraph reader. A syntactically valid directive still requires a built-in
+builder and produces an unsupported-directive diagnostic when no builder exists.
 
 ## Lists
 
-Lists use dedicated recursive reading rather than the document Reader chain.
-During AST construction, list-item Paragraph and nested List nodes use
-`feature.BuildContext.BuildBlock`, preserving common dispatch and error behavior.
+Lists use dedicated recursive reading rather than the document block reader
+chain. `normalizeListLevel` converts raw marker runs into logical levels: a raw
+increase adds one level, an unchanged level remains unchanged, and a decrease
+subtracts the raw difference with a minimum of one. Nesting has no explicit
+depth limit.
 
-Marker-run length is a raw level. `normalizeListLevel` converts changes into
-logical levels. Any raw increase adds exactly one logical level, regardless of
-the increase size. Nesting depth has no explicit limit.
+List item paragraphs and nested lists are built through `Parser.buildBlock`, so
+they retain ordinary inline parsing, diagnostics, and ranges.
 
 ## Inline Parsing
 
-The frontend owns the `:[...]{...}` envelope, recursion, fallback, scanning, and
-range calculation. Inline definitions own type-specific attribute validation,
-content policy, and AST construction.
+The frontend owns the `:[...]{...}` envelope, recursion, fallback, scanning,
+and range calculation. Inline definitions own type-specific attribute
+validation, content policy, and AST construction.
 
 Empty inline content is valid, and links require a nonempty URI attribute.
 Unsupported directives, invalid headers, and links without a URI are emitted as
-literal source text rather than errors. Other malformed or unterminated
-candidates resume ordinary scanning.
-
-Attribute validation has three outcomes: `true, nil` accepts; `false, nil` uses
-literal fallback; a non-nil error aborts parsing. The frontend must confirm that
-a candidate is structurally closed before invoking validation.
+literal source text. Other malformed or unterminated candidates resume ordinary
+scanning. Definitions are validated only after the frontend confirms that the
+candidate is structurally closed.
 
 ## AST, Diagnostics, and Ranges
 
 AST block and inline interfaces use pointer implementations. Parser-produced
 non-empty ranges are one-based and inclusive; columns count Unicode code points.
-Every inline AST node carries a range.
+Every inline AST node carries a range. Directive-node ranges include the
+complete `:[...]{...}` syntax; nested content and literal text nodes carry their
+own source spans.
 
-Sugar definitions must produce a Node whose normalized Block Type matches the
-definition. Builder diagnostics preserve identity, message, and range. Ordinary
-builder errors retain their cause and receive nested build context.
+Builder diagnostics preserve identity, message, and range. Ordinary builder
+errors retain their cause and receive block context. Code Block content remains
+literal and does not invoke inline parsing.
 
 ## Validation
 
