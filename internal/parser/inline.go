@@ -1,10 +1,6 @@
 package parser
 
-import (
-	"strings"
-
-	"orische/internal/ast"
-)
+import "orische/internal/ast"
 
 type inlineParseState struct {
 	parser *Parser
@@ -34,15 +30,7 @@ func (p *inlineParseState) parseSeq(
 	textStart := start
 
 	flushText := func(end int) {
-		if textStart == end {
-			return
-		}
-
-		nodes = append(nodes, &ast.Text{
-			Value: p.ctx.text[textStart:end],
-			Range: p.ctx.rangeOf(textStart, end),
-		})
-
+		nodes = p.appendText(nodes, textStart, end)
 		textStart = end
 	}
 
@@ -52,8 +40,9 @@ func (p *inlineParseState) parseSeq(
 			return nodes, pos + 1, true, nil
 		}
 
-		if strings.HasPrefix(p.ctx.text[pos:], ":[") {
-			node, next, ok, err := p.parseDirective(pos)
+		matched := false
+		for _, reader := range p.parser.spec.inlineReaders {
+			node, next, ok, err := reader(p, pos)
 			if err != nil {
 				return nil, 0, false, err
 			}
@@ -61,15 +50,19 @@ func (p *inlineParseState) parseSeq(
 			if ok {
 				flushText(pos)
 				nodes = append(nodes, node)
-
 				pos = next
 				textStart = next
-				continue
+				matched = true
+				break
 			}
 			if next > pos {
 				pos = next
-				continue
+				matched = true
+				break
 			}
+		}
+		if matched {
+			continue
 		}
 
 		pos++
@@ -77,4 +70,32 @@ func (p *inlineParseState) parseSeq(
 
 	flushText(pos)
 	return nodes, pos, false, nil
+}
+
+func (p *inlineParseState) appendText(nodes []ast.Inline, start, end int) []ast.Inline {
+	segmentStart := start
+	for pos := start; pos < end; {
+		next, newline := p.ctx.logicalNewlineEnd(pos)
+		if !newline {
+			pos++
+			continue
+		}
+
+		if segmentStart < pos {
+			nodes = append(nodes, p.textNode(segmentStart, pos))
+		}
+		pos = next
+		segmentStart = next
+	}
+	if segmentStart < end {
+		nodes = append(nodes, p.textNode(segmentStart, end))
+	}
+	return nodes
+}
+
+func (p *inlineParseState) textNode(start, end int) ast.Inline {
+	return &ast.Text{
+		Value: p.ctx.text[start:end],
+		Range: p.ctx.rangeOf(start, end),
+	}
 }

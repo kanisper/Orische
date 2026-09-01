@@ -2,6 +2,8 @@ package parser
 
 import "orische/internal/ast"
 
+type inlineReader func(*inlineParseState, int) (ast.Inline, int, bool, error)
+
 // inlineContentPolicy selects recursive or literal content parsing.
 type inlineContentPolicy uint8
 

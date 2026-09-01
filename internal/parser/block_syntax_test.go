@@ -127,7 +127,7 @@ func TestReadListBuildsPrivateRecursiveNodes(t *testing.T) {
 			{
 				blocks: []parsedBlock{
 					&paragraphNode{
-						text:          "親😀",
+						text:          "親😀\n",
 						contentOrigin: ast.Position{Line: 2, Column: 3},
 						rng: ast.Range{
 							Start: ast.Position{Line: 2, Column: 3},
@@ -140,7 +140,7 @@ func TestReadListBuildsPrivateRecursiveNodes(t *testing.T) {
 							{
 								blocks: []parsedBlock{
 									&paragraphNode{
-										text:          "child",
+										text:          "child\n",
 										contentOrigin: ast.Position{Line: 3, Column: 6},
 										rng: ast.Range{
 											Start: ast.Position{Line: 3, Column: 6},
@@ -159,7 +159,7 @@ func TestReadListBuildsPrivateRecursiveNodes(t *testing.T) {
 			{
 				blocks: []parsedBlock{
 					&paragraphNode{
-						text:          "sibling",
+						text:          "sibling\n",
 						contentOrigin: ast.Position{Line: 4, Column: 3},
 						rng:           ast.Range{Start: ast.Position{Line: 4, Column: 3}, End: ast.Position{Line: 4, Column: 9}},
 					},

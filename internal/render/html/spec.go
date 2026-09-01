@@ -61,6 +61,7 @@ func coreSpec() *Spec {
 	addBlockRenderer(s, &paragraphRenderer{})
 
 	addInlineRenderer(s, &textRenderer{})
+	addInlineRenderer(s, &linebreakRenderer{})
 	addInlineRenderer(s, &emphasisRenderer{})
 	addInlineRenderer(s, &codespanRenderer{})
 	addInlineRenderer(s, &linkRenderer{})

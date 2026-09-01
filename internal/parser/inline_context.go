@@ -38,6 +38,24 @@ func newInlineContext(text string, origin ast.Position) *inlineContext {
 	}
 }
 
+func (ctx *inlineContext) logicalNewlineEnd(start int) (int, bool) {
+	if start < 0 || start >= len(ctx.text) {
+		return start, false
+	}
+
+	switch ctx.text[start] {
+	case '\n':
+		return start + 1, true
+	case '\r':
+		if start+1 < len(ctx.text) && ctx.text[start+1] == '\n' {
+			return start + 2, true
+		}
+		return start + 1, true
+	default:
+		return start, false
+	}
+}
+
 // positionAt converts a zero-based UTF-8 byte offset to a one-based
 // Unicode code point position.
 //

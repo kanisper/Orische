@@ -13,6 +13,8 @@ This file records current repository status. It is not a versioned language spec
 - Mixed-marker Lists with first-marker candidate style
 - Recursive List nesting with raw-to-logical level normalization
 - Inline Emphasis, Code Span, and Link directives
+- LF, CRLF, and CR logical newline handling
+- Explicit ` +` Line Break syntax and `<br>` rendering
 - Private parsed-block handoff and AST builders
 - Private parser `spec` for built-in directive and inline behavior
 - Common `Parser` dispatch for top-level and List-item AST construction

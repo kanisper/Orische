@@ -7,6 +7,7 @@ import "strings"
 type spec struct {
 	directives        map[string]blockDirectiveBuilder
 	sugars            []blockSugar
+	inlineReaders     []inlineReader
 	inlineDefinitions map[string]inlineDefinition
 }
 
@@ -20,6 +21,11 @@ func newSpec() *spec {
 		sugars: []blockSugar{
 			readHeading,
 			readList,
+		},
+		// Reader order is inline grammar precedence.
+		inlineReaders: []inlineReader{
+			readInlineDirective,
+			readLineBreak,
 		},
 		inlineDefinitions: make(map[string]inlineDefinition, 3),
 	}
