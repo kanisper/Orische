@@ -318,10 +318,10 @@ func TestParseInlines_ContainingNewLine(t *testing.T) {
 
 	want := []ast.Inline{
 		&ast.Text{
-			Value: "Plain text\n",
+			Value: "Plain text",
 			Range: ast.Range{
 				Start: ast.Position{Line: 1, Column: 1},
-				End:   ast.Position{Line: 1, Column: 11},
+				End:   ast.Position{Line: 1, Column: 10},
 			},
 		},
 		&ast.Emphasis{

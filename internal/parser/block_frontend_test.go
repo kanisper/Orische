@@ -16,10 +16,11 @@ func TestReadBlockDirective(t *testing.T) {
 
 	got, consumed := readBlockDirective(input)
 	want := &blockDirectiveNode{
-		dirtype:       "code",
-		attribute:     "go",
-		text:          "fmt.Println(\"日😀\")",
-		contentOrigin: ast.Position{Line: 3, Column: 1},
+		dirtype:           "code",
+		attribute:         "go",
+		text:              "fmt.Println(\"日😀\")",
+		contentOrigin:     ast.Position{Line: 3, Column: 1},
+		contentTerminated: true,
 		rng: ast.Range{
 			Start: ast.Position{Line: 2, Column: 1},
 			End:   ast.Position{Line: 4, Column: 3},
@@ -48,7 +49,7 @@ func TestReadParagraph(t *testing.T) {
 
 	got, consumed := readParagraph(input)
 	want := &paragraphNode{
-		text:          "日😀\nsecond",
+		text:          "日😀\nsecond\n",
 		contentOrigin: ast.Position{Line: 2, Column: 1},
 		rng: ast.Range{
 			Start: ast.Position{Line: 2, Column: 1},

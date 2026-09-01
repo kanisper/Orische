@@ -35,7 +35,7 @@ func readHeading(input *blockContext) (parsedBlock, int) {
 
 	return &headingNode{
 		level:         level,
-		text:          content,
+		text:          textWithTerminator(content, line.terminated),
 		contentOrigin: ast.Position{Line: line.number, Column: level + 2},
 		rng: ast.Range{
 			Start: ast.Position{Line: line.number, Column: 1},
@@ -63,7 +63,7 @@ func buildHeadingDirective(p *Parser, block *blockDirectiveNode) (ast.Block, err
 
 	return p.buildHeading(&headingNode{
 		level:         level,
-		text:          block.text,
+		text:          textWithTerminator(block.text, block.contentTerminated),
 		contentOrigin: block.contentOrigin,
 		rng:           block.rng,
 	})

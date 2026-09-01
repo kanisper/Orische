@@ -205,9 +205,16 @@ func TestBuildAST(t *testing.T) {
 			&ast.Paragraph{
 				Content: []ast.Inline{
 					&ast.Text{
-						Value: "paragraph2 line1\nparagraph2 line2",
+						Value: "paragraph2 line1",
 						Range: ast.Range{
 							Start: ast.Position{Line: 16, Column: 1},
+							End:   ast.Position{Line: 16, Column: 16},
+						},
+					},
+					&ast.Text{
+						Value: "paragraph2 line2",
+						Range: ast.Range{
+							Start: ast.Position{Line: 17, Column: 1},
 							End:   ast.Position{Line: 17, Column: 16},
 						},
 					},
@@ -347,17 +354,17 @@ func TestListRunReturnsFollowingLineToFrontend(t *testing.T) {
 
 func TestMalformedBlockCandidatesFallBackToParagraph(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		text  string
+		name    string
+		input   string
+		visible string
 	}{
-		{name: "unterminated directive", input: ":::[code]\ntext", text: ":::[code]\ntext"},
-		{name: "invalid heading", input: "======= title", text: "======= title"},
-		{name: "invalid list", input: "- item", text: "- item"},
+		{name: "unterminated directive", input: ":::[code]\ntext", visible: ":::[code]text"},
+		{name: "invalid heading", input: "======= title", visible: "======= title"},
+		{name: "invalid list", input: "- item", visible: "- item"},
 		{
-			name:  "later block markers inside paragraph",
-			input: "plain\n= heading\n:::[code]\ntext\n:::",
-			text:  "plain\n= heading\n:::[code]\ntext\n:::",
+			name:    "later block markers inside paragraph",
+			input:   "plain\n= heading\n:::[code]\ntext\n:::",
+			visible: "plain= heading:::[code]text:::",
 		},
 	}
 
@@ -371,12 +378,19 @@ func TestMalformedBlockCandidatesFallBackToParagraph(t *testing.T) {
 				t.Fatalf("Block count = %d, want one Paragraph", len(doc.Blocks))
 			}
 			paragraph, ok := doc.Blocks[0].(*ast.Paragraph)
-			if !ok || len(paragraph.Content) != 1 {
-				t.Fatalf("Block = %#v, want one-content Paragraph", doc.Blocks[0])
+			if !ok {
+				t.Fatalf("Block type = %T, want *ast.Paragraph", doc.Blocks[0])
 			}
-			text, ok := paragraph.Content[0].(*ast.Text)
-			if !ok || text.Value != tt.text {
-				t.Errorf("Paragraph content = %#v, want %q", paragraph.Content[0], tt.text)
+			var visible string
+			for _, inline := range paragraph.Content {
+				text, ok := inline.(*ast.Text)
+				if !ok {
+					t.Fatalf("Paragraph inline type = %T, want *ast.Text", inline)
+				}
+				visible += text.Value
+			}
+			if visible != tt.visible {
+				t.Errorf("visible Paragraph content = %q, want %q", visible, tt.visible)
 			}
 		})
 	}

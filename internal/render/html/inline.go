@@ -46,6 +46,14 @@ func (*textRenderer) render(_ *Renderer, w io.Writer, text *ast.Text) error {
 	return nil
 }
 
+// LineBreak
+type linebreakRenderer struct{}
+
+func (*linebreakRenderer) render(_ *Renderer, w io.Writer, _ *ast.LineBreak) error {
+	_, err := fmt.Fprint(w, "<br>")
+	return err
+}
+
 // Emphasis
 type emphasisRenderer struct{}
 

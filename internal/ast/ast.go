@@ -76,6 +76,10 @@ type Link struct {
 	Range   Range
 }
 
+type LineBreak struct {
+	Range Range
+}
+
 func (*Document) isRoot() {}
 
 func (*Heading) isBlock()   {}
@@ -83,7 +87,8 @@ func (*Paragraph) isBlock() {}
 func (*List) isBlock()      {}
 func (*CodeBlock) isBlock() {}
 
-func (*Text) isInline()     {}
-func (*Emphasis) isInline() {}
-func (*CodeSpan) isInline() {}
-func (*Link) isInline()     {}
+func (*Text) isInline()      {}
+func (*Emphasis) isInline()  {}
+func (*CodeSpan) isInline()  {}
+func (*Link) isInline()      {}
+func (*LineBreak) isInline() {}

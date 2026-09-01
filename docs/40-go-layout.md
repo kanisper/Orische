@@ -27,9 +27,9 @@ Defines document, block, inline, and range types. AST interfaces are implemented
 - owns Heading and List sugar readers and the recursive List model;
 - owns private parsed-block nodes and AST building;
 - dispatches Block Directive builders and preserves diagnostic contracts;
-- owns common inline scanning, recursion, fallback, and range calculation.
+- owns ordered inline syntax dispatch, scanning, recursion, fallback, and range calculation.
 
-The `spec` is a small internal configuration structure. It stores the `heading`, `paragraph`, and `code` Block Directive builders, sugar readers in precedence order, and the `em`, `link`, and `code` inline definitions. It is not exposed as a language or plugin API.
+The `spec` is a small internal configuration structure. It stores the `heading`, `paragraph`, and `code` Block Directive builders, block sugar and inline syntax readers in precedence order, and the `em`, `link`, and `code` inline definitions. It is not exposed as a language or plugin API.
 
 ### `internal/render/html`
 
@@ -68,6 +68,7 @@ This is a responsibility guide, not an exhaustive file listing.
 - `block_contract.go`, `block_core.go` - small private block handoff and function types
 - `inline.go` - inline sequence scanner and Text construction
 - `inline_directive.go` - directive envelope, optional validation, and definition dispatch
+- `inline_linebreak.go` - explicit Line Break reader
 - `inline_context.go` - byte-offset to Unicode source positions
 - `inline_contract.go`, `inline_core.go`, `inline_*` - built-in inline definitions and shared private types
 

@@ -20,11 +20,12 @@ func (n *paragraphNode) blockRange() ast.Range {
 }
 
 type blockDirectiveNode struct {
-	dirtype       string
-	attribute     string
-	text          string
-	contentOrigin ast.Position
-	rng           ast.Range
+	dirtype           string
+	attribute         string
+	text              string
+	contentOrigin     ast.Position
+	contentTerminated bool
+	rng               ast.Range
 }
 
 func (n *blockDirectiveNode) blockRange() ast.Range {

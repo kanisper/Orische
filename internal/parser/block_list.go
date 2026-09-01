@@ -15,6 +15,7 @@ type listLine struct {
 	logicalLevel int
 	text         string
 	line         int
+	terminated   bool
 }
 
 type listNode struct {
@@ -86,6 +87,7 @@ func collectListLines(input *blockContext) []listLine {
 			logicalLevel: logicalLevel,
 			text:         text,
 			line:         line.number,
+			terminated:   line.terminated,
 		})
 		previousRawLevel = rawLevel
 		previousLogicalLevel = logicalLevel
@@ -142,7 +144,7 @@ func buildListNode(lines []listLine, index *int, level int) *listNode {
 			list.items = append(list.items, listItemNode{
 				blocks: []parsedBlock{
 					&paragraphNode{
-						text:          line.text,
+						text:          textWithTerminator(line.text, line.terminated),
 						contentOrigin: ast.Position{Line: line.line, Column: line.rawLevel + 2},
 						rng: ast.Range{
 							Start: ast.Position{Line: line.line, Column: line.rawLevel + 2},

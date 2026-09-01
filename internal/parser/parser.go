@@ -159,7 +159,7 @@ func finishBlockBuild(blockType string, block ast.Block, err error) (ast.Block, 
 }
 
 func splitLines(input string) []string {
-	input = strings.TrimRight(input, "\n")
+	input = strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(input)
 	if input == "" {
 		return nil
 	}

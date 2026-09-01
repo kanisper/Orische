@@ -4,7 +4,8 @@ This document describes current parser behavior. Tests and implementation take p
 
 ## General Block Rules
 
-Input is parsed line by line. Blank or whitespace-only lines separate blocks and do not produce AST nodes.
+Input is parsed line by line. LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are treated as the same logical newline. Physical line endings are normalized to logical newlines before block content is constructed. Therefore, syntax described as literal preserves its text without further syntax interpretation, but does not preserve the original LF, CRLF, or CR encoding.
+Blank or whitespace-only lines separate blocks and do not produce AST nodes.
 
 Block readers run in this order:
 
@@ -17,7 +18,7 @@ Block Directives are the explicit named form for supported block semantics. Head
 
 Once a Paragraph starts, it consumes every consecutive nonblank line. A Heading marker, List marker, or Directive opener on a later Paragraph line remains Paragraph text. Use a blank line before such a block when the preceding block is a Paragraph.
 
-Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: an Emphasis, Code Span, or Link range includes the complete `:[...]{...}` syntax, while nested inline and literal `Text` ranges cover their own source spans.
+Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: an Emphasis, Code Span, or Link range includes the complete `:[...]{...}` syntax, while nested inline and literal `Text` ranges cover their own source spans. A Line Break range covers only its ` +` marker.
 
 ## Block Directives
 
@@ -93,7 +94,7 @@ fmt.Println("hello")
 :::
 ```
 
-For `code`, the attribute becomes `CodeBlock.Language`. Content is preserved literally and is not inline-parsed.
+For `code`, the attribute becomes `CodeBlock.Language`. Content is not inline-parsed and is otherwise preserved literally. Physical line endings are represented as `\n` logical newlines in `CodeBlock.Text`, regardless of whether the source used LF, CRLF, or CR.
 
 A syntactically valid Directive with an unregistered type causes an AST build error.
 
@@ -127,7 +128,7 @@ First line
 Second line
 ```
 
-Lines are joined with `\n`, and their other whitespace is preserved. A blank or whitespace-only line ends the Paragraph.
+Consecutive source lines remain part of the same Paragraph, and their other whitespace is preserved. A normal logical newline does not produce a visible space or line break; inline Text on either side renders adjacently. A blank or whitespace-only line ends the Paragraph.
 
 The explicit Paragraph form is also available through `:::[paragraph] ... :::`.
 
@@ -197,6 +198,42 @@ A blank or non-List line ends the current consecutive List run. Blank lines cann
 
 ## Inline Elements
 
+### Physical Newlines
+
+LF (`\n`), CRLF (`\r\n`), and CR (`\r`) are the same logical newline. In recursively parsed inline content, a normal physical newline ends the current Text span but does not create an AST node or visible whitespace.
+
+Therefore this source:
+
+```text
+日本語の
+文章
+```
+
+has the same visible text as `日本語の文章`. No language-sensitive space is inserted, so `Hello,` followed by a physical newline and `world.` similarly renders as `Hello,world.`.
+
+### Explicit Line Break
+
+A literal space followed by `+` immediately before a logical newline creates a Line Break:
+
+```text
+First line +
+Second line
+```
+
+The ` +` marker is removed from Text, the following LF, CRLF, or CR terminator produces no Text, and the HTML renderer emits `<br>`. The Line Break range covers the marker's space and `+`; it does not include the line terminator.
+
+The marker requires a following logical newline. These remain ordinary Text and do not create a Line Break:
+
+```text
+a + b
+a+
+a +
+```
+
+The final example ends at EOF. Explicit Line Break syntax is recognized recursively inside Emphasis and Link content. Code Span content is literal, so neither its ` +` sequences nor its physical newlines are parsed as inline syntax.
+
+### Inline Directives
+
 Inline candidates use:
 
 ```text
@@ -226,7 +263,7 @@ Emphasis content is recursively inline-parsed. An Emphasis attribute is accepted
 :[code]{}
 ```
 
-Code content is literal and ends at the first `}`. Nested inline syntax is not parsed inside Code Span. A Code Span attribute is accepted but ignored.
+Code content is literal and ends at the first `}`. Nested inline syntax is not parsed inside Code Span. Physical newlines follow the general logical-newline normalization rules.
 
 ### Link
 

@@ -7,6 +7,13 @@ import (
 	"orische/internal/ast"
 )
 
+func readInlineDirective(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
+	if !strings.HasPrefix(p.ctx.text[start:], ":[") {
+		return nil, start, false, nil
+	}
+	return p.parseDirective(start)
+}
+
 func (p *inlineParseState) parseDirective(start int) (ast.Inline, int, bool, error) {
 	headerStart := start + 2
 

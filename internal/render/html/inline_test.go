@@ -23,6 +23,7 @@ func TestInlineRender(t *testing.T) {
 		&ast.CodeSpan{
 			Value: "Code Span",
 		},
+		&ast.LineBreak{},
 		&ast.Link{
 			URI: "https://example.com",
 			Content: []ast.Inline{
@@ -33,7 +34,7 @@ func TestInlineRender(t *testing.T) {
 		},
 	}
 
-	want := "Plain Text<em>Emphasized Text</em><code>Code Span</code><a href=\"https://example.com\">Link Text</a>"
+	want := "Plain Text<em>Emphasized Text</em><code>Code Span</code><br><a href=\"https://example.com\">Link Text</a>"
 
 	var buf bytes.Buffer
 	renderer := NewRenderer()
@@ -45,6 +46,33 @@ func TestInlineRender(t *testing.T) {
 
 	if buf.String() != want {
 		t.Errorf("Render Failed\nGot: %s\nWant: %s", buf.String(), want)
+	}
+}
+
+func TestLineBreakRenderInNestedContent(t *testing.T) {
+	input := []ast.Inline{
+		&ast.Emphasis{Content: []ast.Inline{
+			&ast.Text{Value: "a"},
+			&ast.LineBreak{},
+			&ast.Text{Value: "b"},
+		}},
+		&ast.Link{
+			URI: "https://example.com",
+			Content: []ast.Inline{
+				&ast.Text{Value: "c"},
+				&ast.LineBreak{},
+				&ast.Text{Value: "d"},
+			},
+		},
+	}
+	want := `<em>a<br>b</em><a href="https://example.com">c<br>d</a>`
+
+	var buf bytes.Buffer
+	if err := NewRenderer().renderInlines(&buf, input); err != nil {
+		t.Fatalf("rendering failed: %s", err)
+	}
+	if buf.String() != want {
+		t.Errorf("rendered incorrectly\nGot:  %s\nWant: %s", buf.String(), want)
 	}
 }
 

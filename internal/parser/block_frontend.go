@@ -19,8 +19,9 @@ func (i *blockContext) len() int {
 }
 
 type blockLine struct {
-	number int
-	text   string
+	number     int
+	text       string
+	terminated bool
 }
 
 func (i *blockContext) line(offset int) (blockLine, bool) {
@@ -28,7 +29,11 @@ func (i *blockContext) line(offset int) (blockLine, bool) {
 	if offset < 0 || index < i.start || index >= len(i.lines) {
 		return blockLine{}, false
 	}
-	return blockLine{number: index + 1, text: i.lines[index]}, true
+	return blockLine{
+		number:     index + 1,
+		text:       i.lines[index],
+		terminated: index+1 < len(i.lines),
+	}, true
 }
 
 func readBlockDirective(input *blockContext) (*blockDirectiveNode, int) {
@@ -42,6 +47,7 @@ func readBlockDirective(input *blockContext) (*blockDirectiveNode, int) {
 	}
 
 	content := make([]string, 0)
+	contentTerminated := false
 	for offset := 1; offset < input.len(); offset++ {
 		line, ok := input.line(offset)
 		if !ok {
@@ -49,10 +55,11 @@ func readBlockDirective(input *blockContext) (*blockDirectiveNode, int) {
 		}
 		if line.text == ":::" {
 			return &blockDirectiveNode{
-				dirtype:       dirtype,
-				attribute:     attr,
-				text:          strings.Join(content, "\n"),
-				contentOrigin: ast.Position{Line: opener.number + 1, Column: 1},
+				dirtype:           dirtype,
+				attribute:         attr,
+				text:              strings.Join(content, "\n"),
+				contentOrigin:     ast.Position{Line: opener.number + 1, Column: 1},
+				contentTerminated: contentTerminated,
 				rng: ast.Range{
 					Start: ast.Position{Line: opener.number, Column: 1},
 					End:   ast.Position{Line: line.number, Column: 3},
@@ -60,6 +67,7 @@ func readBlockDirective(input *blockContext) (*blockDirectiveNode, int) {
 			}, offset + 1
 		}
 		content = append(content, line.text)
+		contentTerminated = line.terminated
 	}
 
 	return nil, 0
@@ -92,7 +100,7 @@ func readParagraph(input *blockContext) (*paragraphNode, int) {
 	}
 
 	return &paragraphNode{
-		text:          strings.Join(content, "\n"),
+		text:          textWithTerminator(strings.Join(content, "\n"), last.terminated),
 		contentOrigin: ast.Position{Line: first.number, Column: 1},
 		rng: ast.Range{
 			Start: ast.Position{Line: first.number, Column: 1},
@@ -112,8 +120,15 @@ func (p *Parser) buildParagraph(block *paragraphNode) (ast.Block, error) {
 
 func buildParagraphDirective(p *Parser, block *blockDirectiveNode) (ast.Block, error) {
 	return p.buildParagraph(&paragraphNode{
-		text:          block.text,
+		text:          textWithTerminator(block.text, block.contentTerminated),
 		contentOrigin: block.contentOrigin,
 		rng:           block.rng,
 	})
+}
+
+func textWithTerminator(text string, terminated bool) string {
+	if terminated {
+		return text + "\n"
+	}
+	return text
 }

@@ -22,7 +22,7 @@ internal/ast
 internal/parser  --->  internal/diagnostic
 ```
 
-All parser implementation files belong to one `package parser`. Files are separated by responsibility and syntax, while built-in syntax stays local to the parser. `Parser` keeps a private `spec` containing the small amount of configuration that remains useful: Block Directive builders, sugar readers, and inline definitions. This is an internal data structure, not a plugin API.
+All parser implementation files belong to one `package parser`. Files are separated by responsibility and syntax, while built-in syntax stays local to the parser. `Parser` keeps a private `spec` containing the small amount of configuration that remains useful: Block Directive builders, block sugar readers, inline syntax readers, and inline definitions. This is an internal data structure, not a plugin API.
 
 ## Spec
 
@@ -30,6 +30,7 @@ All parser implementation files belong to one `package parser`. Files are separa
 
 - the `heading`, `paragraph`, and `code` Block Directive builders;
 - Heading and List sugar readers, in precedence order;
+- Inline Directive and Line Break readers, in precedence order;
 - the `em`, `link`, and `code` inline definitions.
 
 `NewParser` creates this state, and there is no public registration method. Tests in `package parser` may install small private fixtures when they need to exercise definition-driven parser behavior; callers outside the package cannot replace the built-in syntax.
@@ -52,7 +53,7 @@ Malformed candidates normally fall through to the Paragraph reader. A structural
 
 Block readers record structure, source ranges, and raw text in private node types such as `blockDirectiveNode`, `headingNode`, `listNode`, and `paragraphNode`. These nodes are the local handoff between reading and AST building; they are not a public intermediate representation.
 
-`Parser.buildBlock` dispatches those concrete nodes. It performs normalized Block Directive lookup, creates unsupported-directive diagnostics, and wraps ordinary builder errors with block context. Paragraph and Heading Directive builders reuse the same final construction methods as Paragraph fallback and Heading sugar, respectively. Paragraph and Heading parse their text with the parser's inline scanner. Code Block preserves its content literally. Every successfully built block retains the range recorded while reading.
+`Parser.buildBlock` dispatches those concrete nodes. It performs normalized Block Directive lookup, creates unsupported-directive diagnostics, and wraps ordinary builder errors with block context. Paragraph and Heading Directive builders reuse the same final construction methods as Paragraph fallback and Heading sugar, respectively. Paragraph and Heading parse their text with the parser's inline scanner. Code Block does not invoke inline parsing and preserves its content after logical-newline normalization. Every successfully built block retains the range recorded while reading.
 
 Heading Directive validation currently lives with Heading construction. The required attribute must be `level1` through `level6`; invalid required values are semantic build errors. Attributes that a syntax does not use are accepted and ignored. No separate validation package or validation stage exists in the current architecture.
 
@@ -73,7 +74,9 @@ During AST construction, List item Paragraphs and nested Lists go through the sa
 
 ## Inline Parsing
 
-The frontend scanner owns the common `:[...]{...}` envelope, header splitting, brace handling, recursion, literal fallback, and source ranges.
+The frontend scanner dispatches a small ordered slice of private syntax readers and owns recursion, Text construction, literal fallback, and source ranges. The Inline Directive reader owns the common `:[...]{...}` envelope, header splitting, and brace handling. A failed reader may advance past an invalid literal candidate without allowing lower-precedence readers to reinterpret its contents.
+
+The Line Break reader recognizes ` +` followed by LF, CRLF, or CR and consumes the marker plus terminator while assigning the AST range only to the marker. Normal physical newlines create no node or visible whitespace; Text is split into contiguous source spans around them.
 
 The private `inlineDefinition` for a directive supplies only its content policy, optional attribute validation, and AST construction function. Nested definitions are parsed recursively; literal definitions receive content through the first closing brace without inline parsing. The frontend confirms structural closure before validation. A rejected or unsupported candidate becomes literal text.
 
@@ -81,6 +84,6 @@ Inline definition construction itself does not return an error. Parser errors ar
 
 ## Ranges and Errors
 
-Parser-produced non-empty ranges are one-based and inclusive. Columns count Unicode code points rather than UTF-8 bytes. Inline Directive ranges cover the complete source syntax; nested nodes and literal `Text` nodes carry their own spans.
+Parser-produced non-empty ranges are one-based and inclusive. Columns count Unicode code points rather than UTF-8 bytes. Inline Directive ranges cover the complete source syntax; Line Break ranges cover only their ` +` markers; nested nodes and literal `Text` nodes carry their own spans.
 
 Malformed syntax normally falls back to Paragraph or literal text according to the syntax rules. Errors are used for unsupported valid Block Directives, invalid required semantic values such as a Heading level, and inconsistent internal parser state. Existing diagnostic identity and nested error context are preserved while blocks are built.
