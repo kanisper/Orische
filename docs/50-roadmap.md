@@ -6,15 +6,16 @@ This file records current repository status. It is not a versioned language spec
 
 - AST definitions
 - Document block reader chain
-- Headings with levels 1-6
-- Paragraphs
-- Ordered and unordered lists
-- Recursive list nesting with raw-to-logical level normalization
-- `heading`, `paragraph`, and `code` block directives
-- Inline emphasis, code spans, and links
+- `heading`, `paragraph`, and `code` Block Directives
+- Heading sugar with levels 1-6
+- Paragraph fallback
+- Ordered and unordered List sugar
+- Mixed-marker Lists with first-marker candidate style
+- Recursive List nesting with raw-to-logical level normalization
+- Inline Emphasis, Code Span, and Link directives
 - Private parsed-block handoff and AST builders
 - Private parser `spec` for built-in directive and inline behavior
-- Common `Parser` dispatch for top-level and list-item AST construction
+- Common `Parser` dispatch for top-level and List-item AST construction
 - Source ranges on all block and inline AST nodes
 - One-based, inclusive source positions with Unicode-code-point columns
 - HTML rendering with escaping and link URI-scheme validation
@@ -37,10 +38,13 @@ go test ./internal/parser/...
 - Stable public extension API
 - Dynamic plugin loading
 - Structured attributes such as `key=value`
+- Explicit List Block Directive syntax
 - Additional output formats
 
 ## Possible Future Work
 
+- Design an explicit List Block Directive while preserving current marker sugar semantics
+- Configuration for restricting accepted Heading level ranges
 - Additional built-in block and inline directive types
 - Escaping rules
 - Performance measurement and optimization
