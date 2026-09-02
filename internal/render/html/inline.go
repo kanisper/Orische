@@ -58,17 +58,51 @@ func (*linebreakRenderer) render(_ *Renderer, w io.Writer, _ *ast.LineBreak) err
 type emphasisRenderer struct{}
 
 func (*emphasisRenderer) render(r *Renderer, w io.Writer, emphasis *ast.Emphasis) error {
-	_, err := fmt.Fprint(w, "<em>")
+	return renderInlineContainer(r, w, "em", emphasis.Content)
+}
+
+type strongRenderer struct{}
+
+func (*strongRenderer) render(r *Renderer, w io.Writer, strong *ast.Strong) error {
+	return renderInlineContainer(r, w, "strong", strong.Content)
+}
+
+type italicRenderer struct{}
+
+func (*italicRenderer) render(r *Renderer, w io.Writer, italic *ast.Italic) error {
+	return renderInlineContainer(r, w, "i", italic.Content)
+}
+
+type boldRenderer struct{}
+
+func (*boldRenderer) render(r *Renderer, w io.Writer, bold *ast.Bold) error {
+	return renderInlineContainer(r, w, "b", bold.Content)
+}
+
+type underlineRenderer struct{}
+
+func (*underlineRenderer) render(r *Renderer, w io.Writer, underline *ast.Underline) error {
+	return renderInlineContainer(r, w, "u", underline.Content)
+}
+
+type strikethroughRenderer struct{}
+
+func (*strikethroughRenderer) render(r *Renderer, w io.Writer, strike *ast.Strikethrough) error {
+	return renderInlineContainer(r, w, "s", strike.Content)
+}
+
+func renderInlineContainer(r *Renderer, w io.Writer, tag string, content []ast.Inline) error {
+	_, err := fmt.Fprintf(w, "<%s>", tag)
 	if err != nil {
 		return err
 	}
 
-	err = r.renderInlines(w, emphasis.Content)
+	err = r.renderInlines(w, content)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprint(w, "</em>")
+	_, err = fmt.Fprintf(w, "</%s>", tag)
 	if err != nil {
 		return err
 	}

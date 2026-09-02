@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"orische/internal/ast"
+	"orische/internal/parser"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -235,5 +236,21 @@ int main()
 
 	if diff := cmp.Diff(want, buf.String()); diff != "" {
 		t.Errorf("rendered incorrectly\n(-want, +got)\n%s", diff)
+	}
+}
+
+func TestRenderParsedInlineSugar(t *testing.T) {
+	doc, err := parser.Parse("**strong** and [link](https://example.com)")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := NewRenderer().Render(&buf, doc); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+	want := "<p>\n<strong>strong</strong> and <a href=\"https://example.com\">link</a>\n</p>\n"
+	if buf.String() != want {
+		t.Errorf("rendered incorrectly\nGot:  %s\nWant: %s", buf.String(), want)
 	}
 }

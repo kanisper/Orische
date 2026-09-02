@@ -8,7 +8,8 @@ Orische is an experimental lightweight markup language focused on explicit struc
 - Heading sugar with levels 1-6;
 - Paragraph fallback for ordinary nonblank text;
 - ordered, unordered, mixed-marker, and recursively nested List sugar;
-- inline Emphasis, Code Span, and Link directives;
+- explicit inline Emphasis, Strong, Italic, Bold, Underline, Strikethrough, Code Span, and Link directives;
+- constrained inline sugar and ASCII-punctuation backslash escapes;
 - source ranges on block and inline AST nodes;
 - HTML rendering with escaping and URI-scheme validation;
 - a command-line converter from Orische source to HTML.
@@ -38,7 +39,9 @@ Frequently used structures also have concise forms. Heading marker syntax is sug
 ```text
 = Heading
 
-A paragraph with :[em]{emphasis} and a :[link:https://example.com]{link}.
+A paragraph with **strong text**, `code`, and an [external link](https://example.com).
+
+Use \*asterisks\* literally.
 
 * parent
 *** nested child

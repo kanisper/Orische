@@ -24,10 +24,19 @@ func newSpec() *spec {
 		},
 		// Reader order is inline grammar precedence.
 		inlineReaders: []inlineReader{
+			readInlineEscape,
 			readInlineDirective,
+			readStrongSugar,
+			readEmphasisSugar,
+			readBoldSugar,
+			readItalicSugar,
+			readUnderlineSugar,
+			readStrikethroughSugar,
+			readCodeSpanSugar,
+			readLinkSugar,
 			readLineBreak,
 		},
-		inlineDefinitions: make(map[string]inlineDefinition, 3),
+		inlineDefinitions: make(map[string]inlineDefinition, 8),
 	}
 
 	for typ, definition := range coreInlineDefinitions() {
