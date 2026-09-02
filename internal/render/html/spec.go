@@ -8,86 +8,69 @@ import (
 	"orische/internal/ast"
 )
 
-type Spec struct {
-	blockRenderers  map[reflect.Type]blockRenderer[ast.Block]
-	inlineRenderers map[reflect.Type]inlineRenderer[ast.Inline]
+type spec struct {
+	blockRenderers  map[reflect.Type]blockRenderFunc
+	inlineRenderers map[reflect.Type]inlineRenderFunc
 }
 
-type blockRenderer[T ast.Block] interface {
-	render(r *Renderer, w io.Writer, block T) error
-}
+type blockRenderFunc func(*Renderer, io.Writer, ast.Block) error
+type inlineRenderFunc func(*Renderer, io.Writer, ast.Inline) error
 
-type inlineRenderer[T ast.Inline] interface {
-	render(r *Renderer, w io.Writer, inline T) error
-}
-
-type blockRendererAdapter[T ast.Block] struct {
-	renderer blockRenderer[T]
-}
-
-type inlineRendererAdapter[T ast.Inline] struct {
-	renderer inlineRenderer[T]
-}
-
-func (a blockRendererAdapter[T]) render(r *Renderer, w io.Writer, block ast.Block) error {
-	typed, ok := block.(T)
-	if !ok {
-		return fmt.Errorf("html renderer: block renderer expected %T, but got %T", *new(T), block)
-	}
-	return a.renderer.render(r, w, typed)
-}
-
-func (a inlineRendererAdapter[T]) render(r *Renderer, w io.Writer, inline ast.Inline) error {
-	typed, ok := inline.(T)
-	if !ok {
-		return fmt.Errorf("html renderer: inline renderer expected %T, but got %T", *new(T), inline)
-	}
-	return a.renderer.render(r, w, typed)
-}
-
-func newSpec() *Spec {
-	return &Spec{
-		blockRenderers:  make(map[reflect.Type]blockRenderer[ast.Block]),
-		inlineRenderers: make(map[reflect.Type]inlineRenderer[ast.Inline]),
+func newSpec() *spec {
+	return &spec{
+		blockRenderers:  make(map[reflect.Type]blockRenderFunc),
+		inlineRenderers: make(map[reflect.Type]inlineRenderFunc),
 	}
 }
 
-func coreSpec() *Spec {
+func coreSpec() *spec {
 	s := newSpec()
 
-	addBlockRenderer(s, &headingRenderer{})
-	addBlockRenderer(s, &codeblockRenderer{})
-	addBlockRenderer(s, &listRenderer{})
-	addBlockRenderer(s, &paragraphRenderer{})
+	addBlockRenderer(s, renderHeading)
+	addBlockRenderer(s, renderCodeBlock)
+	addBlockRenderer(s, renderList)
+	addBlockRenderer(s, renderParagraph)
 
-	addInlineRenderer(s, &textRenderer{})
-	addInlineRenderer(s, &linebreakRenderer{})
-	addInlineRenderer(s, &emphasisRenderer{})
-	addInlineRenderer(s, &strongRenderer{})
-	addInlineRenderer(s, &italicRenderer{})
-	addInlineRenderer(s, &boldRenderer{})
-	addInlineRenderer(s, &underlineRenderer{})
-	addInlineRenderer(s, &strikethroughRenderer{})
-	addInlineRenderer(s, &codespanRenderer{})
-	addInlineRenderer(s, &linkRenderer{})
+	addInlineRenderer(s, renderText)
+	addInlineRenderer(s, renderLineBreak)
+	addInlineRenderer(s, renderEmphasis)
+	addInlineRenderer(s, renderStrong)
+	addInlineRenderer(s, renderItalic)
+	addInlineRenderer(s, renderBold)
+	addInlineRenderer(s, renderUnderline)
+	addInlineRenderer(s, renderStrikethrough)
+	addInlineRenderer(s, renderCodeSpan)
+	addInlineRenderer(s, renderLink)
 
 	return s
 }
 
-func addBlockRenderer[T ast.Block](s *Spec, renderer blockRenderer[T]) {
-	s.blockRenderers[reflect.TypeFor[T]()] = blockRendererAdapter[T]{renderer: renderer}
+func addBlockRenderer[T ast.Block](s *spec, render func(*Renderer, io.Writer, T) error) {
+	s.blockRenderers[reflect.TypeFor[T]()] = func(r *Renderer, w io.Writer, block ast.Block) error {
+		typed, ok := block.(T)
+		if !ok {
+			return fmt.Errorf("html renderer: block renderer expected %T, but got %T", *new(T), block)
+		}
+		return render(r, w, typed)
+	}
 }
 
-func addInlineRenderer[T ast.Inline](s *Spec, renderer inlineRenderer[T]) {
-	s.inlineRenderers[reflect.TypeFor[T]()] = inlineRendererAdapter[T]{renderer: renderer}
+func addInlineRenderer[T ast.Inline](s *spec, render func(*Renderer, io.Writer, T) error) {
+	s.inlineRenderers[reflect.TypeFor[T]()] = func(r *Renderer, w io.Writer, inline ast.Inline) error {
+		typed, ok := inline.(T)
+		if !ok {
+			return fmt.Errorf("html renderer: inline renderer expected %T, but got %T", *new(T), inline)
+		}
+		return render(r, w, typed)
+	}
 }
 
-func (s *Spec) getBlockRenderer(block ast.Block) (blockRenderer[ast.Block], bool) {
+func (s *spec) getBlockRenderer(block ast.Block) (blockRenderFunc, bool) {
 	renderer, ok := s.blockRenderers[reflect.TypeOf(block)]
 	return renderer, ok
 }
 
-func (s *Spec) getInlineRenderer(inline ast.Inline) (inlineRenderer[ast.Inline], bool) {
+func (s *spec) getInlineRenderer(inline ast.Inline) (inlineRenderFunc, bool) {
 	renderer, ok := s.inlineRenderers[reflect.TypeOf(inline)]
 	return renderer, ok
 }

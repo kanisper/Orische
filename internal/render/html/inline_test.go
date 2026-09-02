@@ -126,7 +126,7 @@ func TestLinkRendererAllowsSupportedSchemes(t *testing.T) {
 			want := `<a href="` + tt.uri + `">link</a>`
 
 			var buf bytes.Buffer
-			err := (&linkRenderer{}).render(NewRenderer(), &buf, input)
+			err := NewRenderer().renderInlines(&buf, []ast.Inline{input})
 			if err != nil {
 				t.Fatalf("rendering failed: %s", err)
 			}
@@ -153,7 +153,7 @@ func TestLinkRendererRejectsUnsupportedSchemes(t *testing.T) {
 			input := &ast.Link{URI: tt.uri, Content: []ast.Inline{&ast.Text{Value: "link"}}}
 
 			var buf bytes.Buffer
-			err := (&linkRenderer{}).render(NewRenderer(), &buf, input)
+			err := NewRenderer().renderInlines(&buf, []ast.Inline{input})
 			if err == nil {
 				t.Fatal("rendering succeeded for an unsupported URI scheme")
 			}

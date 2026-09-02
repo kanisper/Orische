@@ -20,7 +20,7 @@
 
 ## Extension Discipline
 
-- Add block and inline renderers through the typed adapters in `spec.go`; do not replace dispatch with parsing or source-syntax checks.
+- Add block and inline renderers through the typed registration helpers in `spec.go`; do not replace dispatch with parsing or source-syntax checks.
 - When adding an AST node, update `coreSpec` and add focused tests for dispatch, escaping, exact output, and error propagation as applicable.
 - Keep security-sensitive policy, especially URI acceptance and escaping, explicit and covered by negative tests.
 

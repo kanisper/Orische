@@ -7,15 +7,9 @@ import (
 )
 
 type Renderer struct {
-	spec *Spec
+	spec *spec
 }
 
-//	func NewRenderer(spec *Spec) *Renderer {
-//		if spec == nil {
-//			spec = coreSpec()
-//		}
-//		return &Renderer{spec: spec}
-//	}
 func NewRenderer() *Renderer {
 	return &Renderer{spec: coreSpec()}
 }
@@ -26,8 +20,7 @@ func Render(w io.Writer, doc *ast.Document) error {
 
 func (r *Renderer) Render(w io.Writer, doc *ast.Document) error {
 	for _, block := range doc.Blocks {
-		err := r.renderBlock(w, block)
-		if err != nil {
+		if err := r.renderBlock(w, block); err != nil {
 			return err
 		}
 	}
