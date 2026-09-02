@@ -327,7 +327,9 @@ Tabs, full-width spaces, non-breaking spaces, and other Unicode whitespace are n
 
 Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `---text---`, `~~text~~`, `~~~text~~~`, and multiple-backtick runs remain Text. Bold is checked before Strong, and Italic before Emphasis. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
 
-An opening styled or Code Span candidate without a qualifying close keeps the rest of that logical line literal. A Link becomes a candidate after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Closed candidates with empty or space-padded content remain literal through that close. Parsing resumes normally on the next logical line.
+An opening Styled Sugar delimiter is not committed until a qualifying closing delimiter is found. Without a close, the opener remains literal and ordinary scanning continues, so later valid inline syntax on the same logical line may still be recognized. Once a close is found, an invalid candidate with empty or space-padded content remains literal through that close.
+
+Code Span and Link Sugar keep their own commit behavior. An opening Code Span without a qualifying close keeps the rest of that logical line literal. A Link becomes committed after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Parsing resumes normally on the next logical line.
 
 Styled content and Link labels are recursively inline-parsed. No special same-delimiter nesting algorithm is used; the first qualifying closing marker wins.
 
@@ -344,6 +346,13 @@ This is **visually bold**.
 --deleted-- and ~outdated~.
 Use `go test` now.
 See [Orische](https://github.com/kanisper/Orische).
+```
+
+Literal CLI options and paths are best written as Code Span, such as `` `--help` `` and `` `~/.config` ``. Without Code Span markup, an unmatched `--` or `~` remains Text and does not suppress later valid Styled Sugar on the same line:
+
+```text
+Use --help and *important* options.
+See ~/.config and _note_.
 ```
 
 Literal fallback examples:
@@ -366,7 +375,8 @@ Use`go test`now
 - Invalid List line at block start -> Paragraph text
 - Unsupported inline directive, invalid inline header, or Link without a URI -> literal source text through the first available `}`
 - Other malformed or unterminated Inline Directive candidate -> ordinary literal scanning resumes; later valid inline syntax may still be recognized
-- Invalid or incomplete inline Sugar candidate -> literal source according to the Inline Sugar fallback rules
+- Unterminated Styled Sugar opener -> literal Text, with ordinary scanning continuing afterward
+- Closed but invalid Styled Sugar, or incomplete Code Span and committed Link Sugar -> literal source according to their commit rules
 - Valid Block Directive without a registered builder -> AST build error
 - Structurally valid Heading Directive with an invalid required level attribute -> AST build error
 - Unused attributes on syntaxes such as Paragraph and non-Link inline directives -> accepted and ignored

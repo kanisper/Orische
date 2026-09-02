@@ -4,7 +4,7 @@
 
 Syntax is explicit and parsing is deterministic. The parser does not auto-correct malformed input.
 
-Malformed block candidates normally fall through to paragraph parsing. Unsupported inline directives and invalid inline headers are emitted as literal source text rather than errors. Other malformed or unterminated Inline Directive candidates resume ordinary scanning, so a later valid inline sequence may still be recognized. An unterminated inline Sugar candidate instead keeps the rest of its logical line literal, preventing ambiguous content from being reinterpreted. Syntactically valid Block Directives require a built-in definition and return an error if unsupported.
+Malformed block candidates normally fall through to paragraph parsing. Unsupported inline directives and invalid inline headers are emitted as literal source text rather than errors. Other malformed or unterminated Inline Directive candidates resume ordinary scanning, so a later valid inline sequence may still be recognized. An unterminated Styled Sugar opener also remains literal while ordinary scanning continues, allowing later valid syntax on the same logical line. Code Span and Link Sugar retain their own stricter commit behavior. Syntactically valid Block Directives require a built-in definition and return an error if unsupported.
 
 A structurally valid directive may still contain an invalid required semantic value. Those cases are semantic errors rather than syntax fallback. For example, Heading requires `level1` through `level6`; missing, nonnumeric, zero, and out-of-range levels are errors.
 

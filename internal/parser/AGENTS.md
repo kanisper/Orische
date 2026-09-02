@@ -66,7 +66,7 @@ The frontend owns ordered syntax-reader dispatch, recursion, fallback, Text cons
 
 Normal physical newlines create no inline node or visible whitespace. They split adjacent Text into separate source spans. A Line Break range covers only its ` +` marker and excludes the physical terminator.
 
-Empty Inline Directive content is valid, and Links require a nonempty URI attribute. Unsupported directives, invalid headers, and Links without a URI are emitted as literal source text. Other malformed or unterminated Directive candidates resume ordinary scanning. Sugar requires nonempty, non-space-edged content and constrained outer boundaries; unterminated Sugar candidates preserve the remainder of their logical line as Text. Definitions are validated only after the frontend confirms that the candidate is structurally closed.
+Empty Inline Directive content is valid, and Links require a nonempty URI attribute. Unsupported directives, invalid headers, and Links without a URI are emitted as literal source text. Other malformed or unterminated Directive candidates resume ordinary scanning. Sugar requires nonempty, non-space-edged content and constrained outer boundaries. Unterminated Styled Sugar openers remain Text without advancing the scanner, so later syntax on the same logical line may still be recognized. Unterminated Code Span and committed Link candidates preserve the remainder of their logical line as Text. Definitions are validated only after the frontend confirms that the candidate is structurally closed.
 
 `inlineDefinition.build` returns an AST node directly rather than an error. Internal parser errors cover invalid definition state such as an unknown content policy, a missing builder function, or a nil AST node returned by a builder.
 

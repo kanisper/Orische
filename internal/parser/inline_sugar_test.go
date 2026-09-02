@@ -167,7 +167,6 @@ func TestInlineSugarFallsBackForInvalidOrIncompleteCandidates(t *testing.T) {
 		"--removed --",
 		"~ old~",
 		"~old ~",
-		"*unterminated **valid**",
 		"* :[em]{nested} *",
 		"[](https://example.com)",
 		"[x]()",
@@ -176,6 +175,7 @@ func TestInlineSugarFallsBackForInvalidOrIncompleteCandidates(t *testing.T) {
 		"[x]( https://example.com)",
 		"[x](https://example.com )",
 		"[x](https://example.com",
+		"[x](https://example.com *valid*",
 		"[x](https://example.com/a(b)c)",
 	}
 
@@ -184,6 +184,59 @@ func TestInlineSugarFallsBackForInvalidOrIncompleteCandidates(t *testing.T) {
 			assertOnlyLiteralText(t, input)
 		})
 	}
+}
+
+func TestUnterminatedStyledSugarAllowsLaterSyntax(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		prefix     string
+		wantType   ast.Inline
+		wantValue  string
+		wantSuffix string
+	}{
+		{name: "CLI option", input: "Use --help and *important* options.", prefix: "Use --help and ", wantType: &ast.Strong{}, wantValue: "important", wantSuffix: " options."},
+		{name: "filesystem path", input: "See ~/.config and _note_.", prefix: "See ~/.config and ", wantType: &ast.Emphasis{}, wantValue: "note", wantSuffix: "."},
+		{name: "strong before bold", input: "*unterminated **valid**", prefix: "*unterminated ", wantType: &ast.Bold{}, wantValue: "valid"},
+		{name: "deleted before emphasis", input: "--unterminated _valid_", prefix: "--unterminated ", wantType: &ast.Emphasis{}, wantValue: "valid"},
+		{name: "outdated before strong", input: "~unterminated *valid*", prefix: "~unterminated ", wantType: &ast.Strong{}, wantValue: "valid"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := mustCoreParser(t).parseInlines(tt.input, ast.Position{Line: 1, Column: 1})
+			if err != nil {
+				t.Fatalf("parseInlines returned an error: %v", err)
+			}
+			wantCount := 2
+			if tt.wantSuffix != "" {
+				wantCount = 3
+			}
+			if len(got) != wantCount {
+				t.Fatalf("inline count = %d, want %d: %#v", len(got), wantCount, got)
+			}
+			prefix, ok := got[0].(*ast.Text)
+			if !ok || prefix.Value != tt.prefix {
+				t.Errorf("prefix = %#v, want Text(%q)", got[0], tt.prefix)
+			}
+			if reflect.TypeOf(got[1]) != reflect.TypeOf(tt.wantType) {
+				t.Fatalf("styled inline type = %T, want %T", got[1], tt.wantType)
+			}
+			if value := sugarSemanticValue(got[1]); value != tt.wantValue {
+				t.Errorf("styled inline value = %q, want %q", value, tt.wantValue)
+			}
+			if tt.wantSuffix != "" {
+				suffix, ok := got[2].(*ast.Text)
+				if !ok || suffix.Value != tt.wantSuffix {
+					t.Errorf("suffix = %#v, want Text(%q)", got[2], tt.wantSuffix)
+				}
+			}
+		})
+	}
+}
+
+func TestUnterminatedCodeSpanStillConsumesLogicalLine(t *testing.T) {
+	assertOnlyLiteralText(t, "`unterminated *valid*")
 }
 
 func TestInlineSugarHonorsEscapedDelimiters(t *testing.T) {
@@ -270,14 +323,17 @@ func TestUnterminatedInlineSugarResumesOnNextLogicalLine(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseInlines returned an error: %v", err)
 		}
-		if len(got) != 2 {
-			t.Fatalf("newline %q inline count = %d, want Text and Bold", newline, len(got))
+		if len(got) != 3 {
+			t.Fatalf("newline %q inline count = %d, want Text and two Bold nodes", newline, len(got))
 		}
 		if _, ok := got[0].(*ast.Text); !ok {
 			t.Errorf("newline %q first inline = %T, want *ast.Text", newline, got[0])
 		}
 		if _, ok := got[1].(*ast.Bold); !ok {
 			t.Errorf("newline %q second inline = %T, want *ast.Bold", newline, got[1])
+		}
+		if _, ok := got[2].(*ast.Bold); !ok {
+			t.Errorf("newline %q third inline = %T, want *ast.Bold", newline, got[2])
 		}
 	}
 }

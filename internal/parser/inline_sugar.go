@@ -10,31 +10,39 @@ import (
 )
 
 func readStrongSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "*", "strong", true)
+	return p.readStyledSugar(start, "*", "strong")
 }
 
 func readEmphasisSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "_", "em", true)
+	return p.readStyledSugar(start, "_", "em")
 }
 
 func readBoldSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "**", "bold", true)
+	return p.readStyledSugar(start, "**", "bold")
 }
 
 func readItalicSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "__", "italic", true)
+	return p.readStyledSugar(start, "__", "italic")
 }
 
 func readDeletedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "--", "del", true)
+	return p.readStyledSugar(start, "--", "del")
 }
 
 func readOutdatedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "~", "outdated", true)
+	return p.readStyledSugar(start, "~", "outdated")
+}
+
+func (p *inlineParseState) readStyledSugar(
+	start int,
+	marker string,
+	typ string,
+) (ast.Inline, int, bool, error) {
+	return p.readDelimitedSugar(start, marker, typ, true, false)
 }
 
 func readCodeSpanSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "`", "code", false)
+	return p.readDelimitedSugar(start, "`", "code", false, true)
 }
 
 func (p *inlineParseState) readDelimitedSugar(
@@ -42,6 +50,7 @@ func (p *inlineParseState) readDelimitedSugar(
 	marker string,
 	typ string,
 	escapeClosingMarker bool,
+	consumeUnterminated bool,
 ) (ast.Inline, int, bool, error) {
 	if !hasExactDelimiterRun(p.ctx.text, start, marker) ||
 		!p.hasOpeningSugarBoundary(start) ||
@@ -69,6 +78,9 @@ func (p *inlineParseState) readDelimitedSugar(
 	}
 
 	if closingStart < 0 {
+		if !consumeUnterminated {
+			return nil, start, false, nil
+		}
 		return nil, lineEnd, false, nil
 	}
 
