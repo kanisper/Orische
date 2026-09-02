@@ -200,6 +200,9 @@ func TestUnterminatedStyledSugarAllowsLaterSyntax(t *testing.T) {
 		{name: "strong before bold", input: "*unterminated **valid**", prefix: "*unterminated ", wantType: &ast.Bold{}, wantValue: "valid"},
 		{name: "deleted before emphasis", input: "--unterminated _valid_", prefix: "--unterminated ", wantType: &ast.Emphasis{}, wantValue: "valid"},
 		{name: "outdated before strong", input: "~unterminated *valid*", prefix: "~unterminated ", wantType: &ast.Strong{}, wantValue: "valid"},
+		{name: "competing strong opener", input: "*unterminated and *valid*", prefix: "*unterminated and ", wantType: &ast.Strong{}, wantValue: "valid"},
+		{name: "competing deleted opener", input: "Use --help and --deleted-- options.", prefix: "Use --help and ", wantType: &ast.Deleted{}, wantValue: "deleted", wantSuffix: " options."},
+		{name: "competing outdated opener", input: "See ~/.config and ~outdated~.", prefix: "See ~/.config and ", wantType: &ast.Outdated{}, wantValue: "outdated", wantSuffix: "."},
 	}
 
 	for _, tt := range tests {

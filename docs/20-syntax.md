@@ -327,7 +327,7 @@ Tabs, full-width spaces, non-breaking spaces, and other Unicode whitespace are n
 
 Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `---text---`, `~~text~~`, `~~~text~~~`, and multiple-backtick runs remain Text. Bold is checked before Strong, and Italic before Emphasis. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
 
-An opening Styled Sugar delimiter is not committed until a qualifying closing delimiter is found. Without a close, the opener remains literal and ordinary scanning continues, so later valid inline syntax on the same logical line may still be recognized. Once a close is found, an invalid candidate with empty or space-padded content remains literal through that close.
+An opening Styled Sugar delimiter is not committed until a qualifying closing delimiter is found. Without a close, the opener remains literal and ordinary scanning continues, so later valid inline syntax on the same logical line may still be recognized. While searching, a same exact delimiter that cannot close the current candidate but can form a valid new opening boundary causes the earlier uncommitted opener to yield. Once a close is found, an invalid candidate with empty or space-padded content remains literal through that close.
 
 Code Span and Link Sugar keep their own commit behavior. An opening Code Span without a qualifying close keeps the rest of that logical line literal. A Link becomes committed after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Parsing resumes normally on the next logical line.
 
@@ -353,6 +353,9 @@ Literal CLI options and paths are best written as Code Span, such as `` `--help`
 ```text
 Use --help and *important* options.
 See ~/.config and _note_.
+*unterminated and *valid*
+Use --help and --deleted-- options.
+See ~/.config and ~outdated~.
 ```
 
 Literal fallback examples:

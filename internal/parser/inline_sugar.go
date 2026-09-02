@@ -9,6 +9,12 @@ import (
 	"orische/internal/ast"
 )
 
+type delimitedSugarOptions struct {
+	escapeClosingMarker     bool
+	consumeUnterminated     bool
+	yieldToCompetingOpening bool
+}
+
 func readStrongSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
 	return p.readStyledSugar(start, "*", "strong")
 }
@@ -38,19 +44,23 @@ func (p *inlineParseState) readStyledSugar(
 	marker string,
 	typ string,
 ) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, marker, typ, true, false)
+	return p.readDelimitedSugar(start, marker, typ, delimitedSugarOptions{
+		escapeClosingMarker:     true,
+		yieldToCompetingOpening: true,
+	})
 }
 
 func readCodeSpanSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "`", "code", false, true)
+	return p.readDelimitedSugar(start, "`", "code", delimitedSugarOptions{
+		consumeUnterminated: true,
+	})
 }
 
 func (p *inlineParseState) readDelimitedSugar(
 	start int,
 	marker string,
 	typ string,
-	escapeClosingMarker bool,
-	consumeUnterminated bool,
+	options delimitedSugarOptions,
 ) (ast.Inline, int, bool, error) {
 	if !hasExactDelimiterRun(p.ctx.text, start, marker) ||
 		!p.hasOpeningSugarBoundary(start) ||
@@ -69,16 +79,20 @@ func (p *inlineParseState) readDelimitedSugar(
 		candidate := search + relative
 		candidateEnd := candidate + len(marker)
 		if hasExactDelimiterRun(p.ctx.text, candidate, marker) &&
-			(!escapeClosingMarker || !isEscapedDelimiter(p.ctx.text, candidate)) &&
-			p.hasClosingSugarBoundary(candidateEnd) {
-			closingStart = candidate
-			break
+			(!options.escapeClosingMarker || !isEscapedDelimiter(p.ctx.text, candidate)) {
+			if p.hasClosingSugarBoundary(candidateEnd) {
+				closingStart = candidate
+				break
+			}
+			if options.yieldToCompetingOpening && p.hasOpeningSugarBoundary(candidate) {
+				return nil, start, false, nil
+			}
 		}
 		search = candidate + 1
 	}
 
 	if closingStart < 0 {
-		if !consumeUnterminated {
+		if !options.consumeUnterminated {
 			return nil, start, false, nil
 		}
 		return nil, lineEnd, false, nil
