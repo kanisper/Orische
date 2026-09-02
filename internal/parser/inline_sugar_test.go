@@ -271,7 +271,7 @@ func TestUnterminatedInlineSugarResumesOnNextLogicalLine(t *testing.T) {
 			t.Fatalf("parseInlines returned an error: %v", err)
 		}
 		if len(got) != 2 {
-			t.Fatalf("newline %q inline count = %d, want Text and Strong", newline, len(got))
+			t.Fatalf("newline %q inline count = %d, want Text and Bold", newline, len(got))
 		}
 		if _, ok := got[0].(*ast.Text); !ok {
 			t.Errorf("newline %q first inline = %T, want *ast.Text", newline, got[0])
