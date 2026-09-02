@@ -20,6 +20,11 @@ func TestInlineRender(t *testing.T) {
 				},
 			},
 		},
+		&ast.Strong{Content: []ast.Inline{&ast.Text{Value: "Strong Text"}}},
+		&ast.Italic{Content: []ast.Inline{&ast.Text{Value: "Italic Text"}}},
+		&ast.Bold{Content: []ast.Inline{&ast.Text{Value: "Bold Text"}}},
+		&ast.Underline{Content: []ast.Inline{&ast.Text{Value: "Underline Text"}}},
+		&ast.Strikethrough{Content: []ast.Inline{&ast.Text{Value: "Strike Text"}}},
 		&ast.CodeSpan{
 			Value: "Code Span",
 		},
@@ -34,7 +39,10 @@ func TestInlineRender(t *testing.T) {
 		},
 	}
 
-	want := "Plain Text<em>Emphasized Text</em><code>Code Span</code><br><a href=\"https://example.com\">Link Text</a>"
+	want := "Plain Text<em>Emphasized Text</em>" +
+		"<strong>Strong Text</strong><i>Italic Text</i><b>Bold Text</b>" +
+		"<u>Underline Text</u><s>Strike Text</s>" +
+		"<code>Code Span</code><br><a href=\"https://example.com\">Link Text</a>"
 
 	var buf bytes.Buffer
 	renderer := NewRenderer()
@@ -79,6 +87,7 @@ func TestLineBreakRenderInNestedContent(t *testing.T) {
 func TestInlineRenderEscapesHTML(t *testing.T) {
 	input := []ast.Inline{
 		&ast.Text{Value: `<strong>"text" & 'text'</strong>`},
+		&ast.Strong{Content: []ast.Inline{&ast.Text{Value: `<nested & text>`}}},
 		&ast.CodeSpan{Value: `left < right && right > "value"`},
 		&ast.Link{
 			URI:     `https://example.com/search?q="quoted"&page=1`,
@@ -86,6 +95,7 @@ func TestInlineRenderEscapesHTML(t *testing.T) {
 		},
 	}
 	want := "&lt;strong&gt;&#34;text&#34; &amp; &#39;text&#39;&lt;/strong&gt;" +
+		"<strong>&lt;nested &amp; text&gt;</strong>" +
 		"<code>left &lt; right &amp;&amp; right &gt; &#34;value&#34;</code>" +
 		"<a href=\"https://example.com/search?q=&#34;quoted&#34;&amp;page=1\">&lt;link&gt;</a>"
 

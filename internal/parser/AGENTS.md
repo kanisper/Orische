@@ -18,7 +18,7 @@ All implementation files are in `package parser`. Files are split by syntax and 
 - ordered inline syntax readers;
 - inline definitions for directive content policy, optional validation, and AST building.
 
-`spec` is parser configuration, not a public language or plugin API. `newSpec` installs the built-in `heading`, `paragraph`, and `code` Block Directive builders, the Inline Directive and Line Break readers, and the `em`, `link`, and `code` inline definitions. Keep definition-specific logic close to the syntax file that uses it.
+`spec` is parser configuration, not a public language or plugin API. `newSpec` installs the built-in `heading`, `paragraph`, and `code` Block Directive builders; the escape, Inline Directive, constrained Sugar, and Line Break readers; and the `em`, `strong`, `italic`, `bold`, `underline`, `strike`, `link`, and `code` inline definitions. Keep definition-specific logic close to the syntax file that uses it.
 
 Block readers hand private concrete nodes to `Parser.buildBlock`. The private `parsedBlock` interface carries only the source range needed by orchestration; syntax-specific fields remain on concrete node types. Avoid introducing generic contracts when a private concrete type expresses the state directly.
 
@@ -62,11 +62,11 @@ List item Paragraphs and nested Lists are built through `Parser.buildBlock`, so 
 
 ## Inline Parsing
 
-The frontend owns ordered syntax-reader dispatch, recursion, fallback, Text construction, and range calculation. The Inline Directive reader owns the common `:[...]{...}` envelope; inline definitions own type-specific attribute validation when needed, content policy, and AST construction. The Line Break reader recognizes ` +` only when followed by LF, CRLF, or CR.
+The frontend owns ordered syntax-reader dispatch, recursion, fallback, Text construction, and range calculation. The escape reader handles ASCII punctuation before other syntax. The Inline Directive reader owns the common `:[...]{...}` envelope; constrained Sugar readers reuse inline definitions for AST construction; inline definitions own type-specific attribute validation when needed, content policy, and AST construction. The Line Break reader recognizes ` +` only when followed by LF, CRLF, or CR.
 
 Normal physical newlines create no inline node or visible whitespace. They split adjacent Text into separate source spans. A Line Break range covers only its ` +` marker and excludes the physical terminator.
 
-Empty inline content is valid, and Links require a nonempty URI attribute. Unsupported directives, invalid headers, and Links without a URI are emitted as literal source text. Other malformed or unterminated candidates resume ordinary scanning. Definitions are validated only after the frontend confirms that the candidate is structurally closed.
+Empty Inline Directive content is valid, and Links require a nonempty URI attribute. Unsupported directives, invalid headers, and Links without a URI are emitted as literal source text. Other malformed or unterminated Directive candidates resume ordinary scanning. Sugar requires nonempty, non-space-edged content and constrained outer boundaries; unterminated Sugar candidates preserve the remainder of their logical line as Text. Definitions are validated only after the frontend confirms that the candidate is structurally closed.
 
 `inlineDefinition.build` returns an AST node directly rather than an error. Internal parser errors cover invalid definition state such as an unknown content policy, a missing builder function, or a nil AST node returned by a builder.
 

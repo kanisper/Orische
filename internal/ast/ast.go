@@ -65,6 +65,31 @@ type Emphasis struct {
 	Range   Range
 }
 
+type Strong struct {
+	Content []Inline
+	Range   Range
+}
+
+type Italic struct {
+	Content []Inline
+	Range   Range
+}
+
+type Bold struct {
+	Content []Inline
+	Range   Range
+}
+
+type Underline struct {
+	Content []Inline
+	Range   Range
+}
+
+type Strikethrough struct {
+	Content []Inline
+	Range   Range
+}
+
 type CodeSpan struct {
 	Value string
 	Range Range
@@ -87,8 +112,13 @@ func (*Paragraph) isBlock() {}
 func (*List) isBlock()      {}
 func (*CodeBlock) isBlock() {}
 
-func (*Text) isInline()      {}
-func (*Emphasis) isInline()  {}
-func (*CodeSpan) isInline()  {}
-func (*Link) isInline()      {}
-func (*LineBreak) isInline() {}
+func (*Text) isInline()          {}
+func (*Emphasis) isInline()      {}
+func (*Strong) isInline()        {}
+func (*Italic) isInline()        {}
+func (*Bold) isInline()          {}
+func (*Underline) isInline()     {}
+func (*Strikethrough) isInline() {}
+func (*CodeSpan) isInline()      {}
+func (*Link) isInline()          {}
+func (*LineBreak) isInline()     {}

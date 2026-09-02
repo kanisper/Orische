@@ -10,8 +10,8 @@ import (
 
 func TestBuiltInInlineDefinitions(t *testing.T) {
 	definitions := coreInlineDefinitions()
-	if len(definitions) != 3 {
-		t.Fatalf("definition count = %d, want 3", len(definitions))
+	if len(definitions) != 8 {
+		t.Fatalf("definition count = %d, want 8", len(definitions))
 	}
 
 	tests := []struct {
@@ -22,6 +22,11 @@ func TestBuiltInInlineDefinitions(t *testing.T) {
 		want      ast.Inline
 	}{
 		{"em", inlineContentNested, "ignored", true, &ast.Emphasis{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"strong", inlineContentNested, "ignored", true, &ast.Strong{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"italic", inlineContentNested, "ignored", true, &ast.Italic{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"bold", inlineContentNested, "ignored", true, &ast.Bold{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"underline", inlineContentNested, "ignored", true, &ast.Underline{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"strike", inlineContentNested, "ignored", true, &ast.Strikethrough{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"link", inlineContentNested, "/x", true, &ast.Link{URI: "/x", Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"code", inlineContentLiteral, "ignored", true, &ast.CodeSpan{Value: "x"}},
 	}

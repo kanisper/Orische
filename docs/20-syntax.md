@@ -18,7 +18,7 @@ Block Directives are the explicit named form for supported block semantics. Head
 
 Once a Paragraph starts, it consumes every consecutive nonblank line. A Heading marker, List marker, or Directive opener on a later Paragraph line remains Paragraph text. Use a blank line before such a block when the preceding block is a Paragraph.
 
-Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range: an Emphasis, Code Span, or Link range includes the complete `:[...]{...}` syntax, while nested inline and literal `Text` ranges cover their own source spans. A Line Break range covers only its ` +` marker.
+Parser-produced non-empty source ranges use one-based line and column positions with inclusive endpoints. Columns count Unicode code points rather than UTF-8 bytes. Every inline AST node has a range. Inline Directive and Sugar ranges include their complete source syntax, while nested inline and literal `Text` ranges cover their own source spans. An escaped Text range includes both the backslash and escaped punctuation. A Line Break range covers only its ` +` marker.
 
 ## Block Directives
 
@@ -243,7 +243,7 @@ Inline candidates use:
 
 The first colon separates the type and opaque attribute. Additional colons remain in the attribute. Registered Directive Types are matched case-insensitively. Type normalization does not alter the attribute or content.
 
-Unsupported directive types, empty directive types, and Links without a nonempty URI are emitted as literal source text rather than errors. When such a candidate has a closing `}`, literal fallback consumes through the first `}`. Other malformed or unterminated candidates resume ordinary scanning, so a later valid `:[` sequence may still be parsed. There is no escape syntax.
+Unsupported directive types, empty directive types, and Links without a nonempty URI are emitted as literal source text rather than errors. When such a candidate has a closing `}`, literal fallback consumes through the first `}`. Other malformed or unterminated Directive candidates resume ordinary scanning, so a later valid `:[` sequence may still be parsed.
 
 Empty inline content is valid.
 
@@ -255,6 +255,26 @@ Empty inline content is valid.
 ```
 
 Emphasis content is recursively inline-parsed. An Emphasis attribute is accepted but ignored.
+
+### Strong, Italic, Bold, Underline, and Strikethrough
+
+```text
+:[strong]{strong text}
+:[italic]{italic text}
+:[bold]{bold text}
+:[underline]{underlined text}
+:[strike]{struck text}
+```
+
+Each element recursively parses its content. Attributes are accepted and ignored. They produce distinct AST nodes and render as follows:
+
+| Directive | AST node | HTML |
+|---|---|---|
+| `strong` | `Strong` | `<strong>` |
+| `italic` | `Italic` | `<i>` |
+| `bold` | `Bold` | `<b>` |
+| `underline` | `Underline` | `<u>` |
+| `strike` | `Strikethrough` | `<s>` |
 
 ### Code Span
 
@@ -274,13 +294,74 @@ Code content is literal and ends at the first `}`. Nested inline syntax is not p
 
 The attribute is the URI and must be nonempty. Link content is recursively inline-parsed. Empty content creates a Link with no visible content; the URI is not inserted as display text.
 
+### Backslash Escape
+
+In recursively parsed inline content, a backslash escapes one immediately following ASCII punctuation character:
+
+```text
+! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
+```
+
+The punctuation becomes a `Text` node and the escape backslash is omitted from its value. Its source range includes both source characters. A backslash before any other character, before a physical newline, or at the end of input remains ordinary Text.
+
+Escape processing is recursive, including inside styled content and Link labels. It is not applied inside explicit or Sugar Code Span content or inside Code Blocks. Escaping the `+` in an end-of-line ` +` candidate prevents creation of a Line Break.
+
+### Inline Sugar
+
+Inline Directives remain the canonical forms. The following constrained forms are shorthand for the same AST semantics:
+
+| Sugar | Explicit form | AST node | HTML |
+|---|---|---|---|
+| `*text*` | `:[em]{text}` | `Emphasis` | `<em>` |
+| `**text**` | `:[strong]{text}` | `Strong` | `<strong>` |
+| `_text_` | `:[italic]{text}` | `Italic` | `<i>` |
+| `__text__` | `:[bold]{text}` | `Bold` | `<b>` |
+| `++text++` | `:[underline]{text}` | `Underline` | `<u>` |
+| `~~text~~` | `:[strike]{text}` | `Strikethrough` | `<s>` |
+| single backtick around `text` | `:[code]{text}` | `CodeSpan` | `<code>` |
+| `[label](URI)` | `:[link:URI]{label}` | `Link` | `<a>` |
+
+Every Sugar candidate must finish on one logical line. Its opening marker must be preceded by the logical line start, U+0020 SPACE, or a Unicode punctuation code point for which Go's `unicode.IsPunct` is true. Its closing marker must be followed by the symmetric logical line end, U+0020 SPACE, or Unicode punctuation boundary.
+
+Tabs, full-width spaces, non-breaking spaces, and other Unicode whitespace are not Sugar separators. Content must be nonempty and cannot start or end with U+0020 SPACE.
+
+Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `~~~text~~~`, and multiple-backtick runs remain Text. Strong is checked before Emphasis, and Bold before Italic. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
+
+An opening styled or Code Span candidate without a qualifying close keeps the rest of that logical line literal. A Link becomes a candidate after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Closed candidates with empty or space-padded content remain literal through that close. Parsing resumes normally on the next logical line.
+
+Styled content and Link labels are recursively inline-parsed. No special same-delimiter nesting algorithm is used; the first qualifying closing marker wins.
+
+Code Span Sugar uses only single-backtick delimiter runs. Its content is literal and the first qualifying raw single backtick closes it. Inline Directives, Sugar, Line Breaks, and escapes are not interpreted in the content.
+
+Link Sugar requires nonempty labels and URIs without leading or trailing U+0020 SPACE. The first unescaped `)` ends the URI; parentheses are not balanced. ASCII punctuation escapes in the URI are removed before the value is stored in `Link.URI`. URI scheme validation and HTML attribute escaping remain renderer responsibilities.
+
+Valid boundary examples:
+
+```text
+**important** text
+This is **important**.
+これは「**重要**」です。
+Use `go test` now.
+See [Orische](https://github.com/kanisper/Orische).
+```
+
+Literal fallback examples:
+
+```text
+foo**bar**baz
+これは**重要**です
+Use`go test`now
+***important***
+```
+
 ## Fallback and Error Summary
 
 - Invalid Heading sugar opener -> Paragraph text
 - Invalid or unterminated Block Directive envelope -> Paragraph text
 - Invalid List line at block start -> Paragraph text
 - Unsupported inline directive, invalid inline header, or Link without a URI -> literal source text through the first available `}`
-- Other malformed or unterminated inline candidate -> ordinary literal scanning resumes; later valid inline syntax may still be recognized
+- Other malformed or unterminated Inline Directive candidate -> ordinary literal scanning resumes; later valid inline syntax may still be recognized
+- Invalid or incomplete inline Sugar candidate -> literal source according to the Inline Sugar fallback rules
 - Valid Block Directive without a registered builder -> AST build error
 - Structurally valid Heading Directive with an invalid required level attribute -> AST build error
-- Unused attributes on syntaxes such as Paragraph, Emphasis, and Code Span -> accepted and ignored
+- Unused attributes on syntaxes such as Paragraph and non-Link inline directives -> accepted and ignored

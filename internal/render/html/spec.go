@@ -63,6 +63,11 @@ func coreSpec() *Spec {
 	addInlineRenderer(s, &textRenderer{})
 	addInlineRenderer(s, &linebreakRenderer{})
 	addInlineRenderer(s, &emphasisRenderer{})
+	addInlineRenderer(s, &strongRenderer{})
+	addInlineRenderer(s, &italicRenderer{})
+	addInlineRenderer(s, &boldRenderer{})
+	addInlineRenderer(s, &underlineRenderer{})
+	addInlineRenderer(s, &strikethroughRenderer{})
 	addInlineRenderer(s, &codespanRenderer{})
 	addInlineRenderer(s, &linkRenderer{})
 
