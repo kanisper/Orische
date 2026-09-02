@@ -230,7 +230,7 @@ a+
 a +
 ```
 
-The final example ends at EOF. Explicit Line Break syntax is recognized recursively inside Emphasis and Link content. Code Span content is literal, so neither its ` +` sequences nor its physical newlines are parsed as inline syntax.
+The final example ends at EOF. Explicit Line Break syntax is recognized in all recursively parsed inline content. Code Span content is literal, so neither its ` +` sequences nor its physical newlines are parsed as inline syntax.
 
 ### Inline Directives
 
