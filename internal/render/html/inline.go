@@ -31,13 +31,10 @@ func (r *Renderer) renderOneInline(w io.Writer, inline ast.Inline) error {
 		return fmt.Errorf("not found the renderer for \"%T\" inline node", inline)
 	}
 
-	return renderer.render(r, w, inline)
+	return renderer(r, w, inline)
 }
 
-// Text
-type textRenderer struct{}
-
-func (*textRenderer) render(_ *Renderer, w io.Writer, text *ast.Text) error {
+func renderText(_ *Renderer, w io.Writer, text *ast.Text) error {
 	_, err := fmt.Fprintf(w, "%s", html.EscapeString(text.Value))
 	if err != nil {
 		return err
@@ -46,48 +43,32 @@ func (*textRenderer) render(_ *Renderer, w io.Writer, text *ast.Text) error {
 	return nil
 }
 
-// LineBreak
-type linebreakRenderer struct{}
-
-func (*linebreakRenderer) render(_ *Renderer, w io.Writer, _ *ast.LineBreak) error {
+func renderLineBreak(_ *Renderer, w io.Writer, _ *ast.LineBreak) error {
 	_, err := fmt.Fprint(w, "<br>")
 	return err
 }
 
-// Emphasis
-type emphasisRenderer struct{}
-
-func (*emphasisRenderer) render(r *Renderer, w io.Writer, emphasis *ast.Emphasis) error {
+func renderEmphasis(r *Renderer, w io.Writer, emphasis *ast.Emphasis) error {
 	return renderInlineContainer(r, w, "em", emphasis.Content)
 }
 
-type strongRenderer struct{}
-
-func (*strongRenderer) render(r *Renderer, w io.Writer, strong *ast.Strong) error {
+func renderStrong(r *Renderer, w io.Writer, strong *ast.Strong) error {
 	return renderInlineContainer(r, w, "strong", strong.Content)
 }
 
-type italicRenderer struct{}
-
-func (*italicRenderer) render(r *Renderer, w io.Writer, italic *ast.Italic) error {
+func renderItalic(r *Renderer, w io.Writer, italic *ast.Italic) error {
 	return renderInlineContainer(r, w, "i", italic.Content)
 }
 
-type boldRenderer struct{}
-
-func (*boldRenderer) render(r *Renderer, w io.Writer, bold *ast.Bold) error {
+func renderBold(r *Renderer, w io.Writer, bold *ast.Bold) error {
 	return renderInlineContainer(r, w, "b", bold.Content)
 }
 
-type underlineRenderer struct{}
-
-func (*underlineRenderer) render(r *Renderer, w io.Writer, underline *ast.Underline) error {
+func renderUnderline(r *Renderer, w io.Writer, underline *ast.Underline) error {
 	return renderInlineContainer(r, w, "u", underline.Content)
 }
 
-type strikethroughRenderer struct{}
-
-func (*strikethroughRenderer) render(r *Renderer, w io.Writer, strike *ast.Strikethrough) error {
+func renderStrikethrough(r *Renderer, w io.Writer, strike *ast.Strikethrough) error {
 	return renderInlineContainer(r, w, "s", strike.Content)
 }
 
@@ -110,10 +91,7 @@ func renderInlineContainer(r *Renderer, w io.Writer, tag string, content []ast.I
 	return nil
 }
 
-// CodeSpan
-type codespanRenderer struct{}
-
-func (*codespanRenderer) render(_ *Renderer, w io.Writer, codespan *ast.CodeSpan) error {
+func renderCodeSpan(_ *Renderer, w io.Writer, codespan *ast.CodeSpan) error {
 	_, err := fmt.Fprint(w, "<code>")
 	if err != nil {
 		return err
@@ -132,10 +110,7 @@ func (*codespanRenderer) render(_ *Renderer, w io.Writer, codespan *ast.CodeSpan
 	return nil
 }
 
-// Link
-type linkRenderer struct{}
-
-func (*linkRenderer) render(r *Renderer, w io.Writer, link *ast.Link) error {
+func renderLink(r *Renderer, w io.Writer, link *ast.Link) error {
 	parsedURI, err := url.Parse(link.URI)
 	if err != nil {
 		return err

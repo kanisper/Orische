@@ -14,7 +14,7 @@ func (r *Renderer) renderBlock(w io.Writer, block ast.Block) error {
 		return fmt.Errorf("renderBlock: not found the renderer for \"%T\" block", block)
 	}
 
-	err := renderer.render(r, w, block)
+	err := renderer(r, w, block)
 	if err != nil {
 		return fmt.Errorf(
 			"render \"%T\" block: %w",
@@ -26,10 +26,7 @@ func (r *Renderer) renderBlock(w io.Writer, block ast.Block) error {
 	return nil
 }
 
-// heading
-type headingRenderer struct{}
-
-func (*headingRenderer) render(r *Renderer, w io.Writer, heading *ast.Heading) error {
+func renderHeading(r *Renderer, w io.Writer, heading *ast.Heading) error {
 	_, err := fmt.Fprintf(w, "<h%d>", heading.Level)
 	if err != nil {
 		return err
@@ -48,10 +45,7 @@ func (*headingRenderer) render(r *Renderer, w io.Writer, heading *ast.Heading) e
 	return nil
 }
 
-// code
-type codeblockRenderer struct{}
-
-func (*codeblockRenderer) render(_ *Renderer, w io.Writer, codeblock *ast.CodeBlock) error {
+func renderCodeBlock(_ *Renderer, w io.Writer, codeblock *ast.CodeBlock) error {
 	_, err := fmt.Fprintf(w,
 		"<pre><code data-language=\"%s\">\n%s\n</code></pre>\n",
 		html.EscapeString(codeblock.Language),
@@ -64,10 +58,7 @@ func (*codeblockRenderer) render(_ *Renderer, w io.Writer, codeblock *ast.CodeBl
 	return nil
 }
 
-// list
-type listRenderer struct{}
-
-func (*listRenderer) render(r *Renderer, w io.Writer, list *ast.List) error {
+func renderList(r *Renderer, w io.Writer, list *ast.List) error {
 	var err error
 	if list.Ordered {
 		_, err = fmt.Fprintln(w, "<ol>")
@@ -122,7 +113,7 @@ func renderListItem(r *Renderer, w io.Writer, item *ast.ListItem) error {
 				return err
 			}
 
-			err = (&listRenderer{}).render(r, w, b)
+			err = renderList(r, w, b)
 			if err != nil {
 				return err
 			}
@@ -140,10 +131,7 @@ func renderListItem(r *Renderer, w io.Writer, item *ast.ListItem) error {
 	return nil
 }
 
-// paragraph
-type paragraphRenderer struct{}
-
-func (*paragraphRenderer) render(r *Renderer, w io.Writer, paragraph *ast.Paragraph) error {
+func renderParagraph(r *Renderer, w io.Writer, paragraph *ast.Paragraph) error {
 	_, err := fmt.Fprintln(w, "<p>")
 	if err != nil {
 		return err

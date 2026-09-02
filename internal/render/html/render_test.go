@@ -2,6 +2,9 @@ package html
 
 import (
 	"bytes"
+	"errors"
+	"reflect"
+	"strings"
 	"testing"
 
 	"orische/internal/ast"
@@ -9,6 +12,19 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+type errorWriter struct {
+	err                       error
+	successfulWritesRemaining int
+}
+
+func (w *errorWriter) Write(p []byte) (int, error) {
+	if w.successfulWritesRemaining > 0 {
+		w.successfulWritesRemaining--
+		return len(p), nil
+	}
+	return 0, w.err
+}
 
 /*
  * = heading level 1
@@ -252,5 +268,78 @@ func TestRenderParsedInlineSugar(t *testing.T) {
 	want := "<p>\n<strong>strong</strong> and <a href=\"https://example.com\">link</a>\n</p>\n"
 	if buf.String() != want {
 		t.Errorf("rendered incorrectly\nGot:  %s\nWant: %s", buf.String(), want)
+	}
+}
+
+func TestRenderPropagatesWriterError(t *testing.T) {
+	wantErr := errors.New("write failed")
+	doc := &ast.Document{Blocks: []ast.Block{
+		&ast.Paragraph{Content: []ast.Inline{&ast.Text{Value: "text"}}},
+	}}
+
+	tests := []struct {
+		name                      string
+		successfulWritesRemaining int
+		wantContexts              []string
+	}{
+		{
+			name:         "block write",
+			wantContexts: []string{`render "*ast.Paragraph" block`},
+		},
+		{
+			name:                      "nested inline write",
+			successfulWritesRemaining: 1,
+			wantContexts: []string{
+				`render "*ast.Paragraph" block`,
+				`render "*ast.Text" inline node`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			writer := &errorWriter{
+				err:                       wantErr,
+				successfulWritesRemaining: tt.successfulWritesRemaining,
+			}
+			err := Render(writer, doc)
+			if !errors.Is(err, wantErr) {
+				t.Fatalf("expected writer error, got %v", err)
+			}
+			for _, context := range tt.wantContexts {
+				if !strings.Contains(err.Error(), context) {
+					t.Errorf("error %q does not contain context %q", err, context)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderReportsMissingBlockRenderer(t *testing.T) {
+	renderer := NewRenderer()
+	delete(renderer.spec.blockRenderers, reflect.TypeFor[*ast.Heading]())
+
+	err := renderer.Render(&bytes.Buffer{}, &ast.Document{Blocks: []ast.Block{&ast.Heading{}}})
+	if err == nil {
+		t.Fatal("rendering succeeded without a registered block renderer")
+	}
+	if !strings.Contains(err.Error(), `not found the renderer for "*ast.Heading" block`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRenderReportsMissingInlineRenderer(t *testing.T) {
+	renderer := NewRenderer()
+	delete(renderer.spec.inlineRenderers, reflect.TypeFor[*ast.Text]())
+	doc := &ast.Document{Blocks: []ast.Block{
+		&ast.Paragraph{Content: []ast.Inline{&ast.Text{Value: "text"}}},
+	}}
+
+	err := renderer.Render(&bytes.Buffer{}, doc)
+	if err == nil {
+		t.Fatal("rendering succeeded without a registered inline renderer")
+	}
+	if !strings.Contains(err.Error(), `not found the renderer for "*ast.Text" inline node`) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
