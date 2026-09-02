@@ -256,25 +256,25 @@ Empty inline content is valid.
 
 Emphasis content is recursively inline-parsed. An Emphasis attribute is accepted but ignored.
 
-### Strong, Italic, Bold, Underline, and Strikethrough
+### Strong, Bold, Italic, Deleted, and Outdated
 
 ```text
 :[strong]{strong text}
-:[italic]{italic text}
 :[bold]{bold text}
-:[underline]{underlined text}
-:[strike]{struck text}
+:[italic]{italic text}
+:[del]{deleted text}
+:[outdated]{outdated text}
 ```
 
-Each element recursively parses its content. Attributes are accepted and ignored. They produce distinct AST nodes and render as follows:
+Each element recursively parses its content. Attributes are accepted and ignored. `Strong` and `Emphasis` represent semantic importance and emphasis, while `Bold` and `Italic` are presentational. `Deleted` represents content deleted from the document; `Outdated` represents content that is no longer accurate, current, or relevant. They produce distinct AST nodes and render as follows:
 
 | Directive | AST node | HTML |
 |---|---|---|
 | `strong` | `Strong` | `<strong>` |
-| `italic` | `Italic` | `<i>` |
 | `bold` | `Bold` | `<b>` |
-| `underline` | `Underline` | `<u>` |
-| `strike` | `Strikethrough` | `<s>` |
+| `italic` | `Italic` | `<i>` |
+| `del` | `Deleted` | `<del>` |
+| `outdated` | `Outdated` | `<s>` |
 
 ### Code Span
 
@@ -312,12 +312,12 @@ Inline Directives remain the canonical forms. The following constrained forms ar
 
 | Sugar | Explicit form | AST node | HTML |
 |---|---|---|---|
-| `*text*` | `:[em]{text}` | `Emphasis` | `<em>` |
-| `**text**` | `:[strong]{text}` | `Strong` | `<strong>` |
-| `_text_` | `:[italic]{text}` | `Italic` | `<i>` |
-| `__text__` | `:[bold]{text}` | `Bold` | `<b>` |
-| `++text++` | `:[underline]{text}` | `Underline` | `<u>` |
-| `~~text~~` | `:[strike]{text}` | `Strikethrough` | `<s>` |
+| `*text*` | `:[strong]{text}` | `Strong` | `<strong>` |
+| `**text**` | `:[bold]{text}` | `Bold` | `<b>` |
+| `_text_` | `:[em]{text}` | `Emphasis` | `<em>` |
+| `__text__` | `:[italic]{text}` | `Italic` | `<i>` |
+| `--text--` | `:[del]{text}` | `Deleted` | `<del>` |
+| `~text~` | `:[outdated]{text}` | `Outdated` | `<s>` |
 | single backtick around `text` | `:[code]{text}` | `CodeSpan` | `<code>` |
 | `[label](URI)` | `:[link:URI]{label}` | `Link` | `<a>` |
 
@@ -325,7 +325,7 @@ Every Sugar candidate must finish on one logical line. Its opening marker must b
 
 Tabs, full-width spaces, non-breaking spaces, and other Unicode whitespace are not Sugar separators. Content must be nonempty and cannot start or end with U+0020 SPACE.
 
-Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `~~~text~~~`, and multiple-backtick runs remain Text. Strong is checked before Emphasis, and Bold before Italic. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
+Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `---text---`, `~~text~~`, `~~~text~~~`, and multiple-backtick runs remain Text. Bold is checked before Strong, and Italic before Emphasis. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
 
 An opening styled or Code Span candidate without a qualifying close keeps the rest of that logical line literal. A Link becomes a candidate after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Closed candidates with empty or space-padded content remain literal through that close. Parsing resumes normally on the next logical line.
 
@@ -338,9 +338,10 @@ Link Sugar requires nonempty labels and URIs without leading or trailing U+0020 
 Valid boundary examples:
 
 ```text
-**important** text
-This is **important**.
-これは「**重要**」です。
+*important* text
+This is **visually bold**.
+これは「__斜体__」です。
+--deleted-- and ~outdated~.
 Use `go test` now.
 See [Orische](https://github.com/kanisper/Orische).
 ```
@@ -352,6 +353,10 @@ foo**bar**baz
 これは**重要**です
 Use`go test`now
 ***important***
+++underline++
+~~strike~~
+:[underline]{underlined text}
+:[strike]{struck text}
 ```
 
 ## Fallback and Error Summary

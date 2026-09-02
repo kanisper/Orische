@@ -23,8 +23,8 @@ func TestInlineRender(t *testing.T) {
 		&ast.Strong{Content: []ast.Inline{&ast.Text{Value: "Strong Text"}}},
 		&ast.Italic{Content: []ast.Inline{&ast.Text{Value: "Italic Text"}}},
 		&ast.Bold{Content: []ast.Inline{&ast.Text{Value: "Bold Text"}}},
-		&ast.Underline{Content: []ast.Inline{&ast.Text{Value: "Underline Text"}}},
-		&ast.Strikethrough{Content: []ast.Inline{&ast.Text{Value: "Strike Text"}}},
+		&ast.Deleted{Content: []ast.Inline{&ast.Text{Value: "Deleted Text"}}},
+		&ast.Outdated{Content: []ast.Inline{&ast.Text{Value: "Outdated Text"}}},
 		&ast.CodeSpan{
 			Value: "Code Span",
 		},
@@ -41,7 +41,7 @@ func TestInlineRender(t *testing.T) {
 
 	want := "Plain Text<em>Emphasized Text</em>" +
 		"<strong>Strong Text</strong><i>Italic Text</i><b>Bold Text</b>" +
-		"<u>Underline Text</u><s>Strike Text</s>" +
+		"<del>Deleted Text</del><s>Outdated Text</s>" +
 		"<code>Code Span</code><br><a href=\"https://example.com\">Link Text</a>"
 
 	var buf bytes.Buffer

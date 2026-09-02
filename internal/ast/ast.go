@@ -80,12 +80,12 @@ type Bold struct {
 	Range   Range
 }
 
-type Underline struct {
+type Deleted struct {
 	Content []Inline
 	Range   Range
 }
 
-type Strikethrough struct {
+type Outdated struct {
 	Content []Inline
 	Range   Range
 }
@@ -112,13 +112,13 @@ func (*Paragraph) isBlock() {}
 func (*List) isBlock()      {}
 func (*CodeBlock) isBlock() {}
 
-func (*Text) isInline()          {}
-func (*Emphasis) isInline()      {}
-func (*Strong) isInline()        {}
-func (*Italic) isInline()        {}
-func (*Bold) isInline()          {}
-func (*Underline) isInline()     {}
-func (*Strikethrough) isInline() {}
-func (*CodeSpan) isInline()      {}
-func (*Link) isInline()          {}
-func (*LineBreak) isInline()     {}
+func (*Text) isInline()      {}
+func (*Emphasis) isInline()  {}
+func (*Strong) isInline()    {}
+func (*Italic) isInline()    {}
+func (*Bold) isInline()      {}
+func (*Deleted) isInline()   {}
+func (*Outdated) isInline()  {}
+func (*CodeSpan) isInline()  {}
+func (*Link) isInline()      {}
+func (*LineBreak) isInline() {}

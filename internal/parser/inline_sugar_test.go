@@ -17,12 +17,12 @@ func TestInlineSugarBuildsExpectedNodesAndRanges(t *testing.T) {
 		contentOffset int
 		wantURI       string
 	}{
-		{name: "emphasis", input: "*x*", wantType: &ast.Emphasis{}, contentOffset: 1},
-		{name: "strong", input: "**x**", wantType: &ast.Strong{}, contentOffset: 2},
-		{name: "italic", input: "_x_", wantType: &ast.Italic{}, contentOffset: 1},
-		{name: "bold", input: "__x__", wantType: &ast.Bold{}, contentOffset: 2},
-		{name: "underline", input: "++x++", wantType: &ast.Underline{}, contentOffset: 2},
-		{name: "strikethrough", input: "~~x~~", wantType: &ast.Strikethrough{}, contentOffset: 2},
+		{name: "strong", input: "*x*", wantType: &ast.Strong{}, contentOffset: 1},
+		{name: "bold", input: "**x**", wantType: &ast.Bold{}, contentOffset: 2},
+		{name: "emphasis", input: "_x_", wantType: &ast.Emphasis{}, contentOffset: 1},
+		{name: "italic", input: "__x__", wantType: &ast.Italic{}, contentOffset: 2},
+		{name: "deleted", input: "--x--", wantType: &ast.Deleted{}, contentOffset: 2},
+		{name: "outdated", input: "~x~", wantType: &ast.Outdated{}, contentOffset: 1},
 		{name: "code span", input: "`x`", wantType: &ast.CodeSpan{}},
 		{name: "link", input: "[x](https://example.com)", wantType: &ast.Link{}, contentOffset: 1, wantURI: "https://example.com"},
 	}
@@ -74,12 +74,12 @@ func TestInlineSugarAndExplicitFormsShareSemantics(t *testing.T) {
 		sugar    string
 		explicit string
 	}{
-		{sugar: "*x*", explicit: ":[em]{x}"},
-		{sugar: "**x**", explicit: ":[strong]{x}"},
-		{sugar: "_x_", explicit: ":[italic]{x}"},
-		{sugar: "__x__", explicit: ":[bold]{x}"},
-		{sugar: "++x++", explicit: ":[underline]{x}"},
-		{sugar: "~~x~~", explicit: ":[strike]{x}"},
+		{sugar: "*x*", explicit: ":[strong]{x}"},
+		{sugar: "**x**", explicit: ":[bold]{x}"},
+		{sugar: "_x_", explicit: ":[em]{x}"},
+		{sugar: "__x__", explicit: ":[italic]{x}"},
+		{sugar: "--x--", explicit: ":[del]{x}"},
+		{sugar: "~x~", explicit: ":[outdated]{x}"},
 		{sugar: "`x`", explicit: ":[code]{x}"},
 		{sugar: "[x](https://example.com)", explicit: ":[link:https://example.com]{x}"},
 	}
@@ -108,12 +108,12 @@ func TestInlineSugarAcceptsConstrainedBoundaries(t *testing.T) {
 		input    string
 		wantType ast.Inline
 	}{
-		{name: "line boundaries", input: "*important*", wantType: &ast.Emphasis{}},
-		{name: "ASCII spaces", input: "This is **important** text", wantType: &ast.Strong{}},
+		{name: "line boundaries", input: "*important*", wantType: &ast.Strong{}},
+		{name: "ASCII spaces", input: "This is **important** text", wantType: &ast.Bold{}},
 		{name: "ASCII punctuation", input: "Use (`go test`).", wantType: &ast.CodeSpan{}},
-		{name: "Japanese brackets", input: "これは「__重要__」です。", wantType: &ast.Bold{}},
-		{name: "Japanese parentheses", input: "これは（++重要++）。", wantType: &ast.Underline{}},
-		{name: "Japanese period", input: "前。~~削除~~。後", wantType: &ast.Strikethrough{}},
+		{name: "Japanese brackets", input: "これは「__重要__」です。", wantType: &ast.Italic{}},
+		{name: "Japanese parentheses", input: "これは（--削除--）。", wantType: &ast.Deleted{}},
+		{name: "Japanese period", input: "前。~古い~。後", wantType: &ast.Outdated{}},
 		{name: "link punctuation", input: "See [Orische](https://example.com).", wantType: &ast.Link{}},
 	}
 
@@ -139,9 +139,12 @@ func TestInlineSugarRejectsInvalidBoundariesAndDelimiterRuns(t *testing.T) {
 		"a　*x* b",
 		"a\u00a0*x* b",
 		"C++ language",
+		"++important++",
+		"~~important~~",
 		"foo_bar_baz",
 		"***important***",
 		"___important___",
+		"---important---",
 		"~~~important~~~",
 		"``code``",
 		"*x**",
@@ -160,6 +163,10 @@ func TestInlineSugarFallsBackForInvalidOrIncompleteCandidates(t *testing.T) {
 		"**",
 		"* text*",
 		"*text *",
+		"-- removed--",
+		"--removed --",
+		"~ old~",
+		"~old ~",
 		"*unterminated **valid**",
 		"* :[em]{nested} *",
 		"[](https://example.com)",
@@ -180,7 +187,7 @@ func TestInlineSugarFallsBackForInvalidOrIncompleteCandidates(t *testing.T) {
 }
 
 func TestInlineSugarHonorsEscapedDelimiters(t *testing.T) {
-	for _, input := range []string{`\*text*`, `*text\*`, `\[x](https://example.com)`} {
+	for _, input := range []string{`\*text*`, `*text\*`, `\--text--`, `--text\--`, `\~text~`, `~text\~`, `\[x](https://example.com)`} {
 		got, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 		if err != nil {
 			t.Fatalf("parseInlines(%q) returned an error: %v", input, err)
@@ -194,18 +201,18 @@ func TestInlineSugarHonorsEscapedDelimiters(t *testing.T) {
 }
 
 func TestInlineSugarRecursivelyParsesDifferentSyntaxes(t *testing.T) {
-	input := "**outer _inner_ :[em]{explicit}**"
+	input := "**outer _inner_ :[strong]{explicit}**"
 	got, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
 	if err != nil {
 		t.Fatalf("parseInlines returned an error: %v", err)
 	}
-	strong, ok := got[0].(*ast.Strong)
+	bold, ok := got[0].(*ast.Bold)
 	if !ok {
-		t.Fatalf("inline type = %T, want *ast.Strong", got[0])
+		t.Fatalf("inline type = %T, want *ast.Bold", got[0])
 	}
-	if !containsSugarType(strong.Content, reflect.TypeOf(&ast.Italic{})) ||
-		!containsSugarType(strong.Content, reflect.TypeOf(&ast.Emphasis{})) {
-		t.Errorf("nested content = %#v, want Italic and Emphasis", strong.Content)
+	if !containsSugarType(bold.Content, reflect.TypeOf(&ast.Emphasis{})) ||
+		!containsSugarType(bold.Content, reflect.TypeOf(&ast.Strong{})) {
+		t.Errorf("nested content = %#v, want Emphasis and Strong", bold.Content)
 	}
 }
 
@@ -234,21 +241,23 @@ func TestLinkSugarParsesLabelAndUnescapesURI(t *testing.T) {
 	if link.URI != "https://example.com/a)b" {
 		t.Errorf("Link.URI = %q, want %q", link.URI, "https://example.com/a)b")
 	}
-	if !containsSugarType(link.Content, reflect.TypeOf(&ast.Strong{})) {
-		t.Errorf("Link.Content = %#v, want nested Strong", link.Content)
+	if !containsSugarType(link.Content, reflect.TypeOf(&ast.Bold{})) {
+		t.Errorf("Link.Content = %#v, want nested Bold", link.Content)
 	}
 }
 
 func TestInlineSugarDoesNotCrossLogicalLines(t *testing.T) {
-	for _, newline := range []string{"\n", "\r\n", "\r"} {
-		input := "*first" + newline + "second*"
-		got, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
-		if err != nil {
-			t.Fatalf("parseInlines returned an error: %v", err)
-		}
-		for _, node := range got {
-			if _, ok := node.(*ast.Text); !ok {
-				t.Errorf("newline %q produced %T, want only Text", newline, node)
+	for _, marker := range []string{"*", "**", "_", "__", "--", "~"} {
+		for _, newline := range []string{"\n", "\r\n", "\r"} {
+			input := marker + "first" + newline + "second" + marker
+			got, err := mustCoreParser(t).parseInlines(input, ast.Position{Line: 1, Column: 1})
+			if err != nil {
+				t.Fatalf("parseInlines returned an error: %v", err)
+			}
+			for _, node := range got {
+				if _, ok := node.(*ast.Text); !ok {
+					t.Errorf("marker %q newline %q produced %T, want only Text", marker, newline, node)
+				}
 			}
 		}
 	}
@@ -267,14 +276,14 @@ func TestUnterminatedInlineSugarResumesOnNextLogicalLine(t *testing.T) {
 		if _, ok := got[0].(*ast.Text); !ok {
 			t.Errorf("newline %q first inline = %T, want *ast.Text", newline, got[0])
 		}
-		if _, ok := got[1].(*ast.Strong); !ok {
-			t.Errorf("newline %q second inline = %T, want *ast.Strong", newline, got[1])
+		if _, ok := got[1].(*ast.Bold); !ok {
+			t.Errorf("newline %q second inline = %T, want *ast.Bold", newline, got[1])
 		}
 	}
 }
 
 func TestInlineSugarConnectsToInlineCapableBlocks(t *testing.T) {
-	doc, err := Parse("= **heading**\n\n* _item_\n\nparagraph ++under++")
+	doc, err := Parse("= **heading**\n\n* _item_\n\nparagraph --deleted--")
 	if err != nil {
 		t.Fatalf("Parse returned an error: %v", err)
 	}
@@ -283,20 +292,20 @@ func TestInlineSugarConnectsToInlineCapableBlocks(t *testing.T) {
 	}
 
 	heading, ok := doc.Blocks[0].(*ast.Heading)
-	if !ok || !containsSugarType(heading.Content, reflect.TypeOf(&ast.Strong{})) {
-		t.Errorf("heading = %#v, want Strong content", doc.Blocks[0])
+	if !ok || !containsSugarType(heading.Content, reflect.TypeOf(&ast.Bold{})) {
+		t.Errorf("heading = %#v, want Bold content", doc.Blocks[0])
 	}
 	list, ok := doc.Blocks[1].(*ast.List)
 	if !ok {
 		t.Fatalf("second block = %T, want *ast.List", doc.Blocks[1])
 	}
 	item := list.Items[0].Blocks[0].(*ast.Paragraph)
-	if !containsSugarType(item.Content, reflect.TypeOf(&ast.Italic{})) {
-		t.Errorf("list item = %#v, want Italic content", item)
+	if !containsSugarType(item.Content, reflect.TypeOf(&ast.Emphasis{})) {
+		t.Errorf("list item = %#v, want Emphasis content", item)
 	}
 	paragraph, ok := doc.Blocks[2].(*ast.Paragraph)
-	if !ok || !containsSugarType(paragraph.Content, reflect.TypeOf(&ast.Underline{})) {
-		t.Errorf("paragraph = %#v, want Underline content", doc.Blocks[2])
+	if !ok || !containsSugarType(paragraph.Content, reflect.TypeOf(&ast.Deleted{})) {
+		t.Errorf("paragraph = %#v, want Deleted content", doc.Blocks[2])
 	}
 }
 
@@ -356,9 +365,9 @@ func sugarNodeRange(node ast.Inline) ast.Range {
 		return node.Range
 	case *ast.Bold:
 		return node.Range
-	case *ast.Underline:
+	case *ast.Deleted:
 		return node.Range
-	case *ast.Strikethrough:
+	case *ast.Outdated:
 		return node.Range
 	case *ast.CodeSpan:
 		return node.Range
@@ -379,9 +388,9 @@ func sugarNodeContent(node ast.Inline) []ast.Inline {
 		return node.Content
 	case *ast.Bold:
 		return node.Content
-	case *ast.Underline:
+	case *ast.Deleted:
 		return node.Content
-	case *ast.Strikethrough:
+	case *ast.Outdated:
 		return node.Content
 	default:
 		return nil

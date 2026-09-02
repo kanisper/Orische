@@ -18,7 +18,7 @@ All implementation files are in `package parser`. Files are split by syntax and 
 - ordered inline syntax readers;
 - inline definitions for directive content policy, optional validation, and AST building.
 
-`spec` is parser configuration, not a public language or plugin API. `newSpec` installs the built-in `heading`, `paragraph`, and `code` Block Directive builders; the escape, Inline Directive, constrained Sugar, and Line Break readers; and the `em`, `strong`, `italic`, `bold`, `underline`, `strike`, `link`, and `code` inline definitions. Keep definition-specific logic close to the syntax file that uses it.
+`spec` is parser configuration, not a public language or plugin API. `newSpec` installs the built-in `heading`, `paragraph`, and `code` Block Directive builders; the escape, Inline Directive, constrained Sugar, and Line Break readers; and the `em`, `strong`, `italic`, `bold`, `del`, `outdated`, `link`, and `code` inline definitions. Keep definition-specific logic close to the syntax file that uses it.
 
 Block readers hand private concrete nodes to `Parser.buildBlock`. The private `parsedBlock` interface carries only the source range needed by orchestration; syntax-specific fields remain on concrete node types. Avoid introducing generic contracts when a private concrete type expresses the state directly.
 

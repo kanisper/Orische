@@ -32,7 +32,7 @@ Inline directives use the same explicit type-and-attribute idea in a compact env
 :[type:attribute]{content}
 ```
 
-Inline Directives are the canonical forms for inline semantics. Common inline elements also have constrained Sugar forms: `*`, `**`, `_`, `__`, `++`, `~~`, a single backtick, and `[label](URI)`. Sugar is recognized only on one logical line with explicit outer boundaries. It does not attempt CommonMark-compatible delimiter inference or correction.
+Inline Directives are the canonical forms for inline semantics. Common inline elements also have constrained Sugar forms: `*`, `**`, `_`, `__`, `--`, `~`, a single backtick, and `[label](URI)`. In the bold-like `*` family and italic-like `_` family, one marker denotes the semantic element and two markers denote its presentational counterpart. Deleted and outdated content use their own marker families because they represent distinct semantics. Sugar is recognized only on one logical line with explicit outer boundaries. It does not attempt CommonMark-compatible delimiter inference or correction.
 
 A backslash escapes one following ASCII punctuation character in recursively parsed inline content. It does not change literal Code Span or Code Block content.
 
@@ -44,7 +44,7 @@ Current semantically meaningful attributes are:
 - Code Block Directive: language identifier;
 - Link inline directive: nonempty URI.
 
-Current ignored attributes include Paragraph, Emphasis, Strong, Italic, Bold, Underline, Strikethrough, and Code Span attributes.
+Current ignored attributes include Paragraph, Emphasis, Strong, Italic, Bold, Deleted, Outdated, and Code Span attributes.
 
 ## Separation of Concerns
 

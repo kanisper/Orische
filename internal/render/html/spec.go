@@ -37,8 +37,8 @@ func coreSpec() *spec {
 	addInlineRenderer(s, renderStrong)
 	addInlineRenderer(s, renderItalic)
 	addInlineRenderer(s, renderBold)
-	addInlineRenderer(s, renderUnderline)
-	addInlineRenderer(s, renderStrikethrough)
+	addInlineRenderer(s, renderDeleted)
+	addInlineRenderer(s, renderOutdated)
 	addInlineRenderer(s, renderCodeSpan)
 	addInlineRenderer(s, renderLink)
 

@@ -29,7 +29,7 @@ Defines document, block, inline, and range types. AST interfaces are implemented
 - dispatches Block Directive builders and preserves diagnostic contracts;
 - owns ordered inline syntax dispatch, scanning, recursion, fallback, and range calculation.
 
-The `spec` is a small internal configuration structure. It stores the `heading`, `paragraph`, and `code` Block Directive builders, block sugar and inline syntax readers in precedence order, and the `em`, `strong`, `italic`, `bold`, `underline`, `strike`, `link`, and `code` inline definitions. It is not exposed as a language or plugin API.
+The `spec` is a small internal configuration structure. It stores the `heading`, `paragraph`, and `code` Block Directive builders, block sugar and inline syntax readers in precedence order, and the `em`, `strong`, `italic`, `bold`, `del`, `outdated`, `link`, and `code` inline definitions. It is not exposed as a language or plugin API.
 
 ### `internal/render/html`
 

@@ -10,27 +10,27 @@ import (
 )
 
 func readStrongSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "**", "strong", true)
+	return p.readDelimitedSugar(start, "*", "strong", true)
 }
 
 func readEmphasisSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "*", "em", true)
+	return p.readDelimitedSugar(start, "_", "em", true)
 }
 
 func readBoldSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "__", "bold", true)
+	return p.readDelimitedSugar(start, "**", "bold", true)
 }
 
 func readItalicSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "_", "italic", true)
+	return p.readDelimitedSugar(start, "__", "italic", true)
 }
 
-func readUnderlineSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "++", "underline", true)
+func readDeletedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
+	return p.readDelimitedSugar(start, "--", "del", true)
 }
 
-func readStrikethroughSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "~~", "strike", true)
+func readOutdatedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
+	return p.readDelimitedSugar(start, "~", "outdated", true)
 }
 
 func readCodeSpanSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
