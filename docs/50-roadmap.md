@@ -12,7 +12,7 @@ This file records current repository status. It is not a versioned language spec
 - Ordered and unordered List sugar
 - Mixed-marker Lists with first-marker candidate style
 - Recursive List nesting with raw-to-logical level normalization
-- Explicit Emphasis, Strong, Italic, Bold, Underline, Strikethrough, Code Span, and Link directives
+- Explicit Emphasis, Strong, Italic, Bold, Deleted, Outdated, Code Span, and Link directives
 - Constrained inline Sugar for all built-in inline semantics
 - ASCII-punctuation backslash escapes in recursively parsed inline content
 - LF, CRLF, and CR logical newline handling

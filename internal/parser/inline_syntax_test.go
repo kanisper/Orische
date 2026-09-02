@@ -25,8 +25,8 @@ func TestBuiltInInlineDefinitions(t *testing.T) {
 		{"strong", inlineContentNested, "ignored", true, &ast.Strong{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"italic", inlineContentNested, "ignored", true, &ast.Italic{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"bold", inlineContentNested, "ignored", true, &ast.Bold{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
-		{"underline", inlineContentNested, "ignored", true, &ast.Underline{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
-		{"strike", inlineContentNested, "ignored", true, &ast.Strikethrough{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"del", inlineContentNested, "ignored", true, &ast.Deleted{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
+		{"outdated", inlineContentNested, "ignored", true, &ast.Outdated{Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"link", inlineContentNested, "/x", true, &ast.Link{URI: "/x", Content: []ast.Inline{&ast.Text{Value: "x"}}}},
 		{"code", inlineContentLiteral, "ignored", true, &ast.CodeSpan{Value: "x"}},
 	}

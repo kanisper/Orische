@@ -23,16 +23,16 @@ var boldDefinition = inlineDefinition{
 	},
 }
 
-var underlineDefinition = inlineDefinition{
+var deletedDefinition = inlineDefinition{
 	policy: inlineContentNested,
 	build: func(candidate inlineCandidate) ast.Inline {
-		return &ast.Underline{Content: candidate.nestedContent, Range: candidate.rng}
+		return &ast.Deleted{Content: candidate.nestedContent, Range: candidate.rng}
 	},
 }
 
-var strikethroughDefinition = inlineDefinition{
+var outdatedDefinition = inlineDefinition{
 	policy: inlineContentNested,
 	build: func(candidate inlineCandidate) ast.Inline {
-		return &ast.Strikethrough{Content: candidate.nestedContent, Range: candidate.rng}
+		return &ast.Outdated{Content: candidate.nestedContent, Range: candidate.rng}
 	},
 }

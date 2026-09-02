@@ -256,7 +256,7 @@ int main()
 }
 
 func TestRenderParsedInlineSugar(t *testing.T) {
-	doc, err := parser.Parse("**strong** and [link](https://example.com)")
+	doc, err := parser.Parse("*important* **visually bold** _emphasized_ __visually italic__ --removed-- ~old information~")
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
@@ -265,7 +265,8 @@ func TestRenderParsedInlineSugar(t *testing.T) {
 	if err := NewRenderer().Render(&buf, doc); err != nil {
 		t.Fatalf("render failed: %v", err)
 	}
-	want := "<p>\n<strong>strong</strong> and <a href=\"https://example.com\">link</a>\n</p>\n"
+	want := "<p>\n<strong>important</strong> <b>visually bold</b> <em>emphasized</em> " +
+		"<i>visually italic</i> <del>removed</del> <s>old information</s>\n</p>\n"
 	if buf.String() != want {
 		t.Errorf("rendered incorrectly\nGot:  %s\nWant: %s", buf.String(), want)
 	}

@@ -9,39 +9,58 @@ import (
 	"orische/internal/ast"
 )
 
+type delimitedSugarOptions struct {
+	escapeClosingMarker     bool
+	consumeUnterminated     bool
+	yieldToCompetingOpening bool
+}
+
 func readStrongSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "**", "strong", true)
+	return p.readStyledSugar(start, "*", "strong")
 }
 
 func readEmphasisSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "*", "em", true)
+	return p.readStyledSugar(start, "_", "em")
 }
 
 func readBoldSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "__", "bold", true)
+	return p.readStyledSugar(start, "**", "bold")
 }
 
 func readItalicSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "_", "italic", true)
+	return p.readStyledSugar(start, "__", "italic")
 }
 
-func readUnderlineSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "++", "underline", true)
+func readDeletedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
+	return p.readStyledSugar(start, "--", "del")
 }
 
-func readStrikethroughSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "~~", "strike", true)
+func readOutdatedSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
+	return p.readStyledSugar(start, "~", "outdated")
+}
+
+func (p *inlineParseState) readStyledSugar(
+	start int,
+	marker string,
+	typ string,
+) (ast.Inline, int, bool, error) {
+	return p.readDelimitedSugar(start, marker, typ, delimitedSugarOptions{
+		escapeClosingMarker:     true,
+		yieldToCompetingOpening: true,
+	})
 }
 
 func readCodeSpanSugar(p *inlineParseState, start int) (ast.Inline, int, bool, error) {
-	return p.readDelimitedSugar(start, "`", "code", false)
+	return p.readDelimitedSugar(start, "`", "code", delimitedSugarOptions{
+		consumeUnterminated: true,
+	})
 }
 
 func (p *inlineParseState) readDelimitedSugar(
 	start int,
 	marker string,
 	typ string,
-	escapeClosingMarker bool,
+	options delimitedSugarOptions,
 ) (ast.Inline, int, bool, error) {
 	if !hasExactDelimiterRun(p.ctx.text, start, marker) ||
 		!p.hasOpeningSugarBoundary(start) ||
@@ -60,15 +79,22 @@ func (p *inlineParseState) readDelimitedSugar(
 		candidate := search + relative
 		candidateEnd := candidate + len(marker)
 		if hasExactDelimiterRun(p.ctx.text, candidate, marker) &&
-			(!escapeClosingMarker || !isEscapedDelimiter(p.ctx.text, candidate)) &&
-			p.hasClosingSugarBoundary(candidateEnd) {
-			closingStart = candidate
-			break
+			(!options.escapeClosingMarker || !isEscapedDelimiter(p.ctx.text, candidate)) {
+			if p.hasClosingSugarBoundary(candidateEnd) {
+				closingStart = candidate
+				break
+			}
+			if options.yieldToCompetingOpening && p.hasOpeningSugarBoundary(candidate) {
+				return nil, start, false, nil
+			}
 		}
 		search = candidate + 1
 	}
 
 	if closingStart < 0 {
+		if !options.consumeUnterminated {
+			return nil, start, false, nil
+		}
 		return nil, lineEnd, false, nil
 	}
 

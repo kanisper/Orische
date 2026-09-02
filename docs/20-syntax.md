@@ -256,25 +256,25 @@ Empty inline content is valid.
 
 Emphasis content is recursively inline-parsed. An Emphasis attribute is accepted but ignored.
 
-### Strong, Italic, Bold, Underline, and Strikethrough
+### Strong, Bold, Italic, Deleted, and Outdated
 
 ```text
 :[strong]{strong text}
-:[italic]{italic text}
 :[bold]{bold text}
-:[underline]{underlined text}
-:[strike]{struck text}
+:[italic]{italic text}
+:[del]{deleted text}
+:[outdated]{outdated text}
 ```
 
-Each element recursively parses its content. Attributes are accepted and ignored. They produce distinct AST nodes and render as follows:
+Each element recursively parses its content. Attributes are accepted and ignored. `Strong` and `Emphasis` represent semantic importance and emphasis, while `Bold` and `Italic` are presentational. `Deleted` represents content deleted from the document; `Outdated` represents content that is no longer accurate, current, or relevant. They produce distinct AST nodes and render as follows:
 
 | Directive | AST node | HTML |
 |---|---|---|
 | `strong` | `Strong` | `<strong>` |
-| `italic` | `Italic` | `<i>` |
 | `bold` | `Bold` | `<b>` |
-| `underline` | `Underline` | `<u>` |
-| `strike` | `Strikethrough` | `<s>` |
+| `italic` | `Italic` | `<i>` |
+| `del` | `Deleted` | `<del>` |
+| `outdated` | `Outdated` | `<s>` |
 
 ### Code Span
 
@@ -312,12 +312,12 @@ Inline Directives remain the canonical forms. The following constrained forms ar
 
 | Sugar | Explicit form | AST node | HTML |
 |---|---|---|---|
-| `*text*` | `:[em]{text}` | `Emphasis` | `<em>` |
-| `**text**` | `:[strong]{text}` | `Strong` | `<strong>` |
-| `_text_` | `:[italic]{text}` | `Italic` | `<i>` |
-| `__text__` | `:[bold]{text}` | `Bold` | `<b>` |
-| `++text++` | `:[underline]{text}` | `Underline` | `<u>` |
-| `~~text~~` | `:[strike]{text}` | `Strikethrough` | `<s>` |
+| `*text*` | `:[strong]{text}` | `Strong` | `<strong>` |
+| `**text**` | `:[bold]{text}` | `Bold` | `<b>` |
+| `_text_` | `:[em]{text}` | `Emphasis` | `<em>` |
+| `__text__` | `:[italic]{text}` | `Italic` | `<i>` |
+| `--text--` | `:[del]{text}` | `Deleted` | `<del>` |
+| `~text~` | `:[outdated]{text}` | `Outdated` | `<s>` |
 | single backtick around `text` | `:[code]{text}` | `CodeSpan` | `<code>` |
 | `[label](URI)` | `:[link:URI]{label}` | `Link` | `<a>` |
 
@@ -325,9 +325,11 @@ Every Sugar candidate must finish on one logical line. Its opening marker must b
 
 Tabs, full-width spaces, non-breaking spaces, and other Unicode whitespace are not Sugar separators. Content must be nonempty and cannot start or end with U+0020 SPACE.
 
-Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `~~~text~~~`, and multiple-backtick runs remain Text. Strong is checked before Emphasis, and Bold before Italic. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
+Delimiter runs must exactly match a defined marker. Longer runs are not split into shorter markers, so `***text***`, `___text___`, `---text---`, `~~text~~`, `~~~text~~~`, and multiple-backtick runs remain Text. Bold is checked before Strong, and Italic before Emphasis. An escaped opening or closing delimiter is not used as a styled or Link delimiter.
 
-An opening styled or Code Span candidate without a qualifying close keeps the rest of that logical line literal. A Link becomes a candidate after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Closed candidates with empty or space-padded content remain literal through that close. Parsing resumes normally on the next logical line.
+An opening Styled Sugar delimiter is not committed until a qualifying closing delimiter is found. Without a close, the opener remains literal and ordinary scanning continues, so later valid inline syntax on the same logical line may still be recognized. While searching, a same exact delimiter that cannot close the current candidate but can form a valid new opening boundary causes the earlier uncommitted opener to yield. Once a close is found, an invalid candidate with empty or space-padded content remains literal through that close.
+
+Code Span and Link Sugar keep their own commit behavior. An opening Code Span without a qualifying close keeps the rest of that logical line literal. A Link becomes committed after its unescaped `](` sequence is found; if its URI has no close, the rest of the line remains literal. Parsing resumes normally on the next logical line.
 
 Styled content and Link labels are recursively inline-parsed. No special same-delimiter nesting algorithm is used; the first qualifying closing marker wins.
 
@@ -338,11 +340,22 @@ Link Sugar requires nonempty labels and URIs without leading or trailing U+0020 
 Valid boundary examples:
 
 ```text
-**important** text
-This is **important**.
-これは「**重要**」です。
+*important* text
+This is **visually bold**.
+これは「__斜体__」です。
+--deleted-- and ~outdated~.
 Use `go test` now.
 See [Orische](https://github.com/kanisper/Orische).
+```
+
+Literal CLI options and paths are best written as Code Span, such as `` `--help` `` and `` `~/.config` ``. Without Code Span markup, an unmatched `--` or `~` remains Text and does not suppress later valid Styled Sugar on the same line:
+
+```text
+Use --help and *important* options.
+See ~/.config and _note_.
+*unterminated and *valid*
+Use --help and --deleted-- options.
+See ~/.config and ~outdated~.
 ```
 
 Literal fallback examples:
@@ -352,6 +365,10 @@ foo**bar**baz
 これは**重要**です
 Use`go test`now
 ***important***
+++underline++
+~~strike~~
+:[underline]{underlined text}
+:[strike]{struck text}
 ```
 
 ## Fallback and Error Summary
@@ -361,7 +378,8 @@ Use`go test`now
 - Invalid List line at block start -> Paragraph text
 - Unsupported inline directive, invalid inline header, or Link without a URI -> literal source text through the first available `}`
 - Other malformed or unterminated Inline Directive candidate -> ordinary literal scanning resumes; later valid inline syntax may still be recognized
-- Invalid or incomplete inline Sugar candidate -> literal source according to the Inline Sugar fallback rules
+- Unterminated Styled Sugar opener -> literal Text, with ordinary scanning continuing afterward
+- Closed but invalid Styled Sugar, or incomplete Code Span and committed Link Sugar -> literal source according to their commit rules
 - Valid Block Directive without a registered builder -> AST build error
 - Structurally valid Heading Directive with an invalid required level attribute -> AST build error
 - Unused attributes on syntaxes such as Paragraph and non-Link inline directives -> accepted and ignored

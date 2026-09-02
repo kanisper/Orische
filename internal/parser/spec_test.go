@@ -4,7 +4,7 @@ import "testing"
 
 func TestSpecIncludesBuiltInInlineDefinitions(t *testing.T) {
 	definitions := coreInlineDefinitions()
-	wantInlines := []string{"em", "strong", "italic", "bold", "underline", "strike", "link", "code"}
+	wantInlines := []string{"em", "strong", "italic", "bold", "del", "outdated", "link", "code"}
 	if len(definitions) != len(wantInlines) {
 		t.Fatalf("Inline count = %d, want %d", len(definitions), len(wantInlines))
 	}

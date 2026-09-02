@@ -31,7 +31,7 @@ All parser implementation files belong to one `package parser`. Files are separa
 - the `heading`, `paragraph`, and `code` Block Directive builders;
 - Heading and List sugar readers, in precedence order;
 - ASCII-punctuation escape, Inline Directive, constrained Sugar, and Line Break readers, in precedence order;
-- the `em`, `strong`, `italic`, `bold`, `underline`, `strike`, `link`, and `code` inline definitions.
+- the `em`, `strong`, `italic`, `bold`, `del`, `outdated`, `link`, and `code` inline definitions.
 
 `NewParser` creates this state, and there is no public registration method. Tests in `package parser` may install small private fixtures when they need to exercise definition-driven parser behavior; callers outside the package cannot replace the built-in syntax.
 
@@ -74,11 +74,11 @@ During AST construction, List item Paragraphs and nested Lists go through the sa
 
 ## Inline Parsing
 
-The frontend scanner dispatches a small ordered slice of private syntax readers and owns recursion, Text construction, literal fallback, and source ranges. Escape is checked first, followed by Inline Directive, double-marker before single-marker styled Sugar, Code Span Sugar, Link Sugar, and Line Break. The Inline Directive reader owns the common `:[...]{...}` envelope, header splitting, and brace handling. A failed reader may advance past an invalid literal candidate without allowing lower-precedence readers to reinterpret its contents.
+The frontend scanner dispatches a small ordered slice of private syntax readers and owns recursion, Text construction, literal fallback, and source ranges. Escape is checked first, followed by Inline Directive, double-marker before single-marker styled Sugar within the `*` and `_` families, Deleted and Outdated Sugar, Code Span Sugar, Link Sugar, and Line Break. The Inline Directive reader owns the common `:[...]{...}` envelope, header splitting, and brace handling. A failed reader may advance past an invalid literal candidate without allowing lower-precedence readers to reinterpret its contents.
 
 The escape reader recognizes a backslash only before ASCII punctuation and creates Text whose range covers both source characters. Constrained Sugar readers use UTF-8-safe outer boundary checks, exact delimiter-run lengths, and logical-line bounds. Styled content and Link labels re-enter the same parser specification recursively; Code Span content remains literal. Sugar construction calls the same private inline definitions as Explicit forms.
 
-An unterminated Sugar candidate can advance to its logical line end without producing a node. This preserves the whole candidate as Text and prevents ambiguous same-line reinterpretation while allowing parsing to resume after the physical newline. Link URI scanning stops at the first unescaped `)` and removes ASCII-punctuation escapes without introducing a general delimiter or backtracking engine.
+Styled Sugar is not committed until a qualifying close is found. An unterminated Styled opener remains Text without advancing the scanner, which allows later valid inline syntax on the same logical line to be recognized. During close search, a same exact delimiter that cannot close but has a valid opening boundary makes the earlier opener yield so the scanner can consider the later candidate. Closed but invalid Styled candidates consume through their close as literal Text. Unterminated Code Span candidates still advance to the logical line end. A Link becomes committed after its unescaped `](` sequence; URI scanning stops at the first unescaped `)` and removes ASCII-punctuation escapes without introducing a general delimiter or backtracking engine.
 
 The Line Break reader recognizes ` +` followed by LF, CRLF, or CR and consumes the marker plus terminator while assigning the AST range only to the marker. Normal physical newlines create no node or visible whitespace; Text is split into contiguous source spans around them.
 

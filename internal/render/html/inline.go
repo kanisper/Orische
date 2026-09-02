@@ -64,12 +64,12 @@ func renderBold(r *Renderer, w io.Writer, bold *ast.Bold) error {
 	return renderInlineContainer(r, w, "b", bold.Content)
 }
 
-func renderUnderline(r *Renderer, w io.Writer, underline *ast.Underline) error {
-	return renderInlineContainer(r, w, "u", underline.Content)
+func renderDeleted(r *Renderer, w io.Writer, deleted *ast.Deleted) error {
+	return renderInlineContainer(r, w, "del", deleted.Content)
 }
 
-func renderStrikethrough(r *Renderer, w io.Writer, strike *ast.Strikethrough) error {
-	return renderInlineContainer(r, w, "s", strike.Content)
+func renderOutdated(r *Renderer, w io.Writer, outdated *ast.Outdated) error {
+	return renderInlineContainer(r, w, "s", outdated.Content)
 }
 
 func renderInlineContainer(r *Renderer, w io.Writer, tag string, content []ast.Inline) error {
