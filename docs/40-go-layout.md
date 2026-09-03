@@ -7,6 +7,8 @@ cmd/                              # CLI, diagnostics, and integration tests
 docs/                             # syntax and architecture documentation
 internal/
   ast/                            # AST definitions
+  completion/                     # editor-independent source completion
+  lsp/                            # LSP transport and protocol adapters
   parser/                         # all parser reading, definitions, and building
   render/html/                    # AST-to-HTML renderer
 ```
@@ -31,6 +33,20 @@ Defines document, block, inline, and range types. AST interfaces are implemented
 
 The `spec` is a small internal configuration structure. It stores the `heading`, `paragraph`, and `code` Block Directive builders, block sugar and inline syntax readers in precedence order, and the `em`, `strong`, `italic`, `bold`, `del`, `outdated`, `link`, and `code` inline definitions. It is not exposed as a language or plugin API.
 
+### `internal/completion`
+
+Builds completion candidates from current source text, a cursor byte offset, and optional AST context. Candidates use half-open UTF-8 byte spans and contain no editor or LSP protocol types. Incomplete source must remain usable without changing parser grammar or fallback behavior. Future Emmet-style abbreviation and expansion behavior belongs here.
+
+The small built-in directive candidate lists intentionally do not expose or import the parser's private `spec`. Shared syntax metadata should only be introduced if this duplication becomes a concrete maintenance problem.
+
+### `internal/lsp`
+
+Adapts stdio LSP/JSON-RPC to Orische packages. It owns open-document versions and source text, negotiated position encoding, conversion between LSP positions and source byte offsets or AST ranges, live diagnostic publication, and conversion of completion edits to protocol types.
+
+Position conversion remains at this boundary. The AST keeps one-based, inclusive, Unicode-code-point ranges, while completion keeps source byte spans.
+
+New LSP request handlers must apply the server lifecycle guard so requests received after `shutdown` return JSON-RPC `InvalidRequest`; notification handlers added in the future must likewise preserve the post-shutdown no-side-effect behavior.
+
 ### `internal/render/html`
 
 Converts AST nodes to HTML and owns output escaping and URI policy.
@@ -45,6 +61,13 @@ Implements the `orische` command-line entrypoint and file/diagnostic handling.
 internal/parser  --->  internal/ast
         |
         +--------->  internal/diagnostic
+
+internal/lsp     --->  internal/parser
+        |                  |
+        |                  +----> internal/ast
+        |                  +----> internal/diagnostic
+        |
+        +----------> internal/completion ---> internal/ast
 ```
 
 - Keep parser syntax implementations in `package parser`; use file separation for organization and locality.
@@ -54,6 +77,8 @@ internal/parser  --->  internal/ast
 - Inline definitions provide only type-specific policy, optional validation, and AST construction; the shared envelope and range logic remain in the frontend.
 - Keep syntax-specific semantic validation local unless a concrete need justifies a separate validation layer.
 - New AST node kinds require coordinated AST, parser, and renderer changes.
+- Keep LSP protocol types inside `internal/lsp` and its CLI/test boundary.
+- Keep completion independent of editor protocols; translate positions and edits in `internal/lsp`.
 
 ## Key Parser Files
 

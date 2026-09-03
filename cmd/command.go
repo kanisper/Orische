@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	lspserver "orische/internal/lsp"
 	"orische/internal/parser"
 	htmlrenderer "orische/internal/render/html"
 )
@@ -20,6 +22,22 @@ const (
 )
 
 func run(args []string, stderr io.Writer) int {
+	return runWithIO(args, os.Stdin, os.Stdout, stderr)
+}
+
+func runWithIO(args []string, stdin io.ReadCloser, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "lsp" {
+		if len(args) != 1 {
+			fmt.Fprintln(stderr, "usage: orische lsp")
+			return exitUsage
+		}
+		if err := lspserver.Serve(context.Background(), stdin, stdout); err != nil {
+			printError(stderr, "", err)
+			return exitFailure
+		}
+		return exitSuccess
+	}
+
 	flags := flag.NewFlagSet("orische", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	flags.Usage = func() {
