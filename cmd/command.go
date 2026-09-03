@@ -42,15 +42,15 @@ func run(args []string, stderr io.Writer) int {
 	if outputPath == "" {
 		outputPath = defaultOutputPath(inputPath)
 	}
-	inputAbs, err := filepath.Abs(filepath.Clean(inputPath))
+	inputAbs, err := filepath.Abs(inputPath)
 	if err != nil {
 		printError(stderr, "", fmt.Errorf("resolve input path %q: %w", inputPath, err))
-		return exitUsage
+		return exitFailure
 	}
-	outputAbs, err := filepath.Abs(filepath.Clean(outputPath))
+	outputAbs, err := filepath.Abs(outputPath)
 	if err != nil {
 		printError(stderr, "", fmt.Errorf("resolve output path %q: %w", outputPath, err))
-		return exitUsage
+		return exitFailure
 	}
 	if inputAbs == outputAbs {
 		fmt.Fprintln(stderr, "orische: input and output paths must differ")

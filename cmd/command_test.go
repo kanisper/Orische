@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -135,6 +136,56 @@ func TestRunReportsInputReadFailure(t *testing.T) {
 	}
 	if want := "orische: read \"" + inputPath + "\""; !strings.Contains(stderr.String(), want) {
 		t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
+	}
+}
+
+func TestRunReportsAbsolutePathFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow removing the current working directory")
+	}
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{name: "input", args: []string{"input.oris"}, wantStderr: "resolve input path"},
+		{
+			name:       "output",
+			args:       []string{"-o", "output.html", filepath.Join(originalDir, "input.oris")},
+			wantStderr: "resolve output path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			if err := os.Chdir(workingDir); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Chdir(originalDir); err != nil {
+					t.Errorf("restore working directory: %v", err)
+				}
+			}()
+			if err := os.Remove(workingDir); err != nil {
+				t.Fatal(err)
+			}
+
+			var stderr bytes.Buffer
+			exitCode := run(tt.args, &stderr)
+
+			if exitCode != exitFailure {
+				t.Errorf("run exit = %d, want %d", exitCode, exitFailure)
+			}
+			if !strings.Contains(stderr.String(), tt.wantStderr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tt.wantStderr)
+			}
+		})
 	}
 }
 
