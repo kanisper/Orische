@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -152,6 +153,50 @@ func TestDocumentStoreRejectsStaleAnalysis(t *testing.T) {
 	if current.analysis.AST != nil {
 		t.Fatal("stale analysis replaced reopened document state")
 	}
+}
+
+func TestServerSerializesAnalysisPublicationOutsideStoreLock(t *testing.T) {
+	srv := newServer()
+	documentURI := uri.URI("file:///document.oris")
+	publishing := make(chan struct{})
+	release := make(chan struct{})
+	client := &blockingDiagnosticClient{publishing: publishing, release: release}
+	ctx := protocol.WithClient(t.Context(), client)
+	opened := make(chan error, 1)
+	go func() {
+		opened <- srv.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
+			TextDocument: protocol.TextDocumentItem{
+				URI: documentURI, Version: 1, Text: "first",
+			},
+		})
+	}()
+	<-publishing
+
+	if !srv.documents.mu.TryLock() {
+		t.Fatal("document store lock is held during diagnostic publication")
+	}
+	srv.documents.mu.Unlock()
+	if srv.documentActions.TryLock() {
+		srv.documentActions.Unlock()
+		t.Fatal("document actions were not serialized during diagnostic publication")
+	}
+
+	close(release)
+	if err := <-opened; err != nil {
+		t.Fatal(err)
+	}
+}
+
+type blockingDiagnosticClient struct {
+	protocol.UnimplementedClient
+	publishing chan struct{}
+	release    chan struct{}
+}
+
+func (c *blockingDiagnosticClient) PublishDiagnostics(context.Context, *protocol.PublishDiagnosticsParams) error {
+	close(c.publishing)
+	<-c.release
+	return nil
 }
 
 func TestServerDocumentHandlers(t *testing.T) {

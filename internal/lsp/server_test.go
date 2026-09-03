@@ -38,6 +38,9 @@ func TestServeLifecycle(t *testing.T) {
 			OpenClose: &openClose,
 			Change:    &full,
 		},
+		CompletionProvider: &protocol.CompletionOptions{
+			TriggerCharacters: []string{"["},
+		},
 	}
 	if diff := cmp.Diff(wantCapabilities, result.Capabilities); diff != "" {
 		t.Errorf("capabilities mismatch (-want +got):\n%s", diff)

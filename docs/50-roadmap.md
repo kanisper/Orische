@@ -25,6 +25,11 @@ This file records current repository status. It is not a versioned language spec
 - HTML rendering with escaping and link URI-scheme validation
 - Command-line conversion from Orische source files to HTML
 - Structured diagnostic errors and CLI diagnostic formatting
+- Stdio LSP lifecycle using external protocol and JSON-RPC libraries
+- Full-sync open-document source and version management
+- UTF-8, UTF-16, and UTF-32 LSP position conversion
+- Live parser diagnostics with current AST tracking
+- Source-first Block and Inline Directive type completion
 
 Parser validation:
 
@@ -36,6 +41,7 @@ go test ./internal/parser/...
 
 - Broader parser edge-case coverage
 - Documentation maintenance
+- Emmet-style abbreviation and expansion semantics
 
 ## Not Implemented
 

@@ -15,8 +15,11 @@ type server struct {
 
 	documents *documentStore
 	encoding  protocol.PositionEncodingKind
-	exited    chan struct{}
-	exitOnce  sync.Once
+	// documentActions keeps document state changes and their diagnostic
+	// publications in protocol order without holding the store lock during I/O.
+	documentActions sync.Mutex
+	exited          chan struct{}
+	exitOnce        sync.Once
 }
 
 func newServer() *server {
@@ -45,6 +48,9 @@ func (s *server) Initialize(_ context.Context, params *protocol.InitializeParams
 				OpenClose: &openClose,
 				Change:    &full,
 			},
+			CompletionProvider: &protocol.CompletionOptions{
+				TriggerCharacters: []string{"["},
+			},
 		},
 		ServerInfo: protocol.ServerInfo{Name: "orische"},
 	}, nil
@@ -62,6 +68,8 @@ func (s *server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocume
 	if params == nil {
 		return nil
 	}
+	s.documentActions.Lock()
+	defer s.documentActions.Unlock()
 	if err := s.documents.open(params.TextDocument); err != nil {
 		return nil
 	}
@@ -72,6 +80,8 @@ func (s *server) DidChange(ctx context.Context, params *protocol.DidChangeTextDo
 	if params == nil {
 		return nil
 	}
+	s.documentActions.Lock()
+	defer s.documentActions.Unlock()
 	applied, err := s.documents.change(params.TextDocument, params.ContentChanges)
 	if err != nil || !applied {
 		return nil
@@ -80,7 +90,12 @@ func (s *server) DidChange(ctx context.Context, params *protocol.DidChangeTextDo
 }
 
 func (s *server) DidClose(ctx context.Context, params *protocol.DidCloseTextDocumentParams) error {
-	if params == nil || !s.documents.close(params.TextDocument.URI) {
+	if params == nil {
+		return nil
+	}
+	s.documentActions.Lock()
+	defer s.documentActions.Unlock()
+	if !s.documents.close(params.TextDocument.URI) {
 		return nil
 	}
 	return publishDiagnostics(ctx, params.TextDocument.URI, nil, nil)

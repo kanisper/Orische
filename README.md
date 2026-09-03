@@ -12,7 +12,8 @@ Orische is an experimental lightweight markup language focused on explicit struc
 - constrained inline sugar and ASCII-punctuation backslash escapes;
 - source ranges on block and inline AST nodes;
 - HTML rendering with escaping and URI-scheme validation;
-- a command-line converter from Orische source to HTML.
+- a command-line converter from Orische source to HTML;
+- a stdio Language Server with live diagnostics and directive type completion.
 
 The parser uses a small private specification for built-in behavior. There is no stable public extension API or dynamic plugin system.
 
@@ -65,12 +66,20 @@ go run ./cmd -o output.html input.oris
 
 When `-o` is omitted, the input extension is replaced with `.html`.
 
+Start the stdio Language Server:
+
+```sh
+go run ./cmd lsp
+```
+
 ## Repository Structure
 
 ```text
 cmd/                 CLI, diagnostics, and integration tests
 docs/                syntax, architecture, layout, and status
 internal/ast/        AST definitions
+internal/completion/ editor-independent source completion
+internal/lsp/        LSP transport, documents, positions, and adapters
 internal/parser/     parser, private parsed nodes, builders, and tests
 internal/render/html AST-to-HTML renderer
 ```

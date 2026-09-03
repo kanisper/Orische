@@ -125,3 +125,10 @@ func (s *documentStore) setAnalysis(snapshot document, result analysis) bool {
 	s.documents[snapshot.URI] = current
 	return true
 }
+
+func (s *documentStore) isCurrent(snapshot document) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	current, ok := s.documents[snapshot.URI]
+	return ok && current.generation == snapshot.generation && current.Version == snapshot.Version
+}
