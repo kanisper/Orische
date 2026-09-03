@@ -2,12 +2,70 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"go.lsp.dev/jsonrpc2"
+	"go.lsp.dev/protocol"
 )
+
+func TestRunLSP(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	serverConn, clientConn := net.Pipe()
+	defer func() { _ = clientConn.Close() }()
+
+	var stderr bytes.Buffer
+	exitCode := make(chan int, 1)
+	go func() {
+		exitCode <- runWithIO([]string{"lsp"}, serverConn, serverConn, &stderr)
+	}()
+
+	_, conn, server := protocol.NewClient(ctx, protocol.UnimplementedClient{}, jsonrpc2.NewStream(clientConn))
+	defer func() { _ = conn.Close() }()
+
+	result, err := server.Initialize(ctx, &protocol.InitializeParams{})
+	if err != nil {
+		t.Fatalf("initialize: %v", err)
+	}
+	if result.ServerInfo.Name != "orische" {
+		t.Errorf("server name = %q, want %q", result.ServerInfo.Name, "orische")
+	}
+	if err := server.Shutdown(ctx); err != nil {
+		t.Fatalf("shutdown: %v", err)
+	}
+	if err := server.Exit(ctx); err != nil {
+		t.Fatalf("exit: %v", err)
+	}
+
+	select {
+	case got := <-exitCode:
+		if got != exitSuccess {
+			t.Errorf("run exit = %d, want %d; stderr: %s", got, exitSuccess, stderr.String())
+		}
+	case <-ctx.Done():
+		t.Fatal("orische lsp did not stop after exit")
+	}
+}
+
+func TestRunLSPRejectsArguments(t *testing.T) {
+	var stderr bytes.Buffer
+	exitCode := run([]string{"lsp", "extra"}, &stderr)
+
+	if exitCode != exitUsage {
+		t.Errorf("run exit = %d, want %d", exitCode, exitUsage)
+	}
+	if want := "usage: orische lsp"; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
+	}
+}
 
 func TestRunConvertsFile(t *testing.T) {
 	dir := t.TempDir()
