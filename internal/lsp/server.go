@@ -58,25 +58,32 @@ func (s *server) Shutdown(context.Context) error {
 	return nil
 }
 
-func (s *server) DidOpen(_ context.Context, params *protocol.DidOpenTextDocumentParams) error {
-	if params != nil {
-		_ = s.documents.open(params.TextDocument)
+func (s *server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocumentParams) error {
+	if params == nil {
+		return nil
 	}
-	return nil
+	if err := s.documents.open(params.TextDocument); err != nil {
+		return nil
+	}
+	return s.analyzeDocument(ctx, params.TextDocument.URI)
 }
 
-func (s *server) DidChange(_ context.Context, params *protocol.DidChangeTextDocumentParams) error {
-	if params != nil {
-		_, _ = s.documents.change(params.TextDocument, params.ContentChanges)
+func (s *server) DidChange(ctx context.Context, params *protocol.DidChangeTextDocumentParams) error {
+	if params == nil {
+		return nil
 	}
-	return nil
+	applied, err := s.documents.change(params.TextDocument, params.ContentChanges)
+	if err != nil || !applied {
+		return nil
+	}
+	return s.analyzeDocument(ctx, params.TextDocument.URI)
 }
 
-func (s *server) DidClose(_ context.Context, params *protocol.DidCloseTextDocumentParams) error {
-	if params != nil {
-		s.documents.close(params.TextDocument.URI)
+func (s *server) DidClose(ctx context.Context, params *protocol.DidCloseTextDocumentParams) error {
+	if params == nil || !s.documents.close(params.TextDocument.URI) {
+		return nil
 	}
-	return nil
+	return publishDiagnostics(ctx, params.TextDocument.URI, nil, nil)
 }
 
 func (s *server) Exit(context.Context) error {

@@ -6,6 +6,8 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+
+	"orische/internal/ast"
 )
 
 func TestDocumentStoreLifecycle(t *testing.T) {
@@ -108,6 +110,48 @@ func TestDocumentStoreRejectsInvalidChanges(t *testing.T) {
 		}
 	}
 	assertDocument(t, store, documentURI, 1, "first")
+}
+
+func TestDocumentStoreRejectsStaleAnalysis(t *testing.T) {
+	store := newDocumentStore(protocol.PositionEncodingKindUTF16)
+	documentURI := uri.URI("file:///document.oris")
+	if err := store.open(protocol.TextDocumentItem{
+		URI: documentURI, Version: 1, Text: "first",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	oldSnapshot, _ := store.get(documentURI)
+
+	applied, err := store.change(
+		protocol.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: documentURI},
+			Version:                2,
+		},
+		[]protocol.TextDocumentContentChangeEvent{
+			&protocol.TextDocumentContentChangeWholeDocument{Text: "second"},
+		},
+	)
+	if err != nil || !applied {
+		t.Fatalf("change = (applied %v, err %v), want (true, nil)", applied, err)
+	}
+	if store.setAnalysis(oldSnapshot, analysis{AST: &ast.Document{}}) {
+		t.Fatal("analysis for an old version was committed")
+	}
+
+	secondSnapshot, _ := store.get(documentURI)
+	store.close(documentURI)
+	if err := store.open(protocol.TextDocumentItem{
+		URI: documentURI, Version: 2, Text: "reopened",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if store.setAnalysis(secondSnapshot, analysis{AST: &ast.Document{}}) {
+		t.Fatal("analysis from before close was committed to a reopened document")
+	}
+	current, _ := store.get(documentURI)
+	if current.analysis.AST != nil {
+		t.Fatal("stale analysis replaced reopened document state")
+	}
 }
 
 func TestServerDocumentHandlers(t *testing.T) {

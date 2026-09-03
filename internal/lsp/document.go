@@ -7,6 +7,8 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+
+	"orische/internal/ast"
 )
 
 var (
@@ -16,16 +18,24 @@ var (
 )
 
 type document struct {
-	URI     uri.URI
-	Version int32
-	Source  string
-	mapper  *positionMapper
+	URI        uri.URI
+	Version    int32
+	Source     string
+	mapper     *positionMapper
+	generation uint64
+	analysis   analysis
+}
+
+type analysis struct {
+	AST         *ast.Document
+	Diagnostics []protocol.Diagnostic
 }
 
 type documentStore struct {
 	mu        sync.RWMutex
 	encoding  protocol.PositionEncodingKind
 	documents map[uri.URI]document
+	nextID    uint64
 }
 
 func newDocumentStore(encoding protocol.PositionEncodingKind) *documentStore {
@@ -46,8 +56,10 @@ func (s *documentStore) open(item protocol.TextDocumentItem) error {
 	if _, exists := s.documents[item.URI]; exists {
 		return fmt.Errorf("open %q: %w", item.URI, errDocumentAlreadyOpen)
 	}
+	s.nextID++
 	s.documents[item.URI] = document{
 		URI: item.URI, Version: item.Version, Source: item.Text, mapper: mapper,
+		generation: s.nextID,
 	}
 	return nil
 }
@@ -80,6 +92,7 @@ func (s *documentStore) change(
 
 	s.documents[identifier.URI] = document{
 		URI: identifier.URI, Version: identifier.Version, Source: whole.Text, mapper: mapper,
+		generation: current.generation,
 	}
 	return true, nil
 }
@@ -99,4 +112,16 @@ func (s *documentStore) get(documentURI uri.URI) (document, bool) {
 	defer s.mu.RUnlock()
 	document, ok := s.documents[documentURI]
 	return document, ok
+}
+
+func (s *documentStore) setAnalysis(snapshot document, result analysis) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, ok := s.documents[snapshot.URI]
+	if !ok || current.generation != snapshot.generation || current.Version != snapshot.Version {
+		return false
+	}
+	current.analysis = result
+	s.documents[snapshot.URI] = current
+	return true
 }
