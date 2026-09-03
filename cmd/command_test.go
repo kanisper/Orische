@@ -4,58 +4,188 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
-func TestRunConvertFile(t *testing.T) {
+func TestRunConvertsFile(t *testing.T) {
 	dir := t.TempDir()
-
 	inputPath := filepath.Join(dir, "input.oris")
 	outputPath := filepath.Join(dir, "output.html")
+	writeTestInput(t, inputPath, "= heading 1")
 
-	if err := os.WriteFile(
-		inputPath,
-		[]byte("= heading 1"),
-		0o664,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+	exitCode := run([]string{"-o", outputPath, inputPath}, &stderr)
 
-	exitCode := run(
-		[]string{"orische", "-o", outputPath, inputPath},
-		&stdout,
-		&stderr,
-	)
-
-	if exitCode != 0 {
-		t.Fatalf("run exit %d, stderr: %s", exitCode, stderr.String())
+	if exitCode != exitSuccess {
+		t.Fatalf("run exit = %d, want %d; stderr: %s", exitCode, exitSuccess, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr = %q, want empty", stderr.String())
 	}
 
 	got, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	want := "<h1>heading 1</h1>\n"
-	if string(got) != want {
-		t.Fatalf("got: %s, want: %s", string(got), want)
+	if want := "<h1>heading 1</h1>\n"; string(got) != want {
+		t.Errorf("output = %q, want %q", got, want)
 	}
 }
 
-func TestRunRequiresInputFile(t *testing.T) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+func TestRunUsesDefaultOutputPath(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "input.oris")
+	writeTestInput(t, inputPath, "paragraph")
 
-	exitCode := run([]string{"orische"}, &stdout, &stderr)
-	if exitCode != 2 {
-		t.Fatalf("run exit %d expected, but want 2", exitCode)
+	var stderr bytes.Buffer
+	exitCode := run([]string{inputPath}, &stderr)
+
+	if exitCode != exitSuccess {
+		t.Fatalf("run exit = %d, want %d; stderr: %s", exitCode, exitSuccess, stderr.String())
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "input.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "<p>\nparagraph\n</p>\n"; string(got) != want {
+		t.Errorf("output = %q, want %q", got, want)
+	}
+}
+
+func TestRunRejectsUsageErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{name: "missing input", wantStderr: "usage: orische [-o output.html] input.oris"},
+		{name: "extra input", args: []string{"one.oris", "two.oris"}, wantStderr: "usage: orische [-o output.html] input.oris"},
+		{name: "unknown flag", args: []string{"-unknown"}, wantStderr: "flag provided but not defined: -unknown"},
 	}
 
-	if stderr.Len() == 0 {
-		t.Fatal("expected usage message")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stderr bytes.Buffer
+			exitCode := run(tt.args, &stderr)
+
+			if exitCode != exitUsage {
+				t.Errorf("run exit = %d, want %d", exitCode, exitUsage)
+			}
+			if !strings.Contains(stderr.String(), tt.wantStderr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tt.wantStderr)
+			}
+		})
+	}
+}
+
+func TestRunRejectsInputOutputCollision(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		args     func(string) []string
+	}{
+		{
+			name:     "explicit output",
+			filename: "input.oris",
+			args: func(path string) []string {
+				separator := string(filepath.Separator)
+				outputPath := filepath.Dir(path) + separator + "." + separator + filepath.Base(path)
+				return []string{"-o", outputPath, path}
+			},
+		},
+		{
+			name:     "default output",
+			filename: "input.html",
+			args:     func(path string) []string { return []string{path} },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputPath := filepath.Join(t.TempDir(), tt.filename)
+			original := []byte("= must remain source")
+			writeTestInput(t, inputPath, string(original))
+
+			var stderr bytes.Buffer
+			exitCode := run(tt.args(inputPath), &stderr)
+
+			if exitCode != exitUsage {
+				t.Errorf("run exit = %d, want %d", exitCode, exitUsage)
+			}
+			got, err := os.ReadFile(inputPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, original) {
+				t.Errorf("input was modified: got %q, want %q", got, original)
+			}
+		})
+	}
+}
+
+func TestRunReportsInputReadFailure(t *testing.T) {
+	inputPath := filepath.Join(t.TempDir(), "missing.oris")
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{inputPath}, &stderr)
+
+	if exitCode != exitFailure {
+		t.Errorf("run exit = %d, want %d", exitCode, exitFailure)
+	}
+	if want := "orische: read \"" + inputPath + "\""; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr = %q, want it to contain %q", stderr.String(), want)
+	}
+}
+
+func TestRunReportsAbsolutePathFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow removing the current working directory")
+	}
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{name: "input", args: []string{"input.oris"}, wantStderr: "resolve input path"},
+		{
+			name:       "output",
+			args:       []string{"-o", "output.html", filepath.Join(originalDir, "input.oris")},
+			wantStderr: "resolve output path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			if err := os.Chdir(workingDir); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Chdir(originalDir); err != nil {
+					t.Errorf("restore working directory: %v", err)
+				}
+			}()
+			if err := os.Remove(workingDir); err != nil {
+				t.Fatal(err)
+			}
+
+			var stderr bytes.Buffer
+			exitCode := run(tt.args, &stderr)
+
+			if exitCode != exitFailure {
+				t.Errorf("run exit = %d, want %d", exitCode, exitFailure)
+			}
+			if !strings.Contains(stderr.String(), tt.wantStderr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tt.wantStderr)
+			}
+		})
 	}
 }
 
@@ -72,10 +202,16 @@ func TestDefaultOutputPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := defaultOutputPath(tt.input)
-			if got != tt.want {
-				t.Fatalf("got %q, want %q", got, tt.want)
+			if got := defaultOutputPath(tt.input); got != tt.want {
+				t.Errorf("defaultOutputPath(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func writeTestInput(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

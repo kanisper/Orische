@@ -14,6 +14,6 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
-func (e *Error) UnWrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
