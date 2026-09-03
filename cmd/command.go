@@ -19,18 +19,21 @@ const (
 	exitUsage   = 2
 )
 
-func run(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
+func run(args []string, stderr io.Writer) int {
+	flags := flag.NewFlagSet("orische", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	flags.Usage = func() {
+		fmt.Fprintln(stderr, "usage: orische [-o output.html] input.oris")
+	}
 
 	var outputPath string
 	flags.StringVar(&outputPath, "o", "", "output HTML file")
 
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return exitUsage
 	}
 	if flags.NArg() != 1 {
-		fmt.Fprintln(stderr, "usage: orische [-o output.html] input.oris")
+		flags.Usage()
 		return exitUsage
 	}
 
@@ -39,9 +42,24 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if outputPath == "" {
 		outputPath = defaultOutputPath(inputPath)
 	}
+	inputAbs, err := filepath.Abs(filepath.Clean(inputPath))
+	if err != nil {
+		printError(stderr, "", fmt.Errorf("resolve input path %q: %w", inputPath, err))
+		return exitUsage
+	}
+	outputAbs, err := filepath.Abs(filepath.Clean(outputPath))
+	if err != nil {
+		printError(stderr, "", fmt.Errorf("resolve output path %q: %w", outputPath, err))
+		return exitUsage
+	}
+	if inputAbs == outputAbs {
+		fmt.Fprintln(stderr, "orische: input and output paths must differ")
+		flags.Usage()
+		return exitUsage
+	}
 
 	if err := convertFile(inputPath, outputPath); err != nil {
-		printErrors(stderr, inputPath, err)
+		printError(stderr, inputPath, err)
 		return exitFailure
 	}
 

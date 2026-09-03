@@ -8,7 +8,7 @@ import (
 	"orische/internal/diagnostic"
 )
 
-func printErrors(w io.Writer, path string, err error) {
+func printError(w io.Writer, path string, err error) {
 	var diag *diagnostic.Error
 	if errors.As(err, &diag) {
 		printDiagnostic(w, path, diag)
