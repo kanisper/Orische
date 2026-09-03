@@ -13,6 +13,9 @@ func (s *server) Completion(
 	_ context.Context,
 	params *protocol.CompletionParams,
 ) (protocol.CompletionResult, error) {
+	if err := s.requestAllowed(); err != nil {
+		return nil, err
+	}
 	if params == nil {
 		return protocol.CompletionItemSlice{}, nil
 	}

@@ -121,6 +121,38 @@ func TestPositionMapperTrailingLineEnding(t *testing.T) {
 	}
 }
 
+func TestPositionMapperClampsCharactersPastLineEnd(t *testing.T) {
+	line := "A日🍣Z"
+	source := line + "\nnext"
+	tests := []struct {
+		name       string
+		encoding   protocol.PositionEncodingKind
+		lineLength uint32
+	}{
+		{name: "utf8", encoding: protocol.PositionEncodingKindUTF8, lineLength: 9},
+		{name: "utf16", encoding: protocol.PositionEncodingKindUTF16, lineLength: 5},
+		{name: "utf32", encoding: protocol.PositionEncodingKindUTF32, lineLength: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mapper, err := newPositionMapper(source, tt.encoding)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, character := range []uint32{tt.lineLength, tt.lineLength + 100} {
+				offset, err := mapper.byteOffset(protocol.Position{Character: character})
+				if err != nil {
+					t.Fatalf("byteOffset(character %d): %v", character, err)
+				}
+				if offset != len(line) {
+					t.Errorf("byteOffset(character %d) = %d, want %d", character, offset, len(line))
+				}
+			}
+		})
+	}
+}
+
 func TestPositionMapperRejectsInvalidBoundaries(t *testing.T) {
 	mapper, err := newPositionMapper("A日🍣Z", protocol.PositionEncodingKindUTF16)
 	if err != nil {
@@ -130,12 +162,18 @@ func TestPositionMapperRejectsInvalidBoundaries(t *testing.T) {
 	invalidPositions := []protocol.Position{
 		{Line: 1},
 		{Character: 3},
-		{Character: 6},
 	}
 	for _, position := range invalidPositions {
 		if _, err := mapper.byteOffset(position); err == nil {
 			t.Errorf("byteOffset(%v) succeeded", position)
 		}
+	}
+	utf8Mapper, err := newPositionMapper("A日", protocol.PositionEncodingKindUTF8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := utf8Mapper.byteOffset(protocol.Position{Character: 2}); err == nil {
+		t.Fatal("UTF-8 position inside a multi-byte code point succeeded")
 	}
 	for _, offset := range []int{-1, 2, 5, 10} {
 		if _, err := mapper.position(offset); err == nil {

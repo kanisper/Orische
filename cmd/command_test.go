@@ -55,6 +55,42 @@ func TestRunLSP(t *testing.T) {
 	}
 }
 
+func TestRunLSPExitWithoutShutdownFails(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	serverConn, clientConn := net.Pipe()
+	defer func() { _ = clientConn.Close() }()
+
+	var stderr bytes.Buffer
+	exitCode := make(chan int, 1)
+	go func() {
+		exitCode <- runWithIO([]string{"lsp"}, serverConn, serverConn, &stderr)
+	}()
+
+	_, conn, server := protocol.NewClient(ctx, protocol.UnimplementedClient{}, jsonrpc2.NewStream(clientConn))
+	defer func() { _ = conn.Close() }()
+
+	if _, err := server.Initialize(ctx, &protocol.InitializeParams{}); err != nil {
+		t.Fatalf("initialize: %v", err)
+	}
+	if err := server.Exit(ctx); err != nil {
+		t.Fatalf("exit: %v", err)
+	}
+
+	select {
+	case got := <-exitCode:
+		if got != exitFailure {
+			t.Errorf("run exit = %d, want %d", got, exitFailure)
+		}
+		if !strings.Contains(stderr.String(), "exit received before shutdown") {
+			t.Errorf("stderr = %q, want exit-without-shutdown error", stderr.String())
+		}
+	case <-ctx.Done():
+		t.Fatal("orische lsp did not stop after exit")
+	}
+}
+
 func TestRunLSPRejectsArguments(t *testing.T) {
 	var stderr bytes.Buffer
 	exitCode := run([]string{"lsp", "extra"}, &stderr)

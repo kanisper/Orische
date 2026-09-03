@@ -58,10 +58,8 @@ func (m *positionMapper) byteOffset(position protocol.Position) (int, error) {
 		offset += size
 	}
 
-	if units == target {
-		return line.end, nil
-	}
-	return 0, fmt.Errorf("LSP character %d is outside line %d", position.Character, position.Line)
+	// LSP positions past a valid line's encoded length default to its end.
+	return line.end, nil
 }
 
 func (m *positionMapper) position(offset int) (protocol.Position, error) {
