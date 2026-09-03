@@ -13,16 +13,39 @@ import (
 type server struct {
 	protocol.UnimplementedServer
 
-	exited   chan struct{}
-	exitOnce sync.Once
+	documents *documentStore
+	encoding  protocol.PositionEncodingKind
+	exited    chan struct{}
+	exitOnce  sync.Once
 }
 
 func newServer() *server {
-	return &server{exited: make(chan struct{})}
+	encoding := protocol.PositionEncodingKindUTF16
+	return &server{
+		documents: newDocumentStore(encoding),
+		encoding:  encoding,
+		exited:    make(chan struct{}),
+	}
 }
 
-func (s *server) Initialize(context.Context, *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+func (s *server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+	var encodings []protocol.PositionEncodingKind
+	if params != nil && params.Capabilities.General != nil {
+		encodings = params.Capabilities.General.PositionEncodings
+	}
+	s.encoding = negotiatePositionEncoding(encodings)
+	s.documents = newDocumentStore(s.encoding)
+
+	openClose := true
+	full := protocol.TextDocumentSyncKindFull
 	return &protocol.InitializeResult{
+		Capabilities: protocol.ServerCapabilities{
+			PositionEncoding: s.encoding,
+			TextDocumentSync: &protocol.TextDocumentSyncOptions{
+				OpenClose: &openClose,
+				Change:    &full,
+			},
+		},
 		ServerInfo: protocol.ServerInfo{Name: "orische"},
 	}, nil
 }
@@ -32,6 +55,27 @@ func (s *server) Initialized(context.Context, *protocol.InitializedParams) error
 }
 
 func (s *server) Shutdown(context.Context) error {
+	return nil
+}
+
+func (s *server) DidOpen(_ context.Context, params *protocol.DidOpenTextDocumentParams) error {
+	if params != nil {
+		_ = s.documents.open(params.TextDocument)
+	}
+	return nil
+}
+
+func (s *server) DidChange(_ context.Context, params *protocol.DidChangeTextDocumentParams) error {
+	if params != nil {
+		_, _ = s.documents.change(params.TextDocument, params.ContentChanges)
+	}
+	return nil
+}
+
+func (s *server) DidClose(_ context.Context, params *protocol.DidCloseTextDocumentParams) error {
+	if params != nil {
+		s.documents.close(params.TextDocument.URI)
+	}
 	return nil
 }
 

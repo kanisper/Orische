@@ -30,7 +30,16 @@ func TestServeLifecycle(t *testing.T) {
 	if result.ServerInfo.Name != "orische" {
 		t.Errorf("server name = %q, want %q", result.ServerInfo.Name, "orische")
 	}
-	if diff := cmp.Diff(protocol.ServerCapabilities{}, result.Capabilities); diff != "" {
+	openClose := true
+	full := protocol.TextDocumentSyncKindFull
+	wantCapabilities := protocol.ServerCapabilities{
+		PositionEncoding: protocol.PositionEncodingKindUTF16,
+		TextDocumentSync: &protocol.TextDocumentSyncOptions{
+			OpenClose: &openClose,
+			Change:    &full,
+		},
+	}
+	if diff := cmp.Diff(wantCapabilities, result.Capabilities); diff != "" {
 		t.Errorf("capabilities mismatch (-want +got):\n%s", diff)
 	}
 
