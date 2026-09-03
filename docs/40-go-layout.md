@@ -45,6 +45,8 @@ Adapts stdio LSP/JSON-RPC to Orische packages. It owns open-document versions an
 
 Position conversion remains at this boundary. The AST keeps one-based, inclusive, Unicode-code-point ranges, while completion keeps source byte spans.
 
+New LSP request handlers must apply the server lifecycle guard so requests received after `shutdown` return JSON-RPC `InvalidRequest`; notification handlers added in the future must likewise preserve the post-shutdown no-side-effect behavior.
+
 ### `internal/render/html`
 
 Converts AST nodes to HTML and owns output escaping and URI policy.
