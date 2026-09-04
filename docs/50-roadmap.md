@@ -1,59 +1,95 @@
-# Project Status
+# Project Roadmap
 
-This file records current repository status. It is not a versioned language specification.
+This file records the long-term development direction of Orische. It is not a versioned language specification and does not replace GitHub Issues or Projects for task tracking.
 
-## Implemented and Tested
+Detailed implementation work is tracked in GitHub Issues. This document should stay focused on durable project direction and major architectural boundaries.
 
-- AST definitions
-- Document block reader chain
-- `heading`, `paragraph`, and `code` Block Directives
-- Heading sugar with levels 1-6
-- Paragraph fallback
-- Ordered and unordered List sugar
-- Mixed-marker Lists with first-marker candidate style
-- Recursive List nesting with raw-to-logical level normalization
-- Explicit Emphasis, Strong, Italic, Bold, Deleted, Outdated, Code Span, and Link directives
-- Constrained inline Sugar for all built-in inline semantics
-- ASCII-punctuation backslash escapes in recursively parsed inline content
-- LF, CRLF, and CR logical newline handling
-- Explicit ` +` Line Break syntax and `<br>` rendering
-- Private parsed-block handoff and AST builders
-- Private parser `spec` for built-in directive and inline behavior
-- Common `Parser` dispatch for top-level and List-item AST construction
-- Source ranges on all block and inline AST nodes
-- One-based, inclusive source positions with Unicode-code-point columns
-- HTML rendering with escaping and link URI-scheme validation
-- Command-line conversion from Orische source files to HTML
-- Structured diagnostic errors and CLI diagnostic formatting
-- Stdio LSP lifecycle using external protocol and JSON-RPC libraries
-- Full-sync open-document source and version management
-- UTF-8, UTF-16, and UTF-32 LSP position conversion
-- Live parser diagnostics with current AST tracking
-- Source-first Block and Inline Directive type completion
+## Current Foundation
 
-Parser validation:
+Orische currently has the core pieces required to evolve from a markup-language implementation into an editor-assisted authoring toolchain:
 
-```sh
-go test ./internal/parser/...
+- AST definitions with source ranges;
+- parser support for the current block, inline, sugar, escape, and list syntax;
+- HTML rendering;
+- CLI conversion;
+- structured diagnostics;
+- stdio Language Server support;
+- full-sync document management and LSP position conversion;
+- live diagnostics;
+- source-first directive completion that remains usable for incomplete input.
+
+The Language Server is intended to remain the single implementation boundary for editor-facing language intelligence. Editor integrations should stay thin and should not duplicate parser or completion semantics.
+
+## Near-Term Roadmap
+
+### Editor MVP
+
+Track: #41
+
+Make Orische practical to use from mainstream editors. The first integrations should focus on launching `orische lsp`, recognizing Orische files, providing basic syntax highlighting, and documenting configuration paths without adding editor-specific language logic.
+
+### Editor Syntax Infrastructure
+
+Track: #42
+
+Introduce editor-oriented grammar infrastructure, including Tree-sitter where useful, while preserving `internal/parser` as the compiler/parser implementation. Editor grammars may be more tolerant of incomplete source and are not intended to replace Orische parsing semantics.
+
+### Structured Completion and Internal Language Spec Metadata
+
+Track: #43
+
+Grow completion beyond directive-name prefixes into structured, context-aware completion. As duplication becomes real, separate reusable declarative language-definition metadata from parser implementation details.
+
+The shared internal language-definition layer should describe what constructs exist in Orische. Parser readers, precedence, parsed-node construction, builders, and fallback behavior remain in `internal/parser`.
+
+This separation is internal to the project. A stable public Go API, external plugin API, or dynamic plugin system is not a goal.
+
+### Emmet-Style Expansion
+
+Track: #44
+
+Design an editor-independent abbreviation language and expansion engine on top of the completion architecture. Abbreviation syntax is tooling syntax rather than Orische source syntax and must not be accepted by the compiler/parser grammar.
+
+Expansion should resolve Orische constructs through shared internal language-definition metadata and produce valid Orische source edits or snippets for LSP clients.
+
+## Architectural Direction
+
+The intended long-term relationship is:
+
+```text
+editor
+  |
+  | LSP
+  v
+internal/lsp
+  |
+  +----> internal/parser ----> internal/ast
+  |
+  +----> internal/completion
+                 |
+                 +----> internal language-definition metadata
+                           |
+                           +----> internal/parser
 ```
 
-## Under Development
+Editor syntax grammars such as Tree-sitter or TextMate remain adjacent tooling concerns rather than compiler parser implementations.
 
-- Broader parser edge-case coverage
-- Documentation maintenance
-- Emmet-style abbreviation and expansion semantics
+The project should prefer small internal interfaces and concrete metadata over plugin-grade registries or speculative extension frameworks.
 
-## Not Implemented
+## Later Work
 
-- Stable public extension API
-- Dynamic plugin loading
-- Structured attributes such as `key=value`
-- Explicit List Block Directive syntax
-- Additional output formats
+Potential work after the editor/completion roadmap includes:
 
-## Possible Future Work
+- semantic tokens, hover, formatting, and other LSP features where they provide clear value;
+- broader editor integration and distribution polish;
+- additional built-in block and inline directive types;
+- explicit List Block Directive design while preserving current marker sugar semantics;
+- structured attributes such as `key=value` if added to the language specification;
+- additional output formats;
+- performance measurement and optimization when real workloads justify it.
 
-- Design an explicit List Block Directive while preserving current marker sugar semantics
-- Configuration for restricting accepted Heading level ranges
-- Additional built-in block and inline directive types
-- Performance measurement and optimization
+## Project Management
+
+GitHub Projects, Issues, sub-issues, dependencies, and milestones are used for execution tracking. This document should not accumulate detailed checklists that are better represented there.
+
+Architecture decisions that must remain true after an Issue is closed belong in the repository documentation.
